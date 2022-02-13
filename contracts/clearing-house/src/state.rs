@@ -20,4 +20,4 @@ pub struct User {
     pub total_paid_fees: Uint128,
 }
 
-pub const USER: Map<&Addr, User> = Map::new("user");
+pub const USER: Map<String, User> = Map::new("user");

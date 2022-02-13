@@ -1,5 +1,5 @@
 use crate::contract::{execute, instantiate, query};
-use crate::msg::{InstantiateMsg, ConfigResponse, QueryMsg};
+use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, UserResponse};
 use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
 use cosmwasm_std::{coins, from_binary, Uint128};
 
@@ -21,51 +21,53 @@ fn proper_initialization() {
     let value: ConfigResponse = from_binary(&res).unwrap();
     assert_eq!(Uint128::new(5), value.leverage);
 }
-/*
+
 #[test]
-fn increment() {
+fn deposit_collateral_test() {
     let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
 
-    let msg = InstantiateMsg { count: 17 };
+    let msg = InstantiateMsg {
+        leverage: Uint128::new(5),
+    };
     let info = mock_info("creator", &coins(2, "token"));
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // beneficiary can release it
     let info = mock_info("anyone", &coins(2, "token"));
-    let msg = ExecuteMsg::Increment {};
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    let dep_amount = Uint128::new(5_00000);
+    let msg = ExecuteMsg::DepositCollateral {
+        amount: dep_amount,
+    };
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
 
     // should increase counter by 1
-    let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-    let value: CountResponse = from_binary(&res).unwrap();
-    assert_eq!(18, value.count);
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetUser {
+            user_address: String::from("anyone"),
+        },
+    )
+    .unwrap();
+    let value: UserResponse = from_binary(&res).unwrap();
+    assert_eq!(Uint128::new(25_00000), value.free_collateral);
+    assert_eq!(Uint128::new(5_00000), value.total_deposits);
+
+    // deposit again
+    let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
+
+    // should increase counter by 1
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetUser {
+            user_address: String::from("anyone"),
+        },
+    )
+    .unwrap();
+    
+    let value: UserResponse = from_binary(&res).unwrap();
+    assert_eq!(Uint128::new(50_00000), value.free_collateral);
+    assert_eq!(Uint128::new(10_00000), value.total_deposits);
+
 }
-
-#[test]
-fn reset() {
-    let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
-
-    let msg = InstantiateMsg { count: 17 };
-    let info = mock_info("creator", &coins(2, "token"));
-    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    // beneficiary can release it
-    let unauth_info = mock_info("anyone", &coins(2, "token"));
-    let msg = ExecuteMsg::Reset { count: 5 };
-    let res = execute(deps.as_mut(), mock_env(), unauth_info, msg);
-    match res {
-        Err(ContractError::Unauthorized {}) => {}
-        _ => panic!("Must return unauthorized error"),
-    }
-
-    // only the original creator can reset the counter
-    let auth_info = mock_info("creator", &coins(2, "token"));
-    let msg = ExecuteMsg::Reset { count: 5 };
-    let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
-
-    // should now be 5
-    let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-    let value: CountResponse = from_binary(&res).unwrap();
-    assert_eq!(5, value.count);
-}
-*/

@@ -1,6 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{ Addr, Uint128 };
+use cosmwasm_std::{ Uint128 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -18,14 +18,14 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     // GetCount returns the current count as a json-encoded number
-    GetUser { user_address: Addr },
+    GetUser { user_address: String },
     GetConfig {},
 }
 
 // We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UserResponse {
-    pub user_address: Addr,
+    pub user_address: String,
     pub free_collateral: Uint128,
     pub total_deposits: Uint128,
     pub total_paid_fees: Uint128,
@@ -34,6 +34,6 @@ pub struct UserResponse {
 // get config data response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
-    pub owner: Addr,
+    pub owner: String,
     pub leverage: Uint128,
 }
