@@ -4,7 +4,8 @@ use std::fs::create_dir_all;
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
 use clearing_house::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use clearing_house::state::{Config, User};
+use clearing_house::states::state::{Config};
+use clearing_house::states::user::{User};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

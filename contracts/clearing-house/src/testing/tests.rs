@@ -1,7 +1,7 @@
 use crate::contract::{execute, instantiate, query};
-use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, UserResponse};
+use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, UserResponse, self};
 use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
-use cosmwasm_std::{coins, from_binary, Uint128};
+use cosmwasm_std::{coins, from_binary, Uint128, Decimal256};
 
 #[test]
 fn proper_initialization() {
@@ -9,6 +9,14 @@ fn proper_initialization() {
 
     let msg = InstantiateMsg {
         leverage: Uint128::new(5),
+        collateral_fund: String::from("collateral_vault"),
+        insurance_vault: String::from("insurance_vault"),
+        initial_margin_ratio: Decimal256(20_000_000_000_000_000_000),
+        maintenance_margin_ratio: msg.maintenance_margin_ratio,
+        liquidation_penalty: msg.liquidation_penalty,
+        liquidator_reward: msg.liquidator_reward,
+        fee_percentage: msg.fee_percentage,
+        max_deposit: msg.max_deposit
     };
     let info = mock_info("creator", &coins(1000, "earth"));
 

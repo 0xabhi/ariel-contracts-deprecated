@@ -1,10 +1,20 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{ Uint128 };
+use cosmwasm_std::{ Uint128, Decimal256, Uint256 };
+
+
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InstantiateMsg {
+pub struct InstantiateMsg{
     pub leverage: Uint128,
+    pub collateral_fund: String,
+    pub insurance_vault: String,
+    pub initial_margin_ratio: Decimal256,
+    pub maintenance_margin_ratio: Decimal256,
+    pub liquidation_penalty: Decimal256,
+    pub liquidator_reward: Decimal256,
+    pub fee_percentage: Decimal256,
+    pub max_deposit: Uint256,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
