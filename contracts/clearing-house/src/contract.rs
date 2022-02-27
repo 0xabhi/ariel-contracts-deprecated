@@ -1,14 +1,21 @@
+use crate::controller::globalstate::get_config_data;
 #[cfg(not(feature = "library"))]
+use crate::controller::user::get_user_data;
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
-};
+use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 
+use crate::controller::globalstate::{
+    try_update_collateral_vault, try_update_fee_percentage, try_update_insurance_vault,
+    try_update_liquidation_config, try_update_margin_ratio, try_update_max_deposit,
+};
+use crate::controller::market::try_add_market;
+use crate::controller::user::{
+    try_close_position, try_deposit_collateral, try_open_position, try_withdraw_collateral,
+};
 use crate::error::ContractError;
-use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, UserResponse};
-use crate::states::state::{Config, CONFIG, Market};
-use crate::states::user::{User, USER};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::states::state::{Config, CONFIG};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:clearing-house";
@@ -23,6 +30,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let collateral_fund = deps.api.addr_validate(&msg.collateral_fund)?;
     let insurance_vault = deps.api.addr_validate(&msg.insurance_vault)?;
+
     let config = Config {
         admin: info.sender.clone(),
         leverage: msg.leverage,
@@ -36,7 +44,7 @@ pub fn instantiate(
         liquidation_penalty: msg.liquidation_penalty,
         liquidator_reward: msg.liquidator_reward,
         fee_percentage: msg.fee_percentage,
-        max_deposit: msg.max_deposit
+        max_deposit: msg.max_deposit,
     };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     CONFIG.save(deps.storage, &config)?;
@@ -56,70 +64,40 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::DepositCollateral { amount } => try_deposit_collateral(deps, info, amount),
-        ExecuteMsg::WithdrawCollateral { amount } => withdraw_collateral(deps, info, amount),
+        ExecuteMsg::WithdrawCollateral { amount } => try_withdraw_collateral(deps, info, amount),
+        ExecuteMsg::UpdateCollateralVault { vault } => {
+            try_update_collateral_vault(deps, info, vault)
+        }
+        ExecuteMsg::UpdateInsuranceVault { vault } => try_update_insurance_vault(deps, info, vault),
+        ExecuteMsg::UpdateMarginRatio {
+            initial_mr,
+            maintenance_mr,
+        } => try_update_margin_ratio(deps, info, initial_mr, maintenance_mr),
+        ExecuteMsg::UpdateLiquidationConfig {
+            liquidation_penalty,
+            liquidation_reward,
+        } => try_update_liquidation_config(deps, info, liquidation_penalty, liquidation_reward),
+        ExecuteMsg::UpdateFeePercentage { new_fee } => {
+            try_update_fee_percentage(deps, info, new_fee)
+        }
+        ExecuteMsg::UpdateMaxDeposit { max_deposit } => {
+            try_update_max_deposit(deps, info, max_deposit)
+        }
+        ExecuteMsg::AddMarket {
+            v_amm,
+            long_base_asset_amount,
+            short_base_asset_amount,
+        } => try_add_market(
+            deps,
+            info,
+            v_amm,
+            long_base_asset_amount,
+            short_base_asset_amount,
+        ),
+        ExecuteMsg::ClosePosition { market_index } => try_close_position(deps, info, market_index),
+
+        ExecuteMsg::OpenPosition { market_index } => try_open_position(deps, info, market_index),
     }
-}
-
-pub fn try_deposit_collateral(
-    deps: DepsMut,
-    info: MessageInfo,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
-    // pseudo: Check if entered amount and sent amount of tokens are of same quantity and UST
-    let config = CONFIG.load(deps.storage)?;
-    let update_user = |existing_user: Option<User>| -> StdResult<User> {
-        match existing_user {
-            None => Ok(User {
-                user_address: info.sender.clone(),
-                free_collateral: amount * config.leverage,
-                total_deposits: amount,
-                total_paid_fees: Uint128::new(0),
-            }),
-            Some(one) => Ok(User {
-                user_address: info.sender.clone(),
-                free_collateral: one.free_collateral + (amount * config.leverage),
-                total_deposits: one.total_deposits + amount,
-                total_paid_fees: one.total_paid_fees,
-            }),
-        }
-    };
-    USER.update(deps.storage, info.sender.clone().into(), &update_user)?;
-
-    Ok(Response::new()
-        .add_attribute("method", "deposit_collateral")
-        .add_attribute("amount", amount))
-}
-
-pub fn withdraw_collateral(
-    deps: DepsMut,
-    info: MessageInfo,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
-    // Pseudo::
-    // Check if user exists or else throw error
-    // check if he has enoug amount free for withdrawl
-    let config = CONFIG.load(deps.storage)?;
-    let update_user = |existing_user: Option<User>| -> StdResult<User> {
-        match existing_user {
-            None => Ok(User {
-                user_address: info.sender.clone(),
-                free_collateral: amount * config.leverage,
-                total_deposits: amount,
-                total_paid_fees: Uint128::new(0),
-            }),
-            Some(one) => Ok(User {
-                user_address: info.sender.clone(),
-                free_collateral: one.free_collateral * config.leverage,
-                total_deposits: one.total_deposits,
-                total_paid_fees: one.total_paid_fees,
-            }),
-        }
-    };
-    // pseudo check for existing users and all before proceeding
-    USER.update(deps.storage, info.sender.clone().into(), &update_user)?;
-    Ok(Response::new()
-        .add_attribute("method", "withdraw_collateral")
-        .add_attribute("amount", amount))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -128,22 +106,4 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetUser { user_address } => to_binary(&get_user_data(deps, user_address)?),
         QueryMsg::GetConfig {} => to_binary(&get_config_data(deps)?),
     }
-}
-
-fn get_user_data(deps: Deps, user_address: String) -> StdResult<UserResponse> {
-    let user = USER.load(deps.storage, user_address)?;
-    Ok(UserResponse {
-        user_address: user.user_address.into(),
-        free_collateral: user.free_collateral,
-        total_deposits: user.total_deposits,
-        total_paid_fees: user.total_paid_fees,
-    })
-}
-
-fn get_config_data(deps: Deps) -> StdResult<ConfigResponse> {
-    let config = CONFIG.load(deps.storage)?;
-    Ok(ConfigResponse {
-        owner: config.admin.into(),
-        leverage: config.leverage,
-    })
 }
