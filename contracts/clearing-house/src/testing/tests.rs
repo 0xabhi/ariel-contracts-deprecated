@@ -8,6 +8,7 @@ fn proper_initialization() {
     let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
 
     let msg = InstantiateMsg {
+        admin: String::from("admin_address"),
         leverage: Uint128::new(5),
         collateral_fund: String::from("collateral_vault"),
         insurance_vault: String::from("insurance_vault"),
@@ -44,6 +45,7 @@ fn deposit_collateral_test() {
     let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
 
     let msg = InstantiateMsg {
+        admin: String::from("admin_address"),
         leverage: Uint128::new(5),
         collateral_fund: String::from("collateral_vault"),
         insurance_vault: String::from("insurance_vault"),

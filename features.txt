@@ -1,0 +1,36 @@
+
+initialize history  // not required
+deposit collateral // and initialize user done
+initialize market  // add market in clearing house
+withdraw collateral // done
+open position
+close position
+liquidate
+move amm price //check where it was called
+withdraw fees
+withdraw from insurance vault // to where by whom
+withdraw from insurance vault to market // by whom
+repeg amm curve // check where it was used and how
+initial user // planning to integrate with deposit collateral
+initial user with explicit player //future
+delete user // later 
+settle funding paymemt // where by whom
+update funding rate // where by whom
+update k //
+update margin ratio //done
+update update_partial_liquidation_close_percentage ///// not in partial now
+update update_full_liquidation_liquidator_share_denominator  // 
+update fee // done
+update oracle guard rails
+update market oracle
+update market minimum trade size
+update admin
+update whitelist mint
+update discount mint
+update max deposit
+update exchange paused
+disable admin controls prices
+update funding paused
+valid oracle for market
+exchange not paused
+admin controls prices

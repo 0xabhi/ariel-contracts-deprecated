@@ -1,0 +1,75 @@
+User:
+
+User (address, collateral, cumulative_deposits, total_fee_paid)
+MarketPosition(market_index, base_asset_amount, quote_asset_amount, last_cumulative_funding_rate, last_cumulative_repeg_rebate, last_funding_rate_ts)
+
+
+Market:
+
+Market(initialized, base_asset_amount_long, base_asset_amount_short, base_asset_amount, open_interest, vamm)
+AMM() --> this should go in vAMM contract
+
+Config States:
+
+GlobalState(
+    admin, exchange_paused, funding_paused, admin_controls_prices,
+    collateral_mint(what?), collateral_vault, collateral_vault_nonce(?),
+    deposit_history( binding to an array? ), trade_history ( binding to an array?),
+    funding_payment_history, funding_rate_history,
+    liquidation_history, curve_history,
+    insurance_vault, insurance_vault_nonce(?),
+    markets( array maps), 
+    margin_ratio_initial, margin_ratio_maintenance, margin_ratio_partial(not required now),
+    partial_liquidation_close_percentage,  partial_liquidation_penalty_percentage [(to be implemented later?)]
+    full_liquidation_liquidator_share, full_liquidation_penalty_percentage
+    [fee tiers will be introduced later?]
+    fee
+    max_deposit
+)
+
+[PS: we will introduce new referral bonus and tiers in next phase]
+
+
+History:
+
+Curve(to be implemented later with vAMM)
+
+DepositRecord(
+    ts,
+    record_id,
+    user_address,
+    direction(deposit or withdraw),
+    collateral_before,
+    cumulative_deposits_before,
+    amount
+)
+
+FundingPaymentRecord(
+    ts, record_id, user_address, market_index, funding_payment, 
+    base_asset_amount, user_last_cumulative_funding, 
+    user_last_funding_rate_ts, amm_cumulative_funding_long,
+    amm_cumulative_funding_short
+)
+
+FundingRateRecord(
+    ts, record_id, market_index, funding_rate,
+    cumulative_funding_rate_long, cumulative_funding_rate_short,
+    oracle_price_twap, mark_price_twap
+)
+
+LiquidationRecord(
+    ts, record_id, user_address, partial( implement later),
+    base_asset_value, base_asset_value_closed, liquidation_fee,
+    fee_to_liquidator, fee_to_insurance_fund, liquidator,
+    total_collateral, collateral, unrealized_pnl, margin_ratio
+)
+
+
+TradeRecord(
+    ts, record_id, user_address, market_index,
+    direction(long or short), base_asset_amount, quote_asset_amount,
+    mark_price_before, mark_price_after, fee, 
+    [referral_related_params: later],
+    liquidation(T/F),
+     oracle_price
+)

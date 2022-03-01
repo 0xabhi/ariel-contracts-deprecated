@@ -3,6 +3,7 @@ use crate::controller::globalstate::get_config_data;
 use crate::controller::user::get_user_data;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cw0::maybe_addr;
 use cw2::set_contract_version;
 
 use crate::controller::globalstate::{
@@ -15,7 +16,7 @@ use crate::controller::user::{
 };
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::states::state::{Config, CONFIG};
+use crate::states::state::{Config, ADMIN, CONFIG};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:clearing-house";
@@ -23,14 +24,15 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let collateral_fund = deps.api.addr_validate(&msg.collateral_fund)?;
     let insurance_vault = deps.api.addr_validate(&msg.insurance_vault)?;
-
+    let admin = deps.api.addr_validate(&msg.admin)?;
+    ADMIN.set(deps.branch(), Some(admin))?;
     let config = Config {
         admin: info.sender.clone(),
         leverage: msg.leverage,
@@ -63,6 +65,9 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        // ExecuteMsg::UpdateAdmin { admin } => {
+        //     Ok(ADMIN.execute_update_admin(deps, info, maybe_addr(deps.api, Some(admin))?)?)
+        // }
         ExecuteMsg::DepositCollateral { amount } => try_deposit_collateral(deps, info, amount),
         ExecuteMsg::WithdrawCollateral { amount } => try_withdraw_collateral(deps, info, amount),
         ExecuteMsg::UpdateCollateralVault { vault } => {

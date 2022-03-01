@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
+    pub admin: String,
     pub leverage: Uint128,
     pub collateral_fund: String,
     pub insurance_vault: String,
@@ -20,6 +21,10 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    // updates admin
+    // UpdateAdmin {
+    //     admin: String
+    // },
     //user function
     DepositCollateral {
         amount: Uint128,

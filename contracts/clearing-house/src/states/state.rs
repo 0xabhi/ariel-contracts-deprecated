@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::{Addr, Decimal256, Uint128};
 use cw_storage_plus::{Item, Map};
 
+use cw_controllers::Admin;
 
+pub const ADMIN: Admin = Admin::new("admin");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
@@ -20,7 +22,7 @@ pub struct Config {
     pub liquidation_penalty: Decimal256,
     pub liquidator_reward: Decimal256,
     pub fee_percentage: Decimal256,
-    pub max_deposit: Uint128
+    pub max_deposit: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -33,7 +35,6 @@ pub struct Market {
     pub base_asset_amount: Uint128,
     pub open_positions: u64,
 }
-
 
 pub const MARKETS: Map<u64, Market> = Map::new("markets");
 pub const CONFIG: Item<Config> = Item::new("config");

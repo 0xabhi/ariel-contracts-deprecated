@@ -76,6 +76,7 @@ pub fn try_withdraw_collateral(
     };
     // pseudo check for existing users and all before proceeding
     USER.update(deps.storage, info.sender.clone().as_str(), &update_user)?;
+    // withdraw ust from collateral to user     
     Ok(Response::new()
         .add_attribute("method", "withdraw_collateral")
         .add_attribute("amount", amount))

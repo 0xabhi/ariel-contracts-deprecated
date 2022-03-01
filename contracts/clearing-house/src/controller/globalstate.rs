@@ -1,7 +1,18 @@
-use crate::states::state::CONFIG;
+use crate::states::state::{CONFIG, ADMIN};
 use cosmwasm_std::{DepsMut, MessageInfo, Response, Uint128, Decimal256, StdResult, Deps};
+use cw0::maybe_addr;
 
 use crate::{ContractError, msg::ConfigResponse};
+
+
+// pub fn try_update_update(
+//     deps: DepsMut,
+//     info: MessageInfo,
+//     new_admin: String,
+// ) -> Result<Response, ContractError> {
+//     ADMIN.execute_update_admin(deps, info, maybe_addr(deps.api, Some( new_admin))?)?;
+//     Ok(Response::new())
+// }
 
 
 pub fn try_update_collateral_vault(

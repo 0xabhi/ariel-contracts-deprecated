@@ -20,6 +20,7 @@ pub struct TradeHistory {
     pub short_cumulative_funding: Uint128,
 }
 
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum Direction{
     Long,
@@ -27,4 +28,4 @@ pub enum Direction{
 }
 
 //TODO:: making the funding rate history map to composit key
-pub const CONFIG: Map<TradeHistory, u64> = Map::new("funding_payment_history");
+pub const CONFIG: Map< &(Addr, u64), TradeHistory> = Map::new("funding_payment_history");
