@@ -3,7 +3,6 @@ use crate::controller::globalstate::get_config_data;
 use crate::controller::user::get_user_data;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
-use cw0::maybe_addr;
 use cw2::set_contract_version;
 
 use crate::controller::globalstate::{

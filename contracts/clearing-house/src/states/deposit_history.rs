@@ -19,5 +19,6 @@ pub enum Direction {
     Deposit,
     Withdraw
 }
+
 //TODO:: making the funding rate history map to composit key
 pub const CONFIG: Map<u64, DepositHistory> = Map::new("funding_payment_history");

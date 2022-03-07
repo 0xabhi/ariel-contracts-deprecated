@@ -1,5 +1,5 @@
 [package]
-name = "virtual-amm"
+name = "oracle"
 version = "0.1.0"
 authors = ["a <a>"]
 edition = "2018"
