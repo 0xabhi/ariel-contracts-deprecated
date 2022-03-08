@@ -10,16 +10,14 @@ use cw_storage_plus::Map;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DepositHistory {
     head: u64,
-    deposit_records:  Vec<(u64, DepositRecord)>
+    deposit_records:  Vec<DepositRecord>
 }
-
-
 
 impl Default for DepositHistory {
     fn default() -> Self {
         DepositHistory {
             head: 0,
-            deposit_records: Vec<(u64, DepositRecord)>
+            deposit_records: Vec::new()
         }
     }
 }
