@@ -53,6 +53,7 @@ impl Default for DepositDirection {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Default)]
 pub struct DepositRecord {
     pub ts: i64,
     pub record_id: u128,
