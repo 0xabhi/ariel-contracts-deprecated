@@ -1,7 +1,7 @@
 use cosmwasm_std::StdError;
 use thiserror::Error;
 
-pub type ClearingHouseResult<T = ()> = std::result::Result<T, ErrorCode>;
+pub type ClearingHouseResult<T = ()> = std::result::Result<T, ContractError>;
 
 #[derive(Error, Debug)]
 pub enum ContractError {
@@ -103,7 +103,7 @@ macro_rules! wrap_error {
 macro_rules! math_error {
     () => {{
         || {
-            let error_code = ErrorCode::MathError;
+            let error_code = ContractError::MathError;
             msg!("Error {} thrown at {}:{}", error_code, file!(), line!());
             error_code
         }
