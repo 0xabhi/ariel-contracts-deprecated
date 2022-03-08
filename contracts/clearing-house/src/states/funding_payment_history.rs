@@ -1,56 +1,52 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Addr, Uint128};
-use cw_storage_plus::Map;
+use cosmwasm_std::{Addr};
 
+use std::vec::Vec;
+use cw_storage_plus::Map;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct FundingPaymentHistory {
-    head: u64,
-    funding_payment_records: [FundingPaymentRecord; 1024],
+    funding_payment_records: Vec<FundingPaymentRecord>,
 }
 
 impl Default for FundingPaymentHistory {
     fn default() -> Self {
         FundingPaymentHistory {
-            head: 0,
-            funding_payment_records: [FundingPaymentRecord::default(); 1024],
+            funding_payment_records: Vec::new()
         }
     }
 }
 
 impl FundingPaymentHistory {
     pub fn append(&mut self, pos: FundingPaymentRecord) {
-        self.funding_payment_records[FundingPaymentHistory::index_of(self.head)] = pos;
-        self.head = (self.head + 1) % 1024;
+        self.funding_payment_records.push(pos)
     }
 
-    pub fn index_of(counter: u64) -> usize {
-        std::convert::TryInto::try_into(counter).unwrap()
+    pub fn length(&self) -> usize {
+        self.funding_payment_records.len()
     }
 
-    pub fn next_record_id(&self) -> u128 {
-        let prev_record_id = if self.head == 0 { 1023 } else { self.head - 1 };
-        let prev_record =
-            &self.funding_payment_records[FundingPaymentHistory::index_of(prev_record_id)];
-        prev_record.record_id + 1
+    pub fn record_at_index(&self,  at_index : usize) -> FundingPaymentRecord {
+        self.funding_payment_records[at_index]
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct FundingPaymentRecord {
-    pub timestamp: u64,
-    pub record_id: u64,
-    pub user_address: Addr,
-    pub market_id: u64,
-    pub funding_payment_amount: Uint128,
-    pub base_asset_amount: Uint128,
-    pub last_cumulative_funding: Uint128,
-    pub last_funding_rate_timestamp: u64,
-    pub long_cumulative_funding: Uint128,
-    pub short_cumulative_funding: Uint128,
+    pub ts: i64,
+    pub record_id: u128,
+    pub user_authority: Addr,
+    pub user: Addr,
+    pub market_index: u64,
+    pub funding_payment: i128,
+    pub base_asset_amount: i128,
+    pub user_last_cumulative_funding: i128,
+    pub user_last_funding_rate_ts: i64,
+    pub amm_cumulative_funding_long: i128,
+    pub amm_cumulative_funding_short: i128,
 }
 
-//TODO:: making the funding rate history map to composit key
+
 pub const CONFIG: Map<FundingPaymentHistory, u64> = Map::new("funding_payment_history");

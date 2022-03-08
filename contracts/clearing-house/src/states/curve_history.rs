@@ -1,29 +1,34 @@
-
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cw_storage_plus::Map;
 
+use std::vec::Vec;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CurveHistory {
-    pub head: u64,
-    pub curve_records: [CurveRecord; 32],
+    pub curve_records: Vec<CurveRecord>
+}
+
+impl Default for CurveHistory {
+    fn default() -> Self {
+        CurveHistory {
+            curve_records: Vec::new()
+        }
+    }
 }
 
 impl CurveHistory {
     pub fn append(&mut self, pos: CurveRecord) {
-        self.curve_records[CurveHistory::index_of(self.head)] = pos;
-        self.head = (self.head + 1) % 32;
+        self.curve_records.push(pos)
     }
 
-    pub fn index_of(counter: u64) -> usize {
-        std::convert::TryInto::try_into(counter).unwrap()
+    pub fn length(&self) -> usize {
+        self.curve_records.len()
     }
 
-    pub fn next_record_id(&self) -> u128 {
-        let prev_record_id = if self.head == 0 { 31 } else { self.head - 1 };
-        let prev_record = &self.curve_records[CurveHistory::index_of(prev_record_id)];
-        prev_record.record_id + 1
+    pub fn record_at_index(&self,  at_index : usize) -> CurveRecord {
+        self.curve_records[at_index]
     }
 }
 
@@ -67,33 +72,27 @@ pub struct CurveRecord {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ExtendedCurveHistory {
-    pub head: u64,
-    curve_records: [ExtendedCurveRecord; 1024],
+    curve_records: Vec<ExtendedCurveRecord>
 }
 
 impl Default for ExtendedCurveHistory {
     fn default() -> Self {
         ExtendedCurveHistory {
-            head: 0,
-            curve_records: [ExtendedCurveRecord::default(); 1024],
-        }
+            curve_records: Vec::new()        }
     }
 }
 
 impl ExtendedCurveHistory {
     pub fn append(&mut self, pos: ExtendedCurveRecord) {
-        self.curve_records[ExtendedCurveHistory::index_of(self.head)] = pos;
-        self.head = (self.head + 1) % 1023;
+        self.curve_records.push(pos)
     }
 
-    pub fn index_of(counter: u64) -> usize {
-        std::convert::TryInto::try_into(counter).unwrap()
+    pub fn length(&self) -> usize {
+        self.curve_records.len()
     }
 
-    pub fn next_record_id(&self) -> u128 {
-        let prev_record_id = if self.head == 0 { 1023 } else { self.head - 1 };
-        let prev_record = &self.curve_records[ExtendedCurveHistory::index_of(prev_record_id)];
-        prev_record.record_id + 1
+    pub fn record_at_index(&self,  at_index : usize) -> ExtendedCurveRecord {
+        self.curve_records[at_index]
     }
 }
 
@@ -124,4 +123,4 @@ pub struct ExtendedCurveRecord {
 }
 
 pub const CONFIG: Map<CurveHistory, u64> = Map::new("curve_history");
-pub const CONFIG: Map<ExtendedCurveHistory, u64> = Map::new("extended_curve_history");
+pub const CONFIG2: Map<ExtendedCurveHistory, u64> = Map::new("extended_curve_history");

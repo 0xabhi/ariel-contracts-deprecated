@@ -1,27 +1,56 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Addr, Uint128, Decimal256};
+use std::vec::Vec;
 use cw_storage_plus::Map;
 
+use cosmwasm_std::{Addr};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct LiquidationHistory {
-    pub timestamp: u64,
-    pub record_id: u64,
-    pub user_address: Addr,
-    pub funding_payment_amount: Uint128,
-    pub base_asset_value: Uint128,
-    pub base_asset_value_closed: Uint128,
-    pub liquidation_fee: Uint128,
-    pub liquidator_fee: Uint128,
-    pub insurance_fund_fee: Uint128,
-    pub liquidator: Addr,
-    pub total_collateral: Uint128,
-    pub collateral: Uint128,
-    pub unrealized_pnl: Uint128,
-    pub margin_ratio: Decimal256,
+    liquidation_records: Vec<LiquidationRecord>,
 }
 
-//TODO:: making the funding rate history map to composit key
-pub const CONFIG: Map<LiquidationHistory, u64> = Map::new("funding_payment_history");
+impl Default for LiquidationHistory {
+    fn default() -> Self {
+        LiquidationHistory {
+            liquidation_records: Vec::new()
+        }
+    }
+}
+
+impl LiquidationHistory {
+    pub fn append(&mut self, pos: LiquidationRecord) {
+        self.liquidation_records.push(pos)
+    }
+
+    pub fn length(&self) -> usize {
+        self.liquidation_records.len()
+    }
+
+    pub fn record_at_index(&self,  at_index : usize) -> LiquidationRecord {
+        self.liquidation_records[at_index]
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct LiquidationRecord {
+    pub ts: i64,
+    pub record_id: u128,
+    pub user_authority: Addr,
+    pub user: Addr,
+    pub partial: bool,
+    pub base_asset_value: u128,
+    pub base_asset_value_closed: u128,
+    pub liquidation_fee: u128,
+    pub fee_to_liquidator: u64,
+    pub fee_to_insurance_fund: u64,
+    pub liquidator: Addr,
+    pub total_collateral: u128,
+    pub collateral: u128,
+    pub unrealized_pnl: i128,
+    pub margin_ratio: u128,
+}
+
+
+pub const CONFIG: Map<LiquidationHistory, u64> = Map::new("liquidation_history");

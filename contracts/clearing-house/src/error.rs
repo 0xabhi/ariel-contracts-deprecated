@@ -1,6 +1,8 @@
 use cosmwasm_std::StdError;
 use thiserror::Error;
 
+pub type ClearingHouseResult<T = ()> = std::result::Result<T, ErrorCode>;
+
 #[derive(Error, Debug)]
 pub enum ContractError {
     #[error("{0}")]
