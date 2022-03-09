@@ -1,10 +1,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Addr};
+use cosmwasm_std::Addr;
 
 use cw_storage_plus::Map;
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
@@ -53,9 +52,7 @@ pub struct State {
     pub padding5: u128,
 }
 
-
 pub const CONFIG: Map<State, u64> = Map::new("state");
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OracleGuardRails {

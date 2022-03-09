@@ -1,12 +1,12 @@
 use std::cell::{Ref, RefMut};
 
 use crate::error::*;
-use crate::math::collateral::calculate_updated_collateral;
-use crate::math::constants::MARGIN_PRECISION;
-use crate::math::position::calculate_base_asset_value_and_pnl;
+use crate::helpers::collateral::calculate_updated_collateral;
+use crate::helpers::constants::MARGIN_PRECISION;
+use crate::helpers::position::calculate_base_asset_value_and_pnl;
 use crate::math_error;
-use crate::state::market::Markets;
-use crate::state::user::{User, UserPositions};
+use crate::states::market::Markets;
+use crate::states::user::{User, UserPositions};
 
 pub fn calculate_margin_ratio(
     user: &User,

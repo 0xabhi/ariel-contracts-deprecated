@@ -103,7 +103,7 @@ macro_rules! wrap_error {
 macro_rules! math_error {
     () => {{
         || {
-            let error_code = ErrorCode::MathError;
+            let error_code = ContractError::MathError;
             msg!("Error {} thrown at {}:{}", error_code, file!(), line!());
             error_code
         }

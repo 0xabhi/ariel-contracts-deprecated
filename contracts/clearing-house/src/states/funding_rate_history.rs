@@ -34,7 +34,7 @@ impl FundingRateHistory {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct FundingRateRecord {
     pub ts: i64,
-    pub record_id: u128,
+    pub record_id: usize,
     pub market_index: u64,
     pub funding_rate: i128,
     pub cumulative_funding_rate_long: i128,
