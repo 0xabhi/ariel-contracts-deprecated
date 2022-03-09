@@ -9,9 +9,9 @@ pub enum ContractError {
     Std(#[from] StdError),
     #[error("Unauthorized")]
     Unauthorized {},
-    #[error("Clearing house not collateral account owner")]
+    #[error("Clearing house cannot call collateral contract")]
     InvalidCollateralAccountAuthority,
-    #[error("Clearing house not insurance account owner")]
+    #[error("Clearing house cannot call insurance contract")]
     InvalidInsuranceAccountAuthority,
     #[error("Insufficient deposit")]
     InsufficientDeposit,
@@ -88,25 +88,3 @@ pub enum ContractError {
     #[error("Casting Failure")]
     CastingFailure,
 }
-
-#[macro_export]
-macro_rules! wrap_error {
-    ($err:expr) => {{
-        || {
-            msg!("Error thrown at {}:{}", file!(), line!());
-            $err
-        }
-    }};
-}
-
-#[macro_export]
-macro_rules! math_error {
-    () => {{
-        || {
-            let error_code = ContractError::MathError;
-            msg!("Error {} thrown at {}:{}", error_code, file!(), line!());
-            error_code
-        }
-    }};
-}
-

@@ -54,7 +54,6 @@ pub fn settle_funding_payment(
             funding_payment_history.append(FundingPaymentRecord {
                 ts: now,
                 record_id,
-                user_authority: user.authority,
                 user: user_key,
                 market_index: market_position.market_index,
                 funding_payment: market_funding_rate_payment, //10e13

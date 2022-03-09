@@ -7,7 +7,6 @@ use cosmwasm_std::{Addr};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct User {
-    pub authority: Addr,
     pub collateral: u128,
     pub cumulative_deposits: i128,
     pub total_fee_paid: u128,
