@@ -1,4 +1,4 @@
-use borsh::{BorshDeserialize, BorshSerialize};
+use serde::{Deserialize, Serialize};
 
 use crate::controller;
 use crate::controller::amm::SwapDirection;
@@ -10,7 +10,7 @@ use crate::math_error;
 use crate::states::market::Market;
 use crate::states::user::{MarketPosition, User};
 
-#[derive(Clone, Copy, BorshSerialize, BorshDeserialize, PartialEq)]
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum PositionDirection {
     Long,
     Short,

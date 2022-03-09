@@ -3,7 +3,6 @@ use crate::math_error;
 use crate::states::state::{DiscountTokenTier, FeeStructure};
 use crate::states::user::User;
 use anchor_lang::Account;
-use solana_program::msg;
 use spl_token::state::Account as TokenAccount;
 
 pub fn calculate(
