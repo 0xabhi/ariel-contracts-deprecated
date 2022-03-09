@@ -37,7 +37,6 @@ impl LiquidationHistory {
 pub struct LiquidationRecord {
     pub ts: i64,
     pub record_id: u128,
-    pub user_authority: Addr,
     pub user: Addr,
     pub partial: bool,
     pub base_asset_value: u128,

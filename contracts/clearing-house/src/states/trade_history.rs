@@ -50,7 +50,6 @@ impl Default for PositionDirection {
 pub struct TradeRecord {
     pub ts: i64,
     pub record_id: u128,
-    pub user_authority: Addr,
     pub user: Addr,
     pub direction: PositionDirection,
     pub base_asset_amount: u128,

@@ -9,9 +9,9 @@ pub enum ContractError {
     Std(#[from] StdError),
     #[error("Unauthorized")]
     Unauthorized {},
-    #[error("Clearing house not collateral account owner")]
+    #[error("Clearing house cannot call collateral contract")]
     InvalidCollateralAccountAuthority,
-    #[error("Clearing house not insurance account owner")]
+    #[error("Clearing house cannot call insurance contract")]
     InvalidInsuranceAccountAuthority,
     #[error("Insufficient deposit")]
     InsufficientDeposit,

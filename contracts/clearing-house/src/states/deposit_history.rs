@@ -51,7 +51,6 @@ impl Default for DepositDirection {
 pub struct DepositRecord {
     pub ts: i64,
     pub record_id: u128,
-    pub user_authority: Addr,
     pub user: Addr,
     pub direction: DepositDirection,
     pub collateral_before: u128,
