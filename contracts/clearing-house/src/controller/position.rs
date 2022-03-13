@@ -1,5 +1,3 @@
-use serde::{Deserialize, Serialize};
-
 use crate::controller;
 use crate::controller::amm::SwapDirection;
 use crate::error::*;
@@ -10,18 +8,7 @@ use crate::math_error;
 use crate::states::market::Market;
 use crate::states::user::{MarketPosition, User};
 
-#[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
-pub enum PositionDirection {
-    Long,
-    Short,
-}
-
-impl Default for PositionDirection {
-    // UpOnly
-    fn default() -> Self {
-        PositionDirection::Long
-    }
-}
+use ariel::types::PositionDirection;
 
 pub fn increase(
     direction: PositionDirection,

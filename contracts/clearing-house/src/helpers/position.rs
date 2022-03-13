@@ -1,5 +1,4 @@
-use crate::controller::amm::SwapDirection;
-use crate::controller::position::PositionDirection;
+use ariel::types::{PositionDirection, SwapDirection};
 use crate::error::*;
 use crate::helpers::amm;
 use crate::helpers::amm::calculate_quote_asset_amount_swapped;

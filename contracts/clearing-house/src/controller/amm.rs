@@ -8,11 +8,7 @@ use crate::helpers::{amm, bn, quote_asset::*};
 use crate::math_error;
 use crate::states::market::AMM;
 
-#[derive(Clone, Copy, PartialEq)]
-pub enum SwapDirection {
-    Add,
-    Remove,
-}
+use ariel::types::SwapDirection;
 
 pub fn swap_quote_asset(
     amm: &mut AMM,
