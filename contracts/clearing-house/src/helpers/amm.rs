@@ -2,8 +2,7 @@ use std::cmp::max;
 
 use cosmwasm_std::Addr;
 
-
-use crate::controller::amm::SwapDirection;
+use crate::states::state::SwapDirection;
 use crate::error::*;
 use crate::helpers::bn;
 use crate::helpers::bn::U192;
@@ -11,7 +10,6 @@ use crate::helpers::casting::{cast, cast_to_i128, cast_to_u128};
 use crate::helpers::constants::{MARK_PRICE_PRECISION, PRICE_TO_PEG_PRECISION_RATIO};
 use crate::helpers::position::_calculate_base_asset_value_and_pnl;
 use crate::helpers::quote_asset::{asset_to_reserve_amount, reserve_to_asset_amount};
-use crate::math_error;
 use crate::states::market::{Market, AMM};
 use crate::states::state::{PriceDivergenceGuardRails, ValidityGuardRails};
 

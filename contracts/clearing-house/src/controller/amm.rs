@@ -1,5 +1,3 @@
-
-
 use crate::error::{ContractError};
 use crate::helpers::amm::calculate_quote_asset_amount_swapped;
 use crate::helpers::casting::{cast, cast_to_i128};
