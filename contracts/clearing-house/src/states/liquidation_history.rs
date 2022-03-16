@@ -22,7 +22,6 @@ pub struct LiquidationRecord {
     pub margin_ratio: u128,
 }
 
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct LiquidationInfo {
     pub len: i64,

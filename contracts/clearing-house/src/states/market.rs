@@ -6,6 +6,7 @@ use cosmwasm_std::{Addr};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Market {
+    pub market_name: String,
     pub initialized: bool,
     pub base_asset_amount_long: i128,
     pub base_asset_amount_short: i128,

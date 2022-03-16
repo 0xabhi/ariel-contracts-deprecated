@@ -2,7 +2,6 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cw_storage_plus::{Map, Item};
-use cosmwasm_std::{Addr};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum Type {
@@ -46,5 +45,5 @@ pub struct CurveInfo {
     pub len: i64,
 }
 
-pub const CurveHistory: Map<(u64,Addr),  CurveRecord> = Map::new("curve_history");
+pub const CurveHistory: Map<u64,  CurveRecord> = Map::new("curve_history");
 pub const CurveHistoryInfo: Item<CurveInfo> = Item::new("curve_history_info");
