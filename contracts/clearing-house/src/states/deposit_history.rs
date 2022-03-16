@@ -2,37 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr};
-
-use std::vec::Vec;
-use cw_storage_plus::Map;
-
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct DepositHistory {
-    deposit_records:  Vec<DepositRecord>
-}
-
-impl Default for DepositHistory {
-    fn default() -> Self {
-        DepositHistory {
-            deposit_records: Vec::new()
-        }
-    }
-}
-
-impl DepositHistory {
-    pub fn append(&mut self, pos: DepositRecord) {
-        self.deposit_records.push(pos)
-    }
-
-    pub fn length(&self) -> usize {
-        self.deposit_records.len()
-    }
-
-    pub fn record_at_index(&self,  at_index : usize) -> DepositRecord {
-        self.deposit_records[at_index]
-    }
-}
+use cw_storage_plus::{Map, Item};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum DepositDirection {
@@ -41,7 +11,6 @@ pub enum DepositDirection {
 }
 
 impl Default for DepositDirection {
-    // UpOnly
     fn default() -> Self {
         DepositDirection::DEPOSIT
     }
@@ -58,4 +27,11 @@ pub struct DepositRecord {
     pub amount: u64,
 }
 
-pub const CONFIG: Map<DepositHistory, u64> = Map::new("deposit_history");
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct DepositInfo {
+    pub len: i64,
+}
+
+pub const DepositHistory: Map<(u64,Addr),  DepositRecord> = Map::new("deposit_history");
+pub const DepositHistoryInfo: Item<DepositInfo> = Item::new("deposit_history_info");

@@ -1,37 +1,8 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use std::vec::Vec;
-use cw_storage_plus::Map;
-
 use cosmwasm_std::{Addr};
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct TradeHistory {
-    trade_records: Vec<TradeRecord>,
-}
-
-impl Default for TradeHistory {
-    fn default() -> Self {
-        TradeHistory {
-            trade_records: Vec::new()
-        }
-    }
-}
-
-impl TradeHistory {
-    pub fn append(&mut self, pos: TradeRecord) {
-        self.trade_records.push(pos)
-    }
-
-    pub fn length(&self) -> usize {
-        self.trade_records.len()
-    }
-
-    pub fn record_at_index(&self,  at_index : usize) -> TradeRecord {
-        self.trade_records[at_index]
-    }
-}
+use cw_storage_plus::{Map, Item};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum PositionDirection {
@@ -66,4 +37,10 @@ pub struct TradeRecord {
 }
 
 
-pub const CONFIG: Map<TradeHistory, u64> = Map::new("liquidation_history");
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct TradeInfo {
+    pub len: i64,
+}
+
+pub const TradeHistory: Map<(u64,Addr),  TradeRecord> = Map::new("trade_history");
+pub const TradeHistoryInfo: Item<TradeInfo> = Item::new("trade_history_info");

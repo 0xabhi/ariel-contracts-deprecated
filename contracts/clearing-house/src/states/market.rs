@@ -2,29 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cw_storage_plus::Map;
-
 use cosmwasm_std::{Addr};
-use std::vec::Vec;
-use crate::error::ClearingHouseResult;
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Markets {
-    pub markets: Vec<Market>,
-}
-
-impl Default for Markets {
-    fn default() -> Self {
-        Markets {
-            markets: Vec::new(),
-        }
-    }
-}
-
-impl Markets {
-    pub fn index_from_u64(index: u64) -> usize {
-        std::convert::TryInto::try_into(index).unwrap()
-    }
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Market {
@@ -33,31 +11,7 @@ pub struct Market {
     pub base_asset_amount_short: i128,
     pub base_asset_amount: i128, // net market bias
     pub open_interest: u128,     // number of users in a position
-    pub amm: AMM,
-
-    // upgrade-ability
-    pub padding0: u128,
-    pub padding1: u128,
-    pub padding2: u128,
-    pub padding3: u128,
-    pub padding4: u128,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub enum OracleSource {
-    Pyth,
-    Switchboard,
-}
-
-impl Default for OracleSource {
-    // UpOnly
-    fn default() -> Self {
-        OracleSource::Pyth
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct AMM {
+    // amm
     pub oracle: Addr,
     pub oracle_source: OracleSource,
     pub base_asset_reserve: u128,
@@ -80,108 +34,19 @@ pub struct AMM {
     pub minimum_trade_size: u128,
     pub last_oracle_price_twap_ts: i64,
     pub last_oracle_price: i128,
-
-    // upgrade-ability
-    pub padding1: u64,
-    pub padding2: u128,
-    pub padding3: u128,
-    pub padding4: u128,
 }
 
-pub const CONFIG: Map<Markets, u64> = Map::new("markets");
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum OracleSource {
+    Internal,
+    External,
+    Simulator
+}
 
-impl AMM {
-    pub fn mark_price(&self) -> ClearingHouseResult<u128> {
-        amm::calculate_price(
-            self.quote_asset_reserve,
-            self.base_asset_reserve,
-            self.peg_multiplier,
-        )
-    }
-
-    pub fn get_pyth_price(
-        &self,
-        price_oracle: &Addr,
-        clock_slot: u64,
-    ) -> ClearingHouseResult<(i128, i128, u128, u128, i64)> {
-        let pyth_price_data = price_oracle
-            .try_borrow_data()
-            .or(Err(ErrorCode::UnableToLoadOracle))?;
-        let price_data = pyth_client::cast::<pyth_client::Price>(&pyth_price_data);
-
-        let oracle_price = cast_to_i128(price_data.agg.price)?;
-        let oracle_conf = cast_to_u128(price_data.agg.conf)?;
-        let oracle_twap = cast_to_i128(price_data.twap.val)?;
-        let oracle_twac = cast_to_u128(price_data.twac.val)?;
-
-        let oracle_precision = 10_u128.pow(price_data.expo.unsigned_abs());
-
-        let mut oracle_scale_mult = 1;
-        let mut oracle_scale_div = 1;
-
-        if oracle_precision > MARK_PRICE_PRECISION {
-            oracle_scale_div = oracle_precision
-                .checked_div(MARK_PRICE_PRECISION)
-                .ok_or_else(math_error!())?;
-        } else {
-            oracle_scale_mult = MARK_PRICE_PRECISION
-                .checked_div(oracle_precision)
-                .ok_or_else(math_error!())?;
-        }
-
-        let oracle_price_scaled = (oracle_price)
-            .checked_mul(cast(oracle_scale_mult)?)
-            .ok_or_else(math_error!())?
-            .checked_div(cast(oracle_scale_div)?)
-            .ok_or_else(math_error!())?;
-
-        let oracle_twap_scaled = (oracle_twap)
-            .checked_mul(cast(oracle_scale_mult)?)
-            .ok_or_else(math_error!())?
-            .checked_div(cast(oracle_scale_div)?)
-            .ok_or_else(math_error!())?;
-
-        let oracle_conf_scaled = (oracle_conf)
-            .checked_mul(oracle_scale_mult)
-            .ok_or_else(math_error!())?
-            .checked_div(oracle_scale_div)
-            .ok_or_else(math_error!())?;
-
-        let oracle_twac_scaled = (oracle_twac)
-            .checked_mul(oracle_scale_mult)
-            .ok_or_else(math_error!())?
-            .checked_div(oracle_scale_div)
-            .ok_or_else(math_error!())?;
-
-        let oracle_delay: i64 = cast_to_i64(clock_slot)?
-            .checked_sub(cast(price_data.valid_slot)?)
-            .ok_or_else(math_error!())?;
-
-        Ok((
-            oracle_price_scaled,
-            oracle_twap_scaled,
-            oracle_conf_scaled,
-            oracle_twac_scaled,
-            oracle_delay,
-        ))
-    }
-
-    pub fn get_oracle_price(
-        &self,
-        price_oracle: &AccountInfo,
-        clock_slot: u64,
-    ) -> ClearingHouseResult<(i128, i128, u128, u128, i64)> {
-        let (oracle_px, oracle_twap, oracle_conf, oracle_twac, oracle_delay) =
-            match self.oracle_source {
-                OracleSource::Pyth => self.get_pyth_price(price_oracle, clock_slot)?,
-                OracleSource::Switchboard => (0, 0, 0, 0, 0),
-            };
-        Ok((
-            oracle_px,
-            oracle_twap,
-            oracle_conf,
-            oracle_twac,
-            oracle_delay,
-        ))
+impl Default for OracleSource {
+    fn default() -> Self {
+        OracleSource::Internal
     }
 }
+
+pub const CONFIG: Map<u64, Market> = Map::new("markets");

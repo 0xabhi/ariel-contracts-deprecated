@@ -1,14 +1,12 @@
-
-
-use crate::error::{ClearingHouseResult, ContractError};
+use crate::error::{ContractError};
 use crate::helpers::amm::calculate_quote_asset_amount_swapped;
 use crate::helpers::casting::{cast, cast_to_i128};
 use crate::helpers::constants::PRICE_TO_PEG_PRECISION_RATIO;
 use crate::helpers::{amm, bn, quote_asset::*};
-use crate::math_error;
 use crate::states::market::AMM;
+// use cosmwasm_std::{StdResult, StdError};
 
-use ariel::types::SwapDirection;
+use crate::states::state::SwapDirection;
 
 pub fn swap_quote_asset(
     amm: &mut AMM,
@@ -16,7 +14,7 @@ pub fn swap_quote_asset(
     direction: SwapDirection,
     now: i64,
     precomputed_mark_price: Option<u128>,
-) -> ClearingHouseResult<i128> {
+) -> Result<i128, ContractError> {
     amm::update_mark_twap(amm, now, precomputed_mark_price)?;
     let quote_asset_reserve_amount =
         asset_to_reserve_amount(quote_asset_amount, amm.peg_multiplier)?;
@@ -38,7 +36,7 @@ pub fn swap_quote_asset(
 
     let base_asset_amount = cast_to_i128(initial_base_asset_reserve)?
         .checked_sub(cast(new_base_asset_reserve)?)
-        .ok_or_else(math_error!())?;
+        .ok_or_else(Err(ContractError::MathError)?;
 
     return Ok(base_asset_amount);
 }
@@ -48,7 +46,7 @@ pub fn swap_base_asset(
     base_asset_swap_amount: u128,
     direction: SwapDirection,
     now: i64,
-) -> ClearingHouseResult<u128> {
+) -> Result<u128, ContractError> {
     amm::update_mark_twap(amm, now, None)?;
 
     let initial_quote_asset_reserve = amm.quote_asset_reserve;
@@ -74,13 +72,13 @@ pub fn move_price(
     amm: &mut AMM,
     base_asset_reserve: u128,
     quote_asset_reserve: u128,
-) -> ClearingHouseResult {
+) -> Result<(), ContractError> {
     amm.base_asset_reserve = base_asset_reserve;
     amm.quote_asset_reserve = quote_asset_reserve;
 
     let k = bn::U256::from(base_asset_reserve)
         .checked_mul(bn::U256::from(quote_asset_reserve))
-        .ok_or_else(math_error!())?;
+        .ok_or_else(Err(ContractError::MathError))?;
 
     amm.sqrt_k = k.integer_sqrt().try_to_u128()?;
 

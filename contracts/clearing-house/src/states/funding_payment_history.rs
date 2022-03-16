@@ -2,36 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr};
-
-use std::vec::Vec;
-use cw_storage_plus::Map;
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct FundingPaymentHistory {
-    funding_payment_records: Vec<FundingPaymentRecord>,
-}
-
-impl Default for FundingPaymentHistory {
-    fn default() -> Self {
-        FundingPaymentHistory {
-            funding_payment_records: Vec::new()
-        }
-    }
-}
-
-impl FundingPaymentHistory {
-    pub fn append(&mut self, pos: FundingPaymentRecord) {
-        self.funding_payment_records.push(pos)
-    }
-
-    pub fn length(&self) -> usize {
-        self.funding_payment_records.len()
-    }
-
-    pub fn record_at_index(&self,  at_index : usize) -> FundingPaymentRecord {
-        self.funding_payment_records[at_index]
-    }
-}
+use cw_storage_plus::{Map, Item};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct FundingPaymentRecord {
@@ -47,5 +18,10 @@ pub struct FundingPaymentRecord {
     pub amm_cumulative_funding_short: i128,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct FundingInfo {
+    pub len: i64,
+}
 
-pub const CONFIG: Map<FundingPaymentHistory, u64> = Map::new("funding_payment_history");
+pub const FundingHistory: Map<(u64,Addr),  FundingPaymentRecord> = Map::new("funding_history");
+pub const FundingHistoryInfo: Item<FundingInfo> = Item::new("funding_history_info");
