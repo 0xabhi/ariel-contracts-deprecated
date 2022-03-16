@@ -3,7 +3,7 @@ use std::cmp::max;
 
 use cosmwasm_std::Addr;
 
-use crate::error::*;
+use crate::error::ContractError;
 use crate::helpers::amm;
 use crate::helpers::casting::{cast, cast_to_i128, cast_to_i64};
 use crate::helpers::collateral::calculate_updated_collateral;
@@ -12,7 +12,6 @@ use crate::helpers::constants::{
 };
 use crate::helpers::funding::{calculate_funding_payment, calculate_funding_rate_long_short};
 use crate::helpers::oracle;
-use crate::math_error;
 use crate::states::funding_payment_history::{FundingPaymentHistory, FundingPaymentRecord};
 use crate::states::funding_rate_history::{FundingRateHistory, FundingRateRecord};
 use crate::states::market::AMM;

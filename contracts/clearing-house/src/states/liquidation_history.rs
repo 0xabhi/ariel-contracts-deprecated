@@ -1,37 +1,8 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use std::vec::Vec;
-use cw_storage_plus::Map;
-
 use cosmwasm_std::{Addr};
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct LiquidationHistory {
-    liquidation_records: Vec<LiquidationRecord>,
-}
-
-impl Default for LiquidationHistory {
-    fn default() -> Self {
-        LiquidationHistory {
-            liquidation_records: Vec::new()
-        }
-    }
-}
-
-impl LiquidationHistory {
-    pub fn append(&mut self, pos: LiquidationRecord) {
-        self.liquidation_records.push(pos)
-    }
-
-    pub fn length(&self) -> usize {
-        self.liquidation_records.len()
-    }
-
-    pub fn record_at_index(&self,  at_index : usize) -> LiquidationRecord {
-        self.liquidation_records[at_index]
-    }
-}
+use cw_storage_plus::{Map, Item};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct LiquidationRecord {
@@ -52,4 +23,10 @@ pub struct LiquidationRecord {
 }
 
 
-pub const CONFIG: Map<LiquidationHistory, u64> = Map::new("liquidation_history");
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct LiquidationInfo {
+    pub len: i64,
+}
+
+pub const LiquidationHistory: Map<(u64,Addr),  LiquidationRecord> = Map::new("liquidation_history");
+pub const LiquidationHistoryInfo: Item<LiquidationInfo> = Item::new("liquidation_history_info");
