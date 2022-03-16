@@ -42,14 +42,14 @@ pub struct Amm {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum OracleSource {
-    Internal,
-    External,
-    // Simulator
+    Oracle,
+    Simulated,
+    Zero,
 }
 
 impl Default for OracleSource {
     fn default() -> Self {
-        OracleSource::Internal
+        OracleSource::Oracle
     }
 }
 

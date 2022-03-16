@@ -154,8 +154,11 @@ pub fn update_funding_rate(
             .checked_div(cast(period_adjustment)?)
             .ok_or_else(|| (ContractError::MathError))?;
 
-        let (funding_rate_long, funding_rate_short) =
+        let (funding_rate_long, funding_rate_short, new_total_fee_minus_distributions) =
             calculate_funding_rate_long_short(market, funding_rate)?;
+
+        // TODO
+        // update new_total_fee_minus_distributions in market
 
         market.amm.cumulative_funding_rate_long = market
             .amm

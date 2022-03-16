@@ -17,11 +17,13 @@ pub fn get_mark_price(a: &Amm) -> Result<u128, ContractError> {
 
 }
 
-pub fn get_pyth_price(
+pub fn get_oracle_data(
         a: &Amm,
         price_oracle: &Addr,
         clock_slot: u64,
 ) -> Result<(i128, i128, u128, u128, i64), ContractError> {
+    // // TODO
+    // // Get Oracle data
     // let pyth_price_data = price_oracle
     //     .try_borrow_data()
     //     .or(Err(ContractError::UnableToLoadOracle))?;
@@ -81,8 +83,9 @@ pub fn get_oracle_price(
 ) -> Result<(i128, i128, u128, u128, i64), ContractError> {
     let (oracle_px, oracle_twap, oracle_conf, oracle_twac, oracle_delay) =
         match a.oracle_source {
-            OracleSource::Internal => get_pyth_price(a, &price_oracle, clock_slot)?,
-            OracleSource::External => (0, 0, 0, 0, 0),
+            OracleSource::Oracle => get_oracle_data(a, &price_oracle, clock_slot)?,
+            OracleSource::Simulated => (0, 0, 0, 0, 0),
+            OracleSource::Zero => (0, 0, 0, 0, 0),
         };
     Ok((
         oracle_px,
