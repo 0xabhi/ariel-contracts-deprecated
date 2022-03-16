@@ -11,7 +11,11 @@ pub struct Market {
     pub base_asset_amount_short: i128,
     pub base_asset_amount: i128, // net market bias
     pub open_interest: u128,     // number of users in a position
-    // amm
+    pub amm : Amm,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Amm {
     pub oracle: Addr,
     pub oracle_source: OracleSource,
     pub base_asset_reserve: u128,

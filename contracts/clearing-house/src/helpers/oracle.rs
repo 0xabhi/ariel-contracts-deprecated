@@ -1,28 +1,31 @@
-use crate::error::ClearingHouseResult;
-use crate::helpers::amm;
-use crate::states::market::AMM;
+use cosmwasm_std::Addr;
+
+use crate::states::market::Amm;
 use crate::states::state::OracleGuardRails;
-use anchor_lang::prelude::AccountInfo;
-use solana_program::clock::Slot;
+
+use crate::error::ContractError;
+
+use crate::helpers::amm;
+
 
 pub fn block_operation(
-    amm: &AMM,
-    oracle_account_info: &AccountInfo,
-    clock_slot: Slot,
+    a: &Amm,
+    oracle_account_info: &Addr,
+    clock_slot: u64,
     guard_rails: &OracleGuardRails,
     precomputed_mark_price: Option<u128>,
-) -> ClearingHouseResult<(bool, i128)> {
+) -> Result<(bool, i128), ContractError> {
     let oracle_is_valid =
-        amm::is_oracle_valid(amm, oracle_account_info, clock_slot, &guard_rails.validity)?;
+        amm::is_oracle_valid(a, oracle_account_info, clock_slot, &guard_rails)?;
     let (oracle_price, _, oracle_mark_spread_pct) = amm::calculate_oracle_mark_spread_pct(
-        &amm,
+        &a,
         &oracle_account_info,
         0,
         clock_slot,
         precomputed_mark_price,
     )?;
     let is_oracle_mark_too_divergent =
-        amm::is_oracle_mark_too_divergent(oracle_mark_spread_pct, &guard_rails.price_divergence)?;
+        amm::is_oracle_mark_too_divergent(oracle_mark_spread_pct, &guard_rails)?;
 
     let block = !oracle_is_valid || is_oracle_mark_too_divergent;
     return Ok((block, oracle_price));

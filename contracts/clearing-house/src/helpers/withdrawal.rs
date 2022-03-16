@@ -3,26 +3,17 @@ use crate::error::ContractError;
 /// Calculates how much of withdrawal must come from collateral vault and how much comes from insurance vault
 pub fn calculate_withdrawal_amounts(
     amount: u64,
-    collateral_token_account: &TokenAccount,
-    insurance_token_account: &TokenAccount,
+    balance_collateral: u64,
+    balance_insurance: u64
 ) -> Result<(u64, u64), ContractError> {
-    return Ok(if collateral_token_account.amount >= amount {
-        (amount, 0)
-    } else if insurance_token_account.amount
-        > amount
-            .checked_sub(collateral_token_account.amount)
-            .ok_or_else(math_error!())?
-    {
-        (
-            collateral_token_account.amount,
-            amount
-                .checked_sub(collateral_token_account.amount)
-                .ok_or_else(math_error!())?,
-        )
-    } else {
-        (
-            collateral_token_account.amount,
-            insurance_token_account.amount,
-        )
-    });
+    return Ok(
+        if balance_collateral >= amount {
+            (amount, 0)
+        } else if balance_insurance > amount - balance_collateral
+        {
+            (balance_collateral, amount - balance_collateral)
+        } else {
+            (balance_collateral, balance_insurance)
+        }
+    );
 }

@@ -7,7 +7,7 @@ use crate::helpers::constants::{
 };
 use crate::math_error;
 use crate::states::market::Market;
-
+use crate::helpers::position::_calculate_base_asset_value_and_pnl;
 use crate::states::state::OracleGuardRails;
 
 use crate::helpers::casting::cast_to_u128;
@@ -16,17 +16,27 @@ use cosmwasm_std::Addr;
 pub fn repeg(
     market: &mut Market,
     price_oracle: &Addr,
-    new_peg_candidate: u128,
+    new_peg: u128,
     clock_slot: u64,
     oracle_guard_rails: &OracleGuardRails,
 ) -> ClearingHouseResult<i128> {
-    if new_peg_candidate == market.amm.peg_multiplier {
+    if new_peg == market.amm.peg_multiplier {
         return Err(ContractError::InvalidRepegRedundant.into());
     }
 
     let terminal_price_before = amm::calculate_terminal_price(market)?;
 
-    let adjustment_cost = repeg::adjust_peg_cost(market, new_peg_candidate)?;
+    let adjustment_cost = repeg::adjust_peg_cost(market, new_peg)?;
+    let (current_net_market_value, _) =
+        _calculate_base_asset_value_and_pnl(market.base_asset_amount, 0, &market.amm)?;
+
+    market.amm.peg_multiplier = new_peg;
+
+    let (_new_net_market_value, adjustment_cost) = _calculate_base_asset_value_and_pnl(
+        market.base_asset_amount,
+        current_net_market_value,
+        &market.amm,
+    )?;
 
     let (oracle_price, _oracle_twap, oracle_conf, _oracle_twac, _oracle_delay) =
         market.amm.get_oracle_price(price_oracle, clock_slot)?;

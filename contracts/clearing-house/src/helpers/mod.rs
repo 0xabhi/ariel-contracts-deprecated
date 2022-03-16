@@ -10,5 +10,4 @@ pub mod oracle;
 pub mod pnl;
 pub mod position;
 pub mod quote_asset;
-pub mod repeg;
 pub mod withdrawal;

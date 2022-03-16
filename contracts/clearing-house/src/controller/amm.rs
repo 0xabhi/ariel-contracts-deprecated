@@ -3,13 +3,14 @@ use crate::helpers::amm::calculate_quote_asset_amount_swapped;
 use crate::helpers::casting::{cast, cast_to_i128};
 use crate::helpers::constants::PRICE_TO_PEG_PRECISION_RATIO;
 use crate::helpers::{amm, bn, quote_asset::*};
-use crate::states::market::AMM;
+
+use crate::states::market::Amm;
 // use cosmwasm_std::{StdResult, StdError};
 
 use crate::states::state::SwapDirection;
 
 pub fn swap_quote_asset(
-    amm: &mut AMM,
+    amm: &mut Amm,
     quote_asset_amount: u128,
     direction: SwapDirection,
     now: i64,
@@ -42,7 +43,7 @@ pub fn swap_quote_asset(
 }
 
 pub fn swap_base_asset(
-    amm: &mut AMM,
+    amm: &mut Amm,
     base_asset_swap_amount: u128,
     direction: SwapDirection,
     now: i64,
@@ -69,7 +70,7 @@ pub fn swap_base_asset(
 }
 
 pub fn move_price(
-    amm: &mut AMM,
+    amm: &mut Amm,
     base_asset_reserve: u128,
     quote_asset_reserve: u128,
 ) -> Result<(), ContractError> {
@@ -86,9 +87,9 @@ pub fn move_price(
 }
 
 #[allow(dead_code)]
-pub fn move_to_price(amm: &mut AMM, target_price: u128) -> ClearingHouseResult {
+pub fn move_to_price(amm: &mut Amm, target_price: u128) -> Result<(), ContractError> {
     let sqrt_k = bn::U256::from(amm.sqrt_k);
-    let k = sqrt_k.checked_mul(sqrt_k).ok_or_else(math_error!())?;
+    let k = sqrt_k.checked_mul(sqrt_k).ok_or_else(|| (Err(ContractError::MathError)))?;
 
     let new_base_asset_amount_squared = k
         .checked_mul(bn::U256::from(amm.peg_multiplier))
