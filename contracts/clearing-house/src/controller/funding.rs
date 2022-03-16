@@ -65,7 +65,7 @@ pub fn settle_funding_payment(
 
             funding_payment = funding_payment
                 .checked_add(market_funding_rate_payment)
-                .ok_or_else(math_error!())?;
+                .ok_or_else(|| (ContractError::MathError))?;
 
             market_position.last_cumulative_funding_rate = amm_cumulative_funding_rate;
             market_position.last_funding_rate_ts = amm.last_funding_rate_ts;
@@ -74,7 +74,7 @@ pub fn settle_funding_payment(
 
     let funding_payment_collateral = funding_payment
         .checked_div(AMM_TO_QUOTE_PRECISION_RATIO_I128)
-        .ok_or_else(math_error!())?;
+        .ok_or_else(|| (ContractError::MathError))?;
 
     user.collateral = calculate_updated_collateral(user.collateral, funding_payment_collateral)?;
 
@@ -93,7 +93,7 @@ pub fn update_funding_rate(
 ) -> ClearingHouseResult {
     let time_since_last_update = now
         .checked_sub(market.amm.last_funding_rate_ts)
-        .ok_or_else(math_error!())?;
+        .ok_or_else(|| (ContractError::MathError))?;
 
     // Pause funding if oracle is invalid or if mark/oracle spread is too divergent
     let (block_funding_rate_update, oracle_price) =
@@ -111,23 +111,23 @@ pub fn update_funding_rate(
                 .amm
                 .funding_period
                 .checked_div(3)
-                .ok_or_else(math_error!())?;
+                .ok_or_else(|| (ContractError::MathError))?;
             if last_update_delay > max_delay_for_next_period {
                 // too late for on the hour next period, delay to following period
                 next_update_wait = market
                     .amm
                     .funding_period
                     .checked_mul(2)
-                    .ok_or_else(math_error!())?
+                    .ok_or_else(|| (ContractError::MathError))?
                     .checked_sub(last_update_delay)
-                    .ok_or_else(math_error!())?;
+                    .ok_or_else(|| (ContractError::MathError))?;
             } else {
                 // allow update on the hour
                 next_update_wait = market
                     .amm
                     .funding_period
                     .checked_sub(last_update_delay)
-                    .ok_or_else(math_error!())?;
+                    .ok_or_else(|| (ContractError::MathError))?;
             }
         }
     }
@@ -139,20 +139,20 @@ pub fn update_funding_rate(
         let one_hour_i64 = cast_to_i64(ONE_HOUR)?;
         let period_adjustment = (24_i64)
             .checked_mul(one_hour_i64)
-            .ok_or_else(math_error!())?
+            .ok_or_else(|| (ContractError::MathError))?
             .checked_div(max(one_hour_i64, market.amm.funding_period))
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
         // funding period = 1 hour, window = 1 day
         // low periodicity => quickly updating/settled funding rates => lower funding rate payment per interval
         let price_spread = cast_to_i128(mark_price_twap)?
             .checked_sub(oracle_price_twap)
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
 
         let funding_rate = price_spread
             .checked_mul(cast(FUNDING_PAYMENT_PRECISION)?)
-            .ok_or_else(math_error!())?
+            .ok_or_else(|| (ContractError::MathError))?
             .checked_div(cast(period_adjustment)?)
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
 
         let (funding_rate_long, funding_rate_short) =
             calculate_funding_rate_long_short(market, funding_rate)?;
@@ -161,13 +161,13 @@ pub fn update_funding_rate(
             .amm
             .cumulative_funding_rate_long
             .checked_add(funding_rate_long)
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
 
         market.amm.cumulative_funding_rate_short = market
             .amm
             .cumulative_funding_rate_short
             .checked_add(funding_rate_short)
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
 
         market.amm.last_funding_rate = funding_rate;
         market.amm.last_funding_rate_ts = now;

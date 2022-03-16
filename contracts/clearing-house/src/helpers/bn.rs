@@ -12,7 +12,7 @@ use std::io::{Error, ErrorKind, Write};
 use std::mem::size_of;
 use uint::construct_uint;
 
-use crate::error::ClearingHouseResult;
+use crate::error::ContractError;
 
 macro_rules! impl_borsh_serialize_for_bn {
     ($type: ident) => {
@@ -57,7 +57,7 @@ impl U256 {
     }
 
     /// Convert u256 to u64
-    pub fn try_to_u64(self) -> ClearingHouseResult<u64> {
+    pub fn try_to_u64(self) -> Result<u64, ContractError> {
         self.try_into().map_err(|_| BnConversionError)
     }
 
@@ -67,7 +67,7 @@ impl U256 {
     }
 
     /// Convert u256 to u128
-    pub fn try_to_u128(self) -> ClearingHouseResult<u128> {
+    pub fn try_to_u128(self) -> Result<u128, ContractError> {
         self.try_into().map_err(|_| BnConversionError)
     }
 
@@ -102,7 +102,7 @@ impl U192 {
     }
 
     /// Convert u256 to u64
-    pub fn try_to_u64(self) -> ClearingHouseResult<u64> {
+    pub fn try_to_u64(self) -> Result<u64, ContractError> {
         self.try_into().map_err(|_| BnConversionError)
     }
 
@@ -112,7 +112,7 @@ impl U192 {
     }
 
     /// Convert u256 to u128
-    pub fn try_to_u128(self) -> ClearingHouseResult<u128> {
+    pub fn try_to_u128(self) -> Result<u128, ContractError> {
         self.try_into().map_err(|_| BnConversionError)
     }
 

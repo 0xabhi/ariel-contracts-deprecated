@@ -5,7 +5,7 @@ pub mod collateral;
 pub mod constants;
 pub mod fees;
 pub mod funding;
-pub mod margin;
+pub mod markets;
 pub mod oracle;
 pub mod pnl;
 pub mod position;

@@ -46,5 +46,5 @@ pub struct CurveInfo {
     pub len: i64,
 }
 
-pub const DepositHistory: Map<(u64,Addr),  CurveRecord> = Map::new("curve_history");
+pub const CurveHistory: Map<(u64,Addr),  CurveRecord> = Map::new("curve_history");
 pub const CurveHistoryInfo: Item<CurveInfo> = Item::new("curve_history_info");

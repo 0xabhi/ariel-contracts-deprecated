@@ -16,7 +16,7 @@ pub struct User {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct MarketPosition {
+pub struct Position {
     pub market_index: u64,
     pub base_asset_amount: i128,
     pub quote_asset_amount: u128,
@@ -30,13 +30,13 @@ pub struct MarketPosition {
     pub transfer_to: Addr,
 }
 
-pub const USER : Map<Addr, User> = Map::new("users");
-pub const POSITIONS: Map<(Addr, u128),  MarketPosition> = Map::new("market_positions");
+pub const Users : Map<Addr, User> = Map::new("users");
+pub const Positions: Map<(Addr, u128),  Position> = Map::new("market_positions");
 
-pub fn is_for(m :MarketPosition, market_index: u64) -> bool {
+pub fn is_for(m : Position, market_index: u64) -> bool {
     m.market_index == market_index && is_open_position(m)
 }
 
-pub fn is_open_position(m :MarketPosition) -> bool {
+pub fn is_open_position(m :Position) -> bool {
     m.base_asset_amount != 0
 }

@@ -1,20 +1,19 @@
 use std::cell::{Ref, RefMut};
 
-use crate::states::market::Markets;
-use crate::states::user::{User, UserPositions};
+use crate::states::market::{Market, Markets};
+use crate::states::user::{Users, Position, User, Position};
 
 use crate::error::ContractError;
 
 use crate::helpers::collateral::calculate_updated_collateral;
 use crate::helpers::constants::MARGIN_PRECISION;
 use crate::helpers::position::calculate_base_asset_value_and_pnl;
-use crate::math_error;
 
 pub fn calculate_margin_ratio(
     user: &User,
     user_positions: &RefMut<UserPositions>,
     markets: &Ref<Markets>,
-) -> ClearingHouseResult<(u128, i128, u128, u128)> {
+) -> Result<(u128, i128, u128, u128), ContractError> {
     let mut base_asset_value: u128 = 0;
     let mut unrealized_pnl: i128 = 0;
 
@@ -30,10 +29,10 @@ pub fn calculate_margin_ratio(
 
         base_asset_value = base_asset_value
             .checked_add(position_base_asset_value)
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
         unrealized_pnl = unrealized_pnl
             .checked_add(position_unrealized_pnl)
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
     }
 
     let total_collateral: u128;
@@ -45,9 +44,9 @@ pub fn calculate_margin_ratio(
         total_collateral = calculate_updated_collateral(user.collateral, unrealized_pnl)?;
         margin_ratio = total_collateral
             .checked_mul(MARGIN_PRECISION)
-            .ok_or_else(math_error!())?
+            .ok_or_else(|| (ContractError::MathError))?
             .checked_div(base_asset_value)
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
     }
 
     Ok((

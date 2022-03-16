@@ -31,13 +31,13 @@ pub fn increase(
         market.open_interest = market
             .open_interest
             .checked_add(1)
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
     }
 
     market_position.quote_asset_amount = market_position
         .quote_asset_amount
         .checked_add(new_quote_asset_notional_amount)
-        .ok_or_else(math_error!())?;
+        .ok_or_else(|| (ContractError::MathError))?;
 
     let swap_direction = match direction {
         PositionDirection::Long => SwapDirection::Add,
@@ -56,22 +56,22 @@ pub fn increase(
     market_position.base_asset_amount = market_position
         .base_asset_amount
         .checked_add(base_asset_acquired)
-        .ok_or_else(math_error!())?;
+        .ok_or_else(|| (ContractError::MathError))?;
     market.base_asset_amount = market
         .base_asset_amount
         .checked_add(base_asset_acquired)
-        .ok_or_else(math_error!())?;
+        .ok_or_else(|| (ContractError::MathError))?;
 
     if market_position.base_asset_amount > 0 {
         market.base_asset_amount_long = market
             .base_asset_amount_long
             .checked_add(base_asset_acquired)
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
     } else {
         market.base_asset_amount_short = market
             .base_asset_amount_short
             .checked_add(base_asset_acquired)
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
     }
 
     Ok(base_asset_acquired)
@@ -103,54 +103,54 @@ pub fn reduce<'info>(
     market_position.base_asset_amount = market_position
         .base_asset_amount
         .checked_add(base_asset_swapped)
-        .ok_or_else(math_error!())?;
+        .ok_or_else(|| (ContractError::MathError))?;
 
     market.open_interest = market
         .open_interest
         .checked_sub(cast(market_position.base_asset_amount == 0)?)
-        .ok_or_else(math_error!())?;
+        .ok_or_else(|| (ContractError::MathError))?;
     market.base_asset_amount = market
         .base_asset_amount
         .checked_add(base_asset_swapped)
-        .ok_or_else(math_error!())?;
+        .ok_or_else(|| (ContractError::MathError))?;
 
     if market_position.base_asset_amount > 0 {
         market.base_asset_amount_long = market
             .base_asset_amount_long
             .checked_add(base_asset_swapped)
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
     } else {
         market.base_asset_amount_short = market
             .base_asset_amount_short
             .checked_add(base_asset_swapped)
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
     }
 
     let base_asset_amount_change = base_asset_amount_before
         .checked_sub(market_position.base_asset_amount)
-        .ok_or_else(math_error!())?
+        .ok_or_else(|| (ContractError::MathError))?
         .abs();
 
     let initial_quote_asset_amount_closed = market_position
         .quote_asset_amount
         .checked_mul(base_asset_amount_change.unsigned_abs())
-        .ok_or_else(math_error!())?
+        .ok_or_else(|| (ContractError::MathError))?
         .checked_div(base_asset_amount_before.unsigned_abs())
-        .ok_or_else(math_error!())?;
+        .ok_or_else(|| (ContractError::MathError))?;
 
     market_position.quote_asset_amount = market_position
         .quote_asset_amount
         .checked_sub(initial_quote_asset_amount_closed)
-        .ok_or_else(math_error!())?;
+        .ok_or_else(|| (ContractError::MathError))?;
 
     let pnl = if market_position.base_asset_amount > 0 {
         cast_to_i128(quote_asset_swap_amount)?
             .checked_sub(cast(initial_quote_asset_amount_closed)?)
-            .ok_or_else(math_error!())?
+            .ok_or_else(|| (ContractError::MathError))?
     } else {
         cast_to_i128(initial_quote_asset_amount_closed)?
             .checked_sub(cast(quote_asset_swap_amount)?)
-            .ok_or_else(math_error!())?
+            .ok_or_else(|| (ContractError::MathError))?
     };
 
     user.collateral = calculate_updated_collateral(user.collateral, pnl)?;
@@ -194,25 +194,25 @@ pub fn close(
     market.open_interest = market
         .open_interest
         .checked_sub(1)
-        .ok_or_else(math_error!())?;
+        .ok_or_else(|| (ContractError::MathError))?;
 
     market_position.quote_asset_amount = 0;
 
     market.base_asset_amount = market
         .base_asset_amount
         .checked_sub(market_position.base_asset_amount)
-        .ok_or_else(math_error!())?;
+        .ok_or_else(|| (ContractError::MathError))?;
 
     if market_position.base_asset_amount > 0 {
         market.base_asset_amount_long = market
             .base_asset_amount_long
             .checked_sub(market_position.base_asset_amount)
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
     } else {
         market.base_asset_amount_short = market
             .base_asset_amount_short
             .checked_sub(market_position.base_asset_amount)
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
     }
 
     let base_asset_amount = market_position.base_asset_amount;

@@ -93,16 +93,16 @@ pub fn move_to_price(amm: &mut Amm, target_price: u128) -> Result<(), ContractEr
 
     let new_base_asset_amount_squared = k
         .checked_mul(bn::U256::from(amm.peg_multiplier))
-        .ok_or_else(math_error!())?
+        .ok_or_else(|| (ContractError::MathError))?
         .checked_mul(bn::U256::from(PRICE_TO_PEG_PRECISION_RATIO))
-        .ok_or_else(math_error!())?
+        .ok_or_else(|| (ContractError::MathError))?
         .checked_div(bn::U256::from(target_price))
-        .ok_or_else(math_error!())?;
+        .ok_or_else(|| (ContractError::MathError))?;
 
     let new_base_asset_amount = new_base_asset_amount_squared.integer_sqrt();
     let new_quote_asset_amount = k
         .checked_div(new_base_asset_amount)
-        .ok_or_else(math_error!())?;
+        .ok_or_else(|| (ContractError::MathError))?;
 
     amm.base_asset_reserve = new_base_asset_amount.try_to_u128()?;
     amm.quote_asset_reserve = new_quote_asset_amount.try_to_u128()?;

@@ -44,7 +44,7 @@ pub struct Amm {
 pub enum OracleSource {
     Internal,
     External,
-    Simulator
+    // Simulator
 }
 
 impl Default for OracleSource {
@@ -53,4 +53,4 @@ impl Default for OracleSource {
     }
 }
 
-pub const CONFIG: Map<u64, Market> = Map::new("markets");
+pub const Markets: Map<u64, Market> = Map::new("markets");

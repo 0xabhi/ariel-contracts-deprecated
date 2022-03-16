@@ -1,7 +1,7 @@
 use crate::states::trade_history::PositionDirection;
 use crate::states::state::SwapDirection;
 use crate::states::market::Amm;
-use crate::states::user::MarketPosition;
+use crate::states::user::Position;
 
 use crate::error::ContractError;
 
@@ -10,7 +10,7 @@ use crate::helpers::amm::calculate_quote_asset_amount_swapped;
 use crate::helpers::pnl::calculate_pnl;
 
 pub fn calculate_base_asset_value_and_pnl(
-    market_position: &MarketPosition,
+    market_position: &Position,
     a: &Amm,
 ) -> Result<(u128, i128), ContractError> {
     return _calculate_base_asset_value_and_pnl(

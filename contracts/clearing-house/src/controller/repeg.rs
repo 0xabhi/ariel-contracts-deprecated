@@ -60,11 +60,11 @@ pub fn repeg(
 
         let oracle_conf_band_top = cast_to_u128(oracle_price)?
             .checked_add(oracle_conf)
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
 
         let oracle_conf_band_bottom = cast_to_u128(oracle_price)?
             .checked_sub(oracle_conf)
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
 
         if cast_to_u128(oracle_price)? > terminal_price_after {
             // only allow terminal up when oracle is higher
@@ -108,7 +108,7 @@ pub fn repeg(
             .total_fee_minus_distributions
             .checked_sub(adjustment_cost.unsigned_abs())
             .or(Some(0))
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
 
         // Only a portion of the protocol fees are allocated to repegging
         // This checks that the total_fee_minus_distributions does not decrease too much after repeg
@@ -117,9 +117,9 @@ pub fn repeg(
                 .amm
                 .total_fee
                 .checked_mul(SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_NUMERATOR)
-                .ok_or_else(math_error!())?
+                .ok_or_else(|| (ContractError::MathError))?
                 .checked_div(SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_DENOMINATOR)
-                .ok_or_else(math_error!())?
+                .ok_or_else(|| (ContractError::MathError))?
         {
             return Err(ContractError::InvalidRepegProfitability.into());
         }
@@ -128,7 +128,7 @@ pub fn repeg(
             .amm
             .total_fee_minus_distributions
             .checked_add(adjustment_cost.unsigned_abs())
-            .ok_or_else(math_error!())?;
+            .ok_or_else(|| (ContractError::MathError))?;
     }
 
     Ok(adjustment_cost)
