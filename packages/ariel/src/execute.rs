@@ -45,7 +45,6 @@ pub enum ExecuteMsg {
         user: Addr,
         market_index: u64
     },
-    //admin function
     MoveAMMPrice {
         base_asset_reserve: u128,
         quote_asset_reserve:u128,
