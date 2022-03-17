@@ -65,18 +65,19 @@ pub enum ExecuteMsg {
         new_peg_candidate: u128,
         market_index: u64,
     },
-    //admin function
-    UpdateFeePercentage {
-        new_fee: Decimal256,
+
+    //user calls it we get the user identification from msg address sender
+    SettleFundingPayment {
     },
-    //admin function
-    UpdateMaxDeposit {
-        max_deposit: Decimal256,
+    UpdateFundingRate {
+        market_index: u64
     },
-    //admin function
-    AddMarket {
-        v_amm: String,
-        long_base_asset_amount: Uint128,
-        short_base_asset_amount: Uint128,
+    UpdateK {
+        market_index: u64,
+        sqrt_k: u128
     },
+    UpdateMarketMinimumTradeSize {
+        market_index: u64,
+        minimum_trade_size: u128
+    }
 }
