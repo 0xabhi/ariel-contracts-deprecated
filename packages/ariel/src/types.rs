@@ -19,3 +19,37 @@ pub enum SwapDirection {
     Add,
     Remove,
 }
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct FeeStructure {
+    pub fee_numerator: u128,
+    pub fee_denominator: u128,
+    
+    pub first_tier: DiscountTokenTier,
+    pub second_tier: DiscountTokenTier,
+    pub third_tier: DiscountTokenTier,
+    pub fourth_tier: DiscountTokenTier,
+
+    pub referrer_reward_numerator: u128,
+    pub referrer_reward_denominator: u128,
+    pub referee_discount_numerator: u128,
+    pub referee_discount_denominator: u128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct DiscountTokenTier {
+    pub minimum_balance: u64,
+    pub discount_numerator: u128,
+    pub discount_denominator: u128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct OracleGuardRails {
+    pub use_for_liquidations: bool,
+    // oracle price divergence rails
+    pub mark_oracle_divergence_numerator: u128,
+    pub mark_oracle_divergence_denominator: u128,
+    // validity guard rails
+    pub slots_before_stale: i64,
+    pub confidence_interval_max_size: u128,
+    pub too_volatile_ratio: i128,
+}
