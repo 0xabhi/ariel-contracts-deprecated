@@ -1,6 +1,6 @@
-use crate::states::state::SwapDirection;
-
 use crate::error::ContractError;
+
+use crate::states::state::SwapDirection;
 
 use crate::helpers::casting::{cast, cast_to_i128};
 

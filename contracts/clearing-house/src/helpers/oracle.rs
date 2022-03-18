@@ -1,9 +1,9 @@
 use cosmwasm_std::Addr;
 
+use crate::error::ContractError;
+
 use crate::states::market::Amm;
 use crate::states::state::OracleGuardRails;
-
-use crate::error::ContractError;
 
 use crate::helpers::amm;
 
