@@ -19,7 +19,7 @@ pub fn repeg(
     new_peg: u128,
     clock_slot: u64,
     oracle_guard_rails: &OracleGuardRails,
-) -> ClearingHouseResult<i128> {
+) -> Result<i128, ContractError> {
     if new_peg == market.amm.peg_multiplier {
         return Err(ContractError::InvalidRepegRedundant.into());
     }

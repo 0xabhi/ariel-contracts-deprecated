@@ -1,5 +1,6 @@
-use crate::error::ContractError;
 use std::convert::TryInto;
+
+use crate::error::ContractError;
 
 pub fn cast<T: TryInto<U>, U>(t: T) -> Result<U, ContractError> {
     t.try_into().map_err(|_| ContractError::CastingFailure)

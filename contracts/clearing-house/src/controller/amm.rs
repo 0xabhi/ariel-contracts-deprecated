@@ -1,13 +1,94 @@
 use crate::error::{ContractError};
-use crate::helpers::amm::calculate_quote_asset_amount_swapped;
-use crate::helpers::casting::{cast, cast_to_i128};
-use crate::helpers::constants::PRICE_TO_PEG_PRECISION_RATIO;
-use crate::helpers::{amm, bn, quote_asset::*};
-
-use crate::states::market::Amm;
-// use cosmwasm_std::{StdResult, StdError};
 
 use crate::states::state::SwapDirection;
+use crate::states::market::{Market, Amm};
+
+use crate::helpers::amm::calculate_quote_asset_amount_swapped;
+use crate::helpers::casting::{cast, cast_to_i128};
+use crate::helpers::constants::{MARK_PRICE_PRECISION, PRICE_TO_PEG_PRECISION_RATIO};
+use crate::helpers::{amm, bn};
+use crate::helpers::position::_calculate_base_asset_value_and_pnl;
+use crate::helpers::quote_asset::{asset_to_reserve_amount};
+
+pub fn update_mark_twap(
+    a: &mut Amm,
+    now: i64,
+    precomputed_mark_price: Option<u128>,
+) -> Result<u128, ContractError> {
+    let mark_twap = amm::calculate_new_mark_twap(a, now, precomputed_mark_price)?;
+    // TODO Storage
+    a.last_mark_price_twap = mark_twap;
+    a.last_mark_price_twap_ts = now;
+
+    return Ok(mark_twap);
+}
+
+
+pub fn update_oracle_price_twap(
+    amm: &mut Amm,
+    now: i64,
+    oracle_price: i128,
+) -> Result<i128, ContractError> {
+    let oracle_price_twap = amm::calculate_new_oracle_price_twap(amm, now, oracle_price)?;
+    amm.last_oracle_price_twap = oracle_price_twap;
+    amm.last_oracle_price_twap_ts = now;
+
+    return Ok(oracle_price_twap);
+}
+
+
+/// To find the cost of adjusting k, compare the the net market value before and after adjusting k
+/// Increasing k costs the protocol money because it reduces slippage and improves the exit price for net market position
+/// Decreasing k costs the protocol money because it increases slippage and hurts the exit price for net market position
+pub fn adjust_k_cost(market: &mut Market, new_sqrt_k: bn::U256) -> Result<i128, ContractError> {
+    // Find the net market value before adjusting k
+    let (current_net_market_value, _) =
+        _calculate_base_asset_value_and_pnl(market.base_asset_amount, 0, &market.amm)?;
+
+    let ratio_scalar = bn::U256::from(MARK_PRICE_PRECISION);
+
+    let sqrt_k_ratio = new_sqrt_k
+        .checked_mul(ratio_scalar)
+        .ok_or_else(|| (ContractError::MathError))?
+        .checked_div(bn::U256::from(market.amm.sqrt_k))
+        .ok_or_else(|| (ContractError::MathError))?;
+
+    // if decreasing k, max decrease ratio for single transaction is 2.5%
+    if sqrt_k_ratio
+        < ratio_scalar
+            .checked_mul(bn::U256::from(975))
+            .ok_or_else(|| (ContractError::MathError))?
+            .checked_div(bn::U256::from(1000))
+            .ok_or_else(|| (ContractError::MathError))?
+    {
+        return Err(ContractError::InvalidUpdateK.into());
+    }
+
+    market.amm.sqrt_k = new_sqrt_k.try_to_u128().unwrap();
+    market.amm.base_asset_reserve = bn::U256::from(market.amm.base_asset_reserve)
+        .checked_mul(sqrt_k_ratio)
+        .ok_or_else(|| (ContractError::MathError))?
+        .checked_div(ratio_scalar)
+        .ok_or_else(|| (ContractError::MathError))?
+        .try_to_u128()
+        .unwrap();
+    market.amm.quote_asset_reserve = bn::U256::from(market.amm.quote_asset_reserve)
+        .checked_mul(sqrt_k_ratio)
+        .ok_or_else(|| (ContractError::MathError))?
+        .checked_div(ratio_scalar)
+        .ok_or_else(|| (ContractError::MathError))?
+        .try_to_u128()
+        .unwrap();
+
+    let (_new_net_market_value, cost) = _calculate_base_asset_value_and_pnl(
+        market.base_asset_amount,
+        current_net_market_value,
+        &market.amm,
+    )?;
+
+    Ok(cost)
+}
+
 
 pub fn swap_quote_asset(
     amm: &mut Amm,
@@ -16,7 +97,7 @@ pub fn swap_quote_asset(
     now: i64,
     precomputed_mark_price: Option<u128>,
 ) -> Result<i128, ContractError> {
-    amm::update_mark_twap(amm, now, precomputed_mark_price)?;
+    update_mark_twap(amm, now, precomputed_mark_price)?;
     let quote_asset_reserve_amount =
         asset_to_reserve_amount(quote_asset_amount, amm.peg_multiplier)?;
 
@@ -48,7 +129,7 @@ pub fn swap_base_asset(
     direction: SwapDirection,
     now: i64,
 ) -> Result<u128, ContractError> {
-    amm::update_mark_twap(amm, now, None)?;
+    update_mark_twap(amm, now, None)?;
 
     let initial_quote_asset_reserve = amm.quote_asset_reserve;
     let (new_quote_asset_reserve, new_base_asset_reserve) = amm::calculate_swap_output(

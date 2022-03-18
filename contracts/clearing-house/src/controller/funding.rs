@@ -157,8 +157,7 @@ pub fn update_funding_rate(
         let (funding_rate_long, funding_rate_short, new_total_fee_minus_distributions) =
             calculate_funding_rate_long_short(market, funding_rate)?;
 
-        // TODO
-        // update new_total_fee_minus_distributions in market
+        market.amm.total_fee_minus_distributions = new_total_fee_minus_distributions;
 
         market.amm.cumulative_funding_rate_long = market
             .amm

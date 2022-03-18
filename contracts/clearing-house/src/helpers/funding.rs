@@ -1,9 +1,9 @@
 use std::cmp::max;
 
+use crate::error::ContractError;
+
 use crate::states::market::Market;
 use crate::states::user::Position;
-
-use crate::error::ContractError;
 
 use crate::helpers::bn;
 use crate::helpers::casting::cast_to_i128;
