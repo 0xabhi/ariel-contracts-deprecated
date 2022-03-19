@@ -1,8 +1,7 @@
-use cosmwasm_std::Addr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{FeeStructure, OracleGuardRails, PositionDirection, SwapDirection};
+use crate::types::{FeeStructure, OracleGuardRails, PositionDirection};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -20,7 +19,7 @@ pub enum ExecuteMsg {
         market_index: u64,
         amm_base_asset_reserve: u128,
         amm_quote_asset_reserve: u128,
-        amm_periodicity: i64,
+        amm_periodicity: u128,
         amm_peg_multiplier: u128,
     },
     //deposit collateral, updates user struct
@@ -42,7 +41,7 @@ pub enum ExecuteMsg {
     },
     // liquidation policy to be discussed
     Liquidate {
-        user: Addr,
+        user: String,
         market_index: u64,
     },
     MoveAMMPrice {
@@ -113,7 +112,7 @@ pub enum ExecuteMsg {
     },
     // will move to admin controller
     UpdateAdmin {
-        admin: Addr,
+        admin: String,
     },
     UpdateMaxDeposit {
         max_deposit: u128,

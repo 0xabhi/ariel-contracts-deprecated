@@ -46,15 +46,15 @@ pub struct FeeStructure {
     pub fee_numerator: u128,
     pub fee_denominator: u128,
     
-    pub first_tier: DiscountTokenTier,
-    pub second_tier: DiscountTokenTier,
-    pub third_tier: DiscountTokenTier,
-    pub fourth_tier: DiscountTokenTier,
-
     pub referrer_reward_numerator: u128,
     pub referrer_reward_denominator: u128,
     pub referee_discount_numerator: u128,
     pub referee_discount_denominator: u128,
+
+    pub first_tier: DiscountTokenTier,
+    pub second_tier: DiscountTokenTier,
+    pub third_tier: DiscountTokenTier,
+    pub fourth_tier: DiscountTokenTier,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -71,8 +71,22 @@ pub enum SwapDirection {
 }
 
 impl Default for SwapDirection {
+    // UpOnly
     fn default() -> Self {
         SwapDirection::Add
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum PositionDirection {
+    Long,
+    Short,
+}
+
+impl Default for PositionDirection {
+    // UpOnly
+    fn default() -> Self {
+        PositionDirection::Long
     }
 }
 

@@ -2,7 +2,7 @@ use cosmwasm_std::{DepsMut, Addr};
 
 use crate::error::ContractError;
 
-use crate::states::state::SwapDirection;
+use crate::states::state::{SwapDirection, PositionDirection};
 use crate::states::market::{Market, Markets};
 use crate::states::user::{Position, User, Positions, Users};
 
@@ -11,8 +11,6 @@ use crate::helpers::collateral::calculate_updated_collateral;
 use crate::helpers::pnl::calculate_pnl;
 
 use crate::controller::amm;
-
-use ariel::types::PositionDirection;
 
 pub fn increase(
     deps: DepsMut,

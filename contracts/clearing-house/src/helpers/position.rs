@@ -1,9 +1,8 @@
 use crate::error::ContractError;
 
-use crate::states::trade_history::PositionDirection;
-use crate::states::state::SwapDirection;
 use crate::states::market::Amm;
 use crate::states::user::Position;
+use crate::states::state::{PositionDirection, SwapDirection};
 
 use crate::helpers::amm;
 use crate::helpers::amm::calculate_quote_asset_amount_swapped;
@@ -31,8 +30,7 @@ pub fn _calculate_base_asset_value_and_pnl(
 
     let swap_direction = swap_direction_to_close_position(base_asset_amount);
 
-    let (new_quote_asset_reserve, _new_base_asset_reserve) = 
-        amm::calculate_swap_output(
+    let (new_quote_asset_reserve, _new_base_asset_reserve) = amm::calculate_swap_output(
         base_asset_amount.unsigned_abs(),
         a.base_asset_reserve,
         swap_direction,
