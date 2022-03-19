@@ -17,7 +17,7 @@ use crate::helpers::constants::{
 /// To account for this, amm keeps track of the cumulative funding rate for both longs and shorts.
 /// When there is a period with asymmetric funding, the clearing house will pay/receive funding from/to it's collected fees.
 pub fn calculate_funding_rate_long_short(
-    market: &mut Market,
+    market: &Market,
     funding_rate: i128,
 ) -> Result<(i128, i128, u128), ContractError> {
     // Calculate the funding payment owed by the net_market_position if funding is not capped

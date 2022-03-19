@@ -1,22 +1,30 @@
-use crate::controller;
-use crate::controller::amm::SwapDirection;
-use crate::error::*;
+use cosmwasm_std::{DepsMut, Addr};
+
+use crate::error::ContractError;
+
+use crate::states::state::SwapDirection;
+use crate::states::market::{Market, Markets};
+use crate::states::user::{Position, User, Positions, Users};
+
 use crate::helpers::casting::{cast, cast_to_i128};
 use crate::helpers::collateral::calculate_updated_collateral;
 use crate::helpers::pnl::calculate_pnl;
-use crate::math_error;
-use crate::states::market::Market;
-use crate::states::user::{MarketPosition, User};
+
+use crate::controller::amm;
 
 use ariel::types::PositionDirection;
 
 pub fn increase(
+    deps: DepsMut,
     direction: PositionDirection,
     new_quote_asset_notional_amount: u128,
-    market: &mut Market,
-    market_position: &mut MarketPosition,
+    market_index : u64,
+    user_addr: &Addr,
+    position_index: u64,
     now: i64,
-) -> ClearingHouseResult<i128> {
+) -> Result<i128, ContractError> {
+    let market = Markets.load(deps.storage, market_index)?;
+    let market_position = Positions.load(deps.storage, (user_addr, position_index))?;
     if new_quote_asset_notional_amount == 0 {
         return Ok(0);
     }
@@ -44,8 +52,9 @@ pub fn increase(
         PositionDirection::Short => SwapDirection::Remove,
     };
 
-    let base_asset_acquired = controller::amm::swap_quote_asset(
-        &mut market.amm,
+    let base_asset_acquired = amm::swap_quote_asset(
+        deps,
+        market_index,
         new_quote_asset_notional_amount,
         swap_direction,
         now,
@@ -74,25 +83,39 @@ pub fn increase(
             .ok_or_else(|| (ContractError::MathError))?;
     }
 
+    Markets.update(deps.storage, market_index, |m| ->  Result<Market, ContractError>{
+        Ok(market)
+    });
+
+    Positions.update(deps.storage, (user_addr, market_index), |p| -> Result<Position, ContractError> {
+        Ok(market_position)
+    })?;
+
     Ok(base_asset_acquired)
 }
 
-pub fn reduce<'info>(
+pub fn reduce(
+    deps: DepsMut,
     direction: PositionDirection,
     quote_asset_swap_amount: u128,
-    user: &mut User,
-    market: &mut Market,
-    market_position: &mut MarketPosition,
+    user_addr: &Addr,
+    market_index : u64,
+    position_index: u64,
     now: i64,
     precomputed_mark_price: Option<u128>,
-) -> ClearingHouseResult<i128> {
+) -> Result<i128, ContractError> {
+    let user = Users.load(deps.storage, user_addr)?;
+    let market = Markets.load(deps.storage, market_index)?;
+    let market_position = Positions.load(deps.storage, (user_addr, position_index))?;
+    
     let swap_direction = match direction {
         PositionDirection::Long => SwapDirection::Add,
         PositionDirection::Short => SwapDirection::Remove,
     };
 
-    let base_asset_swapped = controller::amm::swap_quote_asset(
-        &mut market.amm,
+    let base_asset_swapped = amm::swap_quote_asset(
+        deps, 
+        market_index,
         quote_asset_swap_amount,
         swap_direction,
         now,
@@ -155,15 +178,32 @@ pub fn reduce<'info>(
 
     user.collateral = calculate_updated_collateral(user.collateral, pnl)?;
 
+    Markets.update(deps.storage, market_index, |m| ->  Result<Market, ContractError>{
+        Ok(market)
+    });
+
+    Positions.update(deps.storage, (user_addr, position_index), |p| -> Result<Position, ContractError> {
+        Ok(market_position)
+    })?;
+
+    Users.update(deps.storage, user_addr, |u|-> Result<User, ContractError> {
+        Ok(user)
+    })?;
+
     Ok(base_asset_swapped)
 }
 
 pub fn close(
-    user: &mut User,
-    market: &mut Market,
-    market_position: &mut MarketPosition,
+    deps: DepsMut,
+    user_addr: &Addr,
+    market_index : u64,
+    position_index: u64,
     now: i64,
-) -> ClearingHouseResult<(u128, i128)> {
+) -> Result<(u128, i128), ContractError> {
+    let user = Users.load(deps.storage, user_addr)?;
+    let market = Markets.load(deps.storage, market_index)?;
+    let market_position = Positions.load(deps.storage, (user_addr, position_index))?;
+    
     // If user has no base asset, return early
     if market_position.base_asset_amount == 0 {
         return Ok((0, 0));
@@ -175,8 +215,9 @@ pub fn close(
         SwapDirection::Remove
     };
 
-    let base_asset_value = controller::amm::swap_base_asset(
-        &mut market.amm,
+    let base_asset_value = amm::swap_base_asset(
+        deps, 
+        market_index,
         market_position.base_asset_amount.unsigned_abs(),
         swap_direction,
         now,
@@ -217,6 +258,18 @@ pub fn close(
 
     let base_asset_amount = market_position.base_asset_amount;
     market_position.base_asset_amount = 0;
+
+    Markets.update(deps.storage, market_index, |m| ->  Result<Market, ContractError>{
+        Ok(market)
+    });
+
+    Positions.update(deps.storage, (user_addr, position_index), |p| -> Result<Position, ContractError> {
+        Ok(market_position)
+    })?;
+
+    Users.update(deps.storage, user_addr, |u|-> Result<User, ContractError> {
+        Ok(user)
+    })?;
 
     Ok((base_asset_value, base_asset_amount))
 }

@@ -12,7 +12,7 @@ pub struct User {
     pub total_token_discount: u128,
     pub total_referral_reward: u128,
     pub total_referee_discount: u128,
-    pub positions_length: u128 ,
+    pub positions_length: u64 ,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -30,8 +30,8 @@ pub struct Position {
     pub transfer_to: Addr,
 }
 
-pub const Users : Map<Addr, User> = Map::new("users");
-pub const Positions: Map<(Addr, u128),  Position> = Map::new("market_positions");
+pub const Users : Map<&Addr, User> = Map::new("users");
+pub const Positions: Map<(&Addr, u64),  Position> = Map::new("market_positions");
 
 pub fn is_for(m : Position, market_index: u64) -> bool {
     m.market_index == market_index && is_open_position(m)
