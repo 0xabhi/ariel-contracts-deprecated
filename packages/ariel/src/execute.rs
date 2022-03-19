@@ -1,8 +1,8 @@
-use cosmwasm_std::{Decimal256, Uint128, Addr};
+use cosmwasm_std::Addr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{PositionDirection, SwapDirection};
+use crate::types::{FeeStructure, OracleGuardRails, PositionDirection, SwapDirection};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -27,7 +27,7 @@ pub enum ExecuteMsg {
     DepositCollateral {
         amount: i128,
     },
-    //user function withdraw collateral, updates user struct 
+    //user function withdraw collateral, updates user struct
     WithdrawCollateral {
         amount: i128,
     },
@@ -38,23 +38,26 @@ pub enum ExecuteMsg {
         limit_price: u128,
     },
     ClosePosition {
-        market_index: u64
+        market_index: u64,
     },
     // liquidation policy to be discussed
     Liquidate {
         user: Addr,
-        market_index: u64
+        market_index: u64,
     },
     MoveAMMPrice {
         base_asset_reserve: u128,
-        quote_asset_reserve:u128,
-        market_index: u64
+        quote_asset_reserve: u128,
+        market_index: u64,
     },
     //user function
     WithdrawFees {
         market_index: u64,
-        amount: u64
+        amount: u64,
     },
+
+    // withdraw from insurance vault sends token but no logic
+
     //admin function
     WithdrawFromInsuranceVaultToMarket {
         market_index: u64,
@@ -65,18 +68,61 @@ pub enum ExecuteMsg {
         new_peg_candidate: u128,
         market_index: u64,
     },
-    //admin function
-    UpdateFeePercentage {
-        new_fee: Decimal256,
+
+    //user calls it we get the user identification from msg address sender
+    SettleFundingPayment {},
+    UpdateFundingRate {
+        market_index: u64,
     },
-    //admin function
+    UpdateK {
+        market_index: u64,
+        sqrt_k: u128,
+    },
+    UpdateMarketMinimumTradeSize {
+        market_index: u64,
+        minimum_trade_size: u128,
+    },
+    UpdateMarginRatio {
+        margin_ratio_initial: u128,
+        margin_ratio_partial: u128,
+        margin_ratio_maintenance: u128,
+    },
+    UpdatePartialLiquidationClosePercentage {
+        numerator: u128,
+        denominator: u128,
+    },
+    UpdatePartialLiquidationPenaltyPercentage {
+        numerator: u128,
+        denominator: u128,
+    },
+    UpdateFullLiquidationPenaltyPercentage {
+        numerator: u128,
+        denominator: u128,
+    },
+    UpdatePartialLiquidationLiquidatorShareDenominator {
+        denominator: u128,
+    },
+    UpdateFullLiquidationLiquidatorShareDenominator {
+        denominator: u128,
+    },
+    UpdateFee {
+        fees: FeeStructure,
+    },
+    UpdateOraceGuardRails {
+        oracle_guard_rails: OracleGuardRails,
+    },
+    // will move to admin controller
+    UpdateAdmin {
+        admin: Addr,
+    },
     UpdateMaxDeposit {
-        max_deposit: Decimal256,
+        max_deposit: u128,
     },
-    //admin function
-    AddMarket {
-        v_amm: String,
-        long_base_asset_amount: Uint128,
-        short_base_asset_amount: Uint128,
+    UpdateExchangePaused {
+        exchange_paused: bool,
+    },
+    DisableAdminControlsPrices {},
+    UpdateFundingPaused {
+        funding_paused: bool,
     },
 }
