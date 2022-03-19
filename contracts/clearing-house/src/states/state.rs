@@ -1,6 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use ariel::types::FeeStructure;
 use cosmwasm_std::Addr;
 use cw_storage_plus::Item;
 
@@ -41,39 +42,6 @@ pub struct OracleGuardRails {
     pub too_volatile_ratio: i128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct FeeStructure {
-    pub fee_numerator: u128,
-    pub fee_denominator: u128,
-    
-    pub first_tier: DiscountTokenTier,
-    pub second_tier: DiscountTokenTier,
-    pub third_tier: DiscountTokenTier,
-    pub fourth_tier: DiscountTokenTier,
 
-    pub referrer_reward_numerator: u128,
-    pub referrer_reward_denominator: u128,
-    pub referee_discount_numerator: u128,
-    pub referee_discount_denominator: u128,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct DiscountTokenTier {
-    pub minimum_balance: u64,
-    pub discount_numerator: u128,
-    pub discount_denominator: u128,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub enum SwapDirection {
-    Add,
-    Remove,
-}
-
-impl Default for SwapDirection {
-    fn default() -> Self {
-        SwapDirection::Add
-    }
-}
 
 pub const STATE: Item<State> = Item::new("state");

@@ -1,5 +1,5 @@
 use crate::controller;
-use crate::controller::amm::SwapDirection;
+use ariel::types::SwapDirection;
 use crate::error::*;
 use crate::helpers::casting::{cast, cast_to_i128};
 use crate::helpers::collateral::calculate_updated_collateral;

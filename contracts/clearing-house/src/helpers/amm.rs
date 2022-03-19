@@ -4,7 +4,7 @@ use cosmwasm_std::Addr;
 
 use crate::error::ContractError;
 
-use crate::states::state::SwapDirection;
+use ariel::types::SwapDirection;
 use crate::states::market::{Market, Amm};
 use crate::states::state::{OracleGuardRails};
 

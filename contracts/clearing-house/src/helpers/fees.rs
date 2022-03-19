@@ -2,7 +2,7 @@ use cosmwasm_std::Addr;
 
 use crate::error::ContractError;
 
-use crate::states::state::{DiscountTokenTier, FeeStructure};
+use ariel::types::{DiscountTokenTier, FeeStructure};
 
 pub fn calculate(
     quote_asset_amount: u128,
@@ -49,35 +49,27 @@ fn calculate_token_discount(
         return 0;
     }
 
-    if let Some(discount) = calculate_token_discount_for_tier(
-        fee,
-        &fee_structure.first_tier,
-        discount_token_amt,
-    ) {
+    if let Some(discount) =
+        calculate_token_discount_for_tier(fee, &fee_structure.first_tier, discount_token_amt)
+    {
         return discount;
     }
 
-    if let Some(discount) = calculate_token_discount_for_tier(
-        fee,
-        &fee_structure.second_tier,
-        discount_token_amt,
-    ) {
+    if let Some(discount) =
+        calculate_token_discount_for_tier(fee, &fee_structure.second_tier, discount_token_amt)
+    {
         return discount;
     }
 
-    if let Some(discount) = calculate_token_discount_for_tier(
-        fee,
-        &fee_structure.third_tier,
-        discount_token_amt,
-    ) {
+    if let Some(discount) =
+        calculate_token_discount_for_tier(fee, &fee_structure.third_tier, discount_token_amt)
+    {
         return discount;
     }
 
-    if let Some(discount) = calculate_token_discount_for_tier(
-        fee,
-        &fee_structure.fourth_tier,
-        discount_token_amt,
-    ) {
+    if let Some(discount) =
+        calculate_token_discount_for_tier(fee, &fee_structure.fourth_tier, discount_token_amt)
+    {
         return discount;
     }
 

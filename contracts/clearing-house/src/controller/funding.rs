@@ -16,7 +16,7 @@ use crate::states::funding_payment_history::{FundingPaymentHistory, FundingPayme
 use crate::states::funding_rate_history::{FundingRateHistory, FundingRateRecord};
 use crate::states::market::AMM;
 use crate::states::market::{Market, Markets};
-use crate::states::state::OracleGuardRails;
+use ariel::types::OracleGuardRails;
 use crate::states::user::{User, UserPositions};
 
 /// Funding payments are settled lazily. The amm tracks its cumulative funding rate (for longs and shorts)

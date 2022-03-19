@@ -19,6 +19,13 @@ pub enum SwapDirection {
     Add,
     Remove,
 }
+
+impl Default for SwapDirection {
+    fn default() -> Self {
+        SwapDirection::Add
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct FeeStructure {
     pub fee_numerator: u128,

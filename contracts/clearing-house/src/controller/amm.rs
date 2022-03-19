@@ -1,6 +1,6 @@
 use crate::error::{ContractError};
 
-use crate::states::state::SwapDirection;
+use ariel::types::SwapDirection;
 use crate::states::market::{Market, Amm};
 
 use crate::helpers::amm::calculate_quote_asset_amount_swapped;
