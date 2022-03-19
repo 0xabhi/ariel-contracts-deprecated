@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr};
 use cw_storage_plus::{Map, Item};
-use ariel::types::PositionDirection;
+use crate::states::state::PositionDirection;
 
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

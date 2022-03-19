@@ -7,7 +7,6 @@ use crate::states::state::OracleGuardRails;
 
 use crate::helpers::amm;
 
-
 pub fn block_operation(
     a: &Amm,
     oracle_account_info: &Addr,
