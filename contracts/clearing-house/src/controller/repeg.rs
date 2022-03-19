@@ -1,17 +1,18 @@
-use crate::error::*;
-use crate::helpers::{amm, repeg};
+use cosmwasm_std::Addr;
 
+use crate::error::ContractError;
+
+use crate::states::market::Market;
+use crate::states::state::OracleGuardRails;
+
+use crate::helpers::{amm};
 use crate::helpers::constants::{
     SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_DENOMINATOR,
     SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_NUMERATOR,
 };
-use crate::math_error;
-use crate::states::market::Market;
 use crate::helpers::position::_calculate_base_asset_value_and_pnl;
-use crate::states::state::OracleGuardRails;
-
 use crate::helpers::casting::cast_to_u128;
-use cosmwasm_std::Addr;
+use crate::helpers::markets::get_oracle_price;
 
 pub fn repeg(
     market: &mut Market,
@@ -26,7 +27,6 @@ pub fn repeg(
 
     let terminal_price_before = amm::calculate_terminal_price(market)?;
 
-    let adjustment_cost = repeg::adjust_peg_cost(market, new_peg)?;
     let (current_net_market_value, _) =
         _calculate_base_asset_value_and_pnl(market.base_asset_amount, 0, &market.amm)?;
 
@@ -39,13 +39,13 @@ pub fn repeg(
     )?;
 
     let (oracle_price, _oracle_twap, oracle_conf, _oracle_twac, _oracle_delay) =
-        market.amm.get_oracle_price(price_oracle, clock_slot)?;
+        get_oracle_price(&market.amm, price_oracle, clock_slot)?;
 
     let oracle_is_valid = amm::is_oracle_valid(
         &market.amm,
         price_oracle,
         clock_slot,
-        &oracle_guard_rails.validity,
+        &oracle_guard_rails,
     )?;
 
     // if oracle is valid: check on size/direction of repeg
@@ -100,7 +100,7 @@ pub fn repeg(
             }
         }
     }
-
+l 
     // Reduce pnl to quote asset precision and take the absolute value
     if adjustment_cost > 0 {
         market.amm.total_fee_minus_distributions = market

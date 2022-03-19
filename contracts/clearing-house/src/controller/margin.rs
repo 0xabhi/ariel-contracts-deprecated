@@ -1,7 +1,9 @@
 use std::cell::{Ref, RefMut};
 
-use crate::states::market::{Market, Markets};
-use crate::states::user::{Users, Position, User, Position};
+use cosmwasm_std::{Addr, DepsMut};
+
+use crate::states::market::{Market};
+use crate::states::user::{User, Position};
 
 use crate::error::ContractError;
 
@@ -9,11 +11,15 @@ use crate::helpers::collateral::calculate_updated_collateral;
 use crate::helpers::constants::MARGIN_PRECISION;
 use crate::helpers::position::calculate_base_asset_value_and_pnl;
 
+
 pub fn calculate_margin_ratio(
-    user: &User,
-    user_positions: &RefMut<UserPositions>,
-    markets: &Ref<Markets>,
+    deps: DepsMut, 
+    userAddress: &Addr,
+    markets: &Ref<Market>,
 ) -> Result<(u128, i128, u128, u128), ContractError> {
+    user
+    user_positions
+    markets
     let mut base_asset_value: u128 = 0;
     let mut unrealized_pnl: i128 = 0;
 
@@ -23,7 +29,7 @@ pub fn calculate_margin_ratio(
             continue;
         }
 
-        let amm = &markets.markets[Markets::index_from_u64(market_position.market_index)].amm;
+        let amm = &markets.markets[Market::index_from_u64(market_position.market_index)].amm;
         let (position_base_asset_value, position_unrealized_pnl) =
             calculate_base_asset_value_and_pnl(market_position, amm)?;
 
