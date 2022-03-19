@@ -1,8 +1,9 @@
 use cosmwasm_std::{DepsMut, Addr};
 
+use ariel::types::{SwapDirection, PositionDirection};
+
 use crate::error::ContractError;
 
-use crate::states::state::{SwapDirection, PositionDirection};
 use crate::states::market::{Market, Markets};
 use crate::states::user::{Position, User, Positions, Users};
 

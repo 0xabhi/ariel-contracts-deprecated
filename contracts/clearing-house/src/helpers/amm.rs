@@ -4,8 +4,9 @@ use cosmwasm_std::Addr;
 
 use crate::error::ContractError;
 
+use ariel::types::{OracleGuardRails, SwapDirection};
+
 use crate::states::market::{Market, Amm};
-use crate::states::state::{OracleGuardRails, SwapDirection};
 
 use crate::helpers::bn::U192;
 use crate::helpers::casting::{cast, cast_to_i128, cast_to_u128};

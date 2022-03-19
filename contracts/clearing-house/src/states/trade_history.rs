@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr};
 use cw_storage_plus::{Map, Item};
-use crate::states::state::PositionDirection;
 
+use ariel::types::PositionDirection;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TradeRecord {

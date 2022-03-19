@@ -4,8 +4,8 @@ use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response,
 use cw2::set_contract_version;
 
 use crate::states::state::{State, STATE};
-use crate::states::state::PositionDirection;
 
+use ariel::types::PositionDirection;
 use ariel::execute::{ExecuteMsg, InstantiateMsg};
 use ariel::queries::QueryMsg;
 use ariel::response::*;

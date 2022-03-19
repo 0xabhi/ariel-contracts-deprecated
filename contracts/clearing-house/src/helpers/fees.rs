@@ -2,7 +2,7 @@ use cosmwasm_std::Addr;
 
 use crate::error::ContractError;
 
-use crate::states::state::FeeStructure;
+use ariel::types::{FeeStructure, DiscountTokenTier};
 
 pub fn calculate(
     quote_asset_amount: u128,
