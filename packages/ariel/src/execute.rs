@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{FeeStructure, OracleGuardRails, PositionDirection};
+use crate::types::{PositionDirection};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -105,10 +105,32 @@ pub enum ExecuteMsg {
         denominator: u128,
     },
     UpdateFee {
-        fees: FeeStructure,
+        fee_numerator: u128,
+        fee_denominator: u128,
+        t1_minimum_balance: u64,
+        t1_discount_numerator: u128,
+        t1_discount_denominator: u128,
+
+        t2_minimum_balance: u64,
+        t2_discount_numerator: u128,
+        t2_discount_denominator: u128,
+
+        t3_minimum_balance: u64,
+        t3_discount_numerator: u128,
+        t3_discount_denominator: u128,
+
+        referrer_reward_numerator: u128,
+        referrer_reward_denominator: u128,
+        referee_discount_numerator: u128,
+        referee_discount_denominator: u128,
     },
     UpdateOraceGuardRails {
-        oracle_guard_rails: OracleGuardRails,
+        use_for_liquidations: bool,
+        mark_oracle_divergence_numerator: u128,
+        mark_oracle_divergence_denominator: u128,
+        slots_before_stale: i64,
+        confidence_interval_max_size: u128,
+        too_volatile_ratio: i128,
     },
     // will move to admin controller
     UpdateAdmin {

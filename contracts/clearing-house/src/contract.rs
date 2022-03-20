@@ -94,7 +94,7 @@ pub fn try_open_position(
     direction: PositionDirection,
     quote_asset_amount: u128,
     market_index: u64,
-    limit_price: u128
+    limit_price: u128,
 ) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("method", "try_open_position"))
 }
@@ -106,7 +106,6 @@ pub fn try_close_position(
 ) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("method", "try_close_position"))
 }
-
 
 pub fn try_liquidate(
     deps: DepsMut,
@@ -131,17 +130,16 @@ pub fn try_withdraw_fees(
     deps: DepsMut,
     info: MessageInfo,
     market_index: u64,
-    amount: u64
+    amount: u64,
 ) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("method", "try_withdraw_fees"))
 }
-
 
 pub fn try_withdraw_from_insurance_vault(
     deps: DepsMut,
     info: MessageInfo,
     market_index: u64,
-    amount: u64
+    amount: u64,
 ) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("method", "try_withdraw_from_insurance_vault"))
 }
@@ -150,21 +148,21 @@ pub fn try_repeg_amm_curve(
     deps: DepsMut,
     info: MessageInfo,
     new_peg_candidate: u128,
-    market_index: u64
+    market_index: u64,
 ) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("method", "try_repeg_amm_curve"))
 }
 
 pub fn try_settle_funding_payment(
     deps: DepsMut,
-    info: MessageInfo
+    info: MessageInfo,
 ) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("method", "try_settle_funding_payment"))
 }
 pub fn try_update_funding_rate(
     deps: DepsMut,
     info: MessageInfo,
-    market_index: u64
+    market_index: u64,
 ) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("method", "try_update_funding_rate"))
 }
@@ -173,7 +171,7 @@ pub fn try_update_k(
     deps: DepsMut,
     info: MessageInfo,
     market_index: u64,
-    sqrt_k: u128
+    sqrt_k: u128,
 ) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("method", "try_update_k"))
 }
@@ -182,7 +180,7 @@ pub fn try_update_market_minimum_trade_size(
     deps: DepsMut,
     info: MessageInfo,
     market_index: u64,
-    minimum_trade_size: u128
+    minimum_trade_size: u128,
 ) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("method", "try_update_market_minimum_trade_size"))
 }
@@ -192,7 +190,7 @@ pub fn try_update_margin_ratio(
     info: MessageInfo,
     margin_ratio_initial: u128,
     margin_ratio_partial: u128,
-    margin_ratio_maintenance: u128
+    margin_ratio_maintenance: u128,
 ) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("method", "try_update_margin_ratio"))
 }
@@ -201,27 +199,28 @@ pub fn try_update_partial_liquidation_close_percentage(
     deps: DepsMut,
     info: MessageInfo,
     numerator: u128,
-    denominator: u128
+    denominator: u128,
 ) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("method", "try_update_partial_liquidation_close_percentage"))
 }
-
 
 pub fn try_update_partial_liquidation_penalty_percentage(
     deps: DepsMut,
     info: MessageInfo,
     numerator: u128,
-    denominator: u128
+    denominator: u128,
 ) -> Result<Response, ContractError> {
-    Ok(Response::new().add_attribute("method", "try_update_partial_liquidation_penalty_percentage"))
+    Ok(Response::new().add_attribute(
+        "method",
+        "try_update_partial_liquidation_penalty_percentage",
+    ))
 }
-
 
 pub fn try_update_full_liquidation_penalty_percentage(
     deps: DepsMut,
     info: MessageInfo,
     numerator: u128,
-    denominator: u128
+    denominator: u128,
 ) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("method", "try_update_full_liquidation_penalty_percentage"))
 }
@@ -229,31 +228,118 @@ pub fn try_update_full_liquidation_penalty_percentage(
 pub fn try_update_partial_liquidation_liquidator_share_denominator(
     deps: DepsMut,
     info: MessageInfo,
-    denominator: u128
+    denominator: u128,
 ) -> Result<Response, ContractError> {
-    Ok(Response::new().add_attribute("method", "try_update_partial_liquidation_liquidator_share_denominator"))
+    Ok(Response::new().add_attribute(
+        "method",
+        "try_update_partial_liquidation_liquidator_share_denominator",
+    ))
 }
 
 pub fn try_update_full_liquidation_liquidator_share_denominator(
     deps: DepsMut,
     info: MessageInfo,
-    denominator: u128
+    denominator: u128,
 ) -> Result<Response, ContractError> {
-    Ok(Response::new().add_attribute("method", "try_update_full_liquidation_liquidator_share_denominator"))
+    Ok(Response::new().add_attribute(
+        "method",
+        "try_update_full_liquidation_liquidator_share_denominator",
+    ))
 }
 
-
-pub fn (
+pub fn try_update_fee(
     deps: DepsMut,
     info: MessageInfo,
-    market_index: u64,
-    amount: u64
+    fee_numerator: u128,
+    fee_denominator: u128,
+    t1_minimum_balance: u64,
+    t1_discount_numerator: u128,
+    t1_discount_denominator: u128,
+
+    t2_minimum_balance: u64,
+    t2_discount_numerator: u128,
+    t2_discount_denominator: u128,
+
+    t3_minimum_balance: u64,
+    t3_discount_numerator: u128,
+    t3_discount_denominator: u128,
+
+    referrer_reward_numerator: u128,
+    referrer_reward_denominator: u128,
+    referee_discount_numerator: u128,
+    referee_discount_denominator: u128,
 ) -> Result<Response, ContractError> {
-    Ok(Response::new().add_attribute("method", ""))
+    Ok(Response::new().add_attribute("method", "try_update_fee"))
 }
 
 
+pub fn try_update_oracle_guard_rails(
+    deps: DepsMut,
+    info: MessageInfo,
+    use_for_liquidations: bool,
+    mark_oracle_divergence_numerator: u128,
+    mark_oracle_divergence_denominator: u128,
+    slots_before_stale: i64,
+    confidence_interval_max_size: u128,
+    too_volatile_ratio: i128,
+) -> Result<Response, ContractError> {
+    Ok(Response::new().add_attribute(
+        "method",
+        "try_update_oracle_guard_rails",
+    ))
+}
+pub fn try_update_admin(
+    deps: DepsMut,
+    info: MessageInfo,
+    admin: String
+) -> Result<Response, ContractError> {
+    Ok(Response::new().add_attribute(
+        "method",
+        "try_update_admin",
+    ))
+}
 
+pub fn try_max_deposit(
+    deps: DepsMut,
+    info: MessageInfo,
+    max_deposit: u128
+) -> Result<Response, ContractError> {
+    Ok(Response::new().add_attribute(
+        "method",
+        "try_max_deposit",
+    ))
+}
+
+pub fn try_exchange_paused(
+    deps: DepsMut,
+    info: MessageInfo,
+    exchange_paused: bool
+) -> Result<Response, ContractError> {
+    Ok(Response::new().add_attribute(
+        "method",
+        "try_exchange_paused",
+    ))
+}
+
+pub fn try_disable_admin_control_prices(
+    deps: DepsMut,
+    info: MessageInfo
+) -> Result<Response, ContractError> {
+    Ok(Response::new().add_attribute(
+        "method",
+        "try_disable_admin_control_prices",
+    ))
+}
+pub fn try_update_funding_paused(
+    deps: DepsMut,
+    info: MessageInfo,
+    funding_paused: bool
+) -> Result<Response, ContractError> {
+    Ok(Response::new().add_attribute(
+        "method",
+        "try_update_funding_paused",
+    ))
+}
 
 
 
