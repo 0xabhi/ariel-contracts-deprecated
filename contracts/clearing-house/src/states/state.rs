@@ -1,9 +1,10 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use ariel::types::FeeStructure;
 use cosmwasm_std::Addr;
 use cw_storage_plus::Item;
+
+use ariel::types::{FeeStructure, OracleGuardRails};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
@@ -29,19 +30,5 @@ pub struct State {
     pub fee_structure: FeeStructure,
     pub oracle_guard_rails: OracleGuardRails,
 }
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct OracleGuardRails {
-    pub use_for_liquidations: bool,
-    // oracle price divergence rails
-    pub mark_oracle_divergence_numerator: u128,
-    pub mark_oracle_divergence_denominator: u128,
-    // validity guard rails
-    pub slots_before_stale: i64,
-    pub confidence_interval_max_size: u128,
-    pub too_volatile_ratio: i128,
-}
-
-
 
 pub const STATE: Item<State> = Item::new("state");

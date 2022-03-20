@@ -1,9 +1,9 @@
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, DepsMut};
 
 use crate::error::ContractError;
 
-use crate::states::market::Market;
-use crate::states::state::OracleGuardRails;
+use crate::states::market::{Markets, Market};
+use crate::states::state::{STATE};
 
 use crate::helpers::{amm};
 use crate::helpers::constants::{
@@ -15,17 +15,23 @@ use crate::helpers::casting::cast_to_u128;
 use crate::helpers::markets::get_oracle_price;
 
 pub fn repeg(
-    market: &mut Market,
+    deps: DepsMut,
+    market_index: u64,
     price_oracle: &Addr,
     new_peg: u128,
     clock_slot: u64,
-    oracle_guard_rails: &OracleGuardRails,
 ) -> Result<i128, ContractError> {
+
+    let market = Markets.load(deps.storage, market_index)?;
+
+    let state = STATE.load(deps.storage)?;
+    let oracle_guard_rails = state.oracle_guard_rails;
+
     if new_peg == market.amm.peg_multiplier {
         return Err(ContractError::InvalidRepegRedundant.into());
     }
 
-    let terminal_price_before = amm::calculate_terminal_price(market)?;
+    let terminal_price_before = amm::calculate_terminal_price(&mut market)?;
 
     let (current_net_market_value, _) =
         _calculate_base_asset_value_and_pnl(market.base_asset_amount, 0, &market.amm)?;
@@ -50,7 +56,7 @@ pub fn repeg(
 
     // if oracle is valid: check on size/direction of repeg
     if oracle_is_valid {
-        let terminal_price_after = amm::calculate_terminal_price(market)?;
+        let terminal_price_after = amm::calculate_terminal_price(&mut market)?;
 
         let mark_price_after = amm::calculate_price(
             market.amm.quote_asset_reserve,
@@ -100,7 +106,7 @@ pub fn repeg(
             }
         }
     }
-l 
+
     // Reduce pnl to quote asset precision and take the absolute value
     if adjustment_cost > 0 {
         market.amm.total_fee_minus_distributions = market
@@ -131,5 +137,10 @@ l
             .ok_or_else(|| (ContractError::MathError))?;
     }
 
+    Markets.update(deps.storage, market_index, |m| ->  Result<Market, ContractError>{
+        Ok(market)
+    });
+
     Ok(adjustment_cost)
+
 }
