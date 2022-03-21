@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 // We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetUserResponse {
+pub struct UserResponse {
     pub collateral: u128,
     pub cumulative_deposits: i128,
     pub total_fee_paid: u128,
@@ -14,7 +14,7 @@ pub struct GetUserResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetUserPositionResponse {
+pub struct UserPositionResponse {
     pub base_asset_amount: i128,
     pub quote_asset_amount: u128,
     pub last_cumulative_funding_rate: i128,
@@ -28,73 +28,73 @@ pub struct GetUserPositionResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetAdminResponse {
+pub struct AdminResponse {
     pub admin: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetIsExchangePausedResponse {
+pub struct IsExchangePausedResponse {
     pub exchange_paused: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetIsFundingPausedResponse {
+pub struct IsFundingPausedResponse {
     pub funding_paused: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetAdminControlsPricesResponse {
+pub struct AdminControlsPricesResponse {
     pub admin_controls_prices: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetVaultsResponse {
+pub struct VaultsResponse {
     pub insurance_vault: String,
     pub collateral_vault: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetMarginRatioResponse {
+pub struct MarginRatioResponse {
     pub margin_ratio_initial: u128,
     pub margin_ratio_maintenance: u128,
     pub margin_ratio_partial: u128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetPartialLiquidationClosePercentageResponse {
+pub struct PartialLiquidationClosePercentageResponse {
     pub numerator: u128,
     pub denominator: u128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetPartialLiquidationPenaltyPercentageResponse {
+pub struct PartialLiquidationPenaltyPercentageResponse {
     pub numerator: u128,
     pub denominator: u128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetFullLiquidationPenaltyPercentageResponse {
+pub struct FullLiquidationPenaltyPercentageResponse {
     pub numerator: u128,
     pub denominator: u128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetPartialLiquidatorSharePercentageResponse {
+pub struct PartialLiquidatorSharePercentageResponse {
     pub denominator: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetFullLiquidatorSharePercentageResponse {
+pub struct FullLiquidatorSharePercentageResponse {
     pub denominator: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetMaxDepositLimitResponse {
+pub struct MaxDepositLimitResponse {
     pub max_deposit: u128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetFeeStructureResponse {
+pub struct FeeStructureResponse {
     pub fee_numerator: u128,
     pub fee_denominator: u128,
     pub t1_minimum_balance: u64,
@@ -116,12 +116,12 @@ pub struct GetFeeStructureResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetCurveHistoryLengthResponse {
+pub struct CurveHistoryLengthResponse {
     pub length: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetCurveHistoryResponse {
+pub struct CurveHistoryResponse {
     pub ts: i64,
     pub record_id: u128,
     pub market_index: u64,
@@ -145,12 +145,12 @@ pub struct GetCurveHistoryResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetDepositHistoryLengthResponse {
+pub struct DepositHistoryLengthResponse {
     pub length: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetDepositHistoryResponse {
+pub struct DepositHistoryResponse {
     pub ts: i64,
     pub record_id: u128,
     pub user: String,
@@ -161,12 +161,12 @@ pub struct GetDepositHistoryResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetFundingPaymentHistoryLengthResponse {
+pub struct FundingPaymentHistoryLengthResponse {
     pub length: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetFundingPaymentHistoryResponse {
+pub struct FundingPaymentHistoryResponse {
     pub ts: i64,
     pub record_id: usize,
     pub user: String,
@@ -180,12 +180,12 @@ pub struct GetFundingPaymentHistoryResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetFundingRateHistoryLengthResponse {
+pub struct FundingRateHistoryLengthResponse {
     pub length: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetFundingRateHistoryResponse {
+pub struct FundingRateHistoryResponse {
     pub ts: i64,
     pub record_id: usize,
     pub market_index: u64,
@@ -197,12 +197,12 @@ pub struct GetFundingRateHistoryResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetLiquidationHistoryLengthResponse {
+pub struct LiquidationHistoryLengthResponse {
     pub length: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetLiquidationHistoryResponse {
+pub struct LiquidationHistoryResponse {
     pub ts: i64,
     pub record_id: u128,
     pub user: String,
@@ -220,12 +220,12 @@ pub struct GetLiquidationHistoryResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetTradeHistoryLengthResponse {
+pub struct TradeHistoryLengthResponse {
     pub length: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetTradeHistoryResponse {
+pub struct TradeHistoryResponse {
     pub ts: i64,
     pub record_id: u128,
     pub user: String,
@@ -244,7 +244,7 @@ pub struct GetTradeHistoryResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetMarketInfoResponse {
+pub struct MarketInfoResponse {
     pub market_name: String,
     pub initialized: bool,
     pub base_asset_amount_long: i128,
