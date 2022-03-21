@@ -21,17 +21,10 @@ pub fn update_mark_twap(
 ) -> Result<u128, ContractError> {
     let market = Markets.load(deps.storage, market_index)?;
     let mark_twap = amm::calculate_new_mark_twap(&market.amm, now, precomputed_mark_price)?;
+    market.amm.last_mark_price_twap = mark_twap;
+    market.amm.last_mark_price_twap_ts = now;
     Markets.update(deps.storage, market_index, |m| -> Result<Market, ContractError> {
-        match m {
-            Some(mark) => {
-                mark.amm.last_mark_price_twap = mark_twap;
-                mark.amm.last_mark_price_twap_ts = now;
-                Ok(mark)
-            },
-            None => {
-                Err(ContractError::MarketIndexNotInitialized{})
-            }
-        }
+        Ok(market)
     })?;
     return Ok(mark_twap);
 }
@@ -44,17 +37,10 @@ pub fn update_oracle_price_twap(
 ) -> Result<i128, ContractError> {
     let market = Markets.load(deps.storage, market_index)?;
     let oracle_price_twap = amm::calculate_new_oracle_price_twap(&market.amm, now, oracle_price)?;
+    market.amm.last_oracle_price_twap = oracle_price_twap;
+    market.amm.last_oracle_price_twap_ts = now;
     Markets.update(deps.storage, market_index, |m| -> Result<Market, ContractError> {
-        match m {
-            Some(mark) => {
-                mark.amm.last_oracle_price_twap = oracle_price_twap;
-                mark.amm.last_oracle_price_twap_ts = now;
-                Ok(mark)
-            },
-            None => {
-                Err(ContractError::MarketIndexNotInitialized{})
-            }
-        }
+        Ok(market)
     })?;
  
     return Ok(oracle_price_twap);
@@ -103,25 +89,19 @@ pub fn adjust_k_cost(deps: DepsMut, market_index: u64, new_sqrt_k: bn::U256) -> 
         .try_to_u128()
         .unwrap();
 
-    Markets.update(deps.storage, market_index, |m| -> Result<Market, ContractError> {
-        match m {
-            Some(mark) => {
-                mark.amm.sqrt_k = new_sqrt_k_val;
-                mark.amm.base_asset_reserve = new_base_asset_reserve;
-                mark.amm.quote_asset_reserve = new_quote_asset_reserve;
-                Ok(mark)
-            },
-            None => {
-                Err(ContractError::MarketIndexNotInitialized{})
-            }
-        }
-    })?;
+    market.amm.sqrt_k = new_sqrt_k_val;
+    market.amm.base_asset_reserve = new_base_asset_reserve;
+    market.amm.quote_asset_reserve = new_quote_asset_reserve;
 
     let (_new_net_market_value, cost) = _calculate_base_asset_value_and_pnl(
         market.base_asset_amount,
         current_net_market_value,
         &market.amm,
     )?;
+
+    Markets.update(deps.storage, market_index, |m| -> Result<Market, ContractError> {
+        Ok(market)
+    })?;
 
     Ok(cost)
 }
@@ -152,22 +132,16 @@ pub fn swap_quote_asset(
         a.sqrt_k,
     )?;
 
-    Markets.update(deps.storage, market_index, |m| -> Result<Market, ContractError> {
-        match m {
-            Some(mark) => {
-                mark.amm.base_asset_reserve = new_base_asset_reserve;
-                mark.amm.quote_asset_reserve = new_quote_asset_reserve;
-                Ok(mark)
-            },
-            None => {
-                Err(ContractError::MarketIndexNotInitialized{})
-            }
-        }
-    })?;
+    market.amm.base_asset_reserve = new_base_asset_reserve;
+    market.amm.quote_asset_reserve = new_quote_asset_reserve;
 
     let base_asset_amount = cast_to_i128(initial_base_asset_reserve)?
         .checked_sub(cast(new_base_asset_reserve)?)
         .ok_or_else(|| (ContractError::MathError))?;
+
+    Markets.update(deps.storage, market_index, |m| -> Result<Market, ContractError> {
+        Ok(market)
+    })?;
 
     return Ok(base_asset_amount);
 }
@@ -192,17 +166,11 @@ pub fn swap_base_asset(
         a.sqrt_k,
     )?;
 
+    market.amm.base_asset_reserve = new_base_asset_reserve;
+    market.amm.quote_asset_reserve = new_quote_asset_reserve;
+
     Markets.update(deps.storage, market_index, |m| -> Result<Market, ContractError> {
-        match m {
-            Some(mark) => {
-                mark.amm.base_asset_reserve = new_base_asset_reserve;
-                mark.amm.quote_asset_reserve = new_quote_asset_reserve;
-                Ok(mark)
-            },
-            None => {
-                Err(ContractError::MarketIndexNotInitialized{})
-            }
-        }
+        Ok(market)
     })?;
 
     calculate_quote_asset_amount_swapped(
@@ -211,6 +179,7 @@ pub fn swap_base_asset(
         direction,
         a.peg_multiplier,
     )
+
 }
 
 pub fn move_price(
@@ -223,18 +192,14 @@ pub fn move_price(
         .checked_mul(bn::U256::from(quote_asset_reserve))
         .ok_or_else(|| (ContractError::MathError))?;
 
+    let mark = Markets.load(deps.storage, market_index)?;
+    
+    mark.amm.base_asset_reserve = base_asset_reserve;
+    mark.amm.quote_asset_reserve = quote_asset_reserve;
+    mark.amm.sqrt_k = k.integer_sqrt().try_to_u128()?;
+
     Markets.update(deps.storage, market_index, |m| -> Result<Market, ContractError> {
-        match m {
-            Some(mark) => {
-                mark.amm.base_asset_reserve = base_asset_reserve;
-                mark.amm.quote_asset_reserve = quote_asset_reserve;
-                mark.amm.sqrt_k = k.integer_sqrt().try_to_u128()?;
-                Ok(mark)
-            },
-            None => {
-                Err(ContractError::MarketIndexNotInitialized{})
-            }
-        }
+        Ok(mark)
     })?;
     Ok(())
 }
