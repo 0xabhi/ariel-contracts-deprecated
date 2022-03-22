@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{PositionDirection};
+use crate::types::{PositionDirection, DiscountTokenTier};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -17,6 +17,7 @@ pub enum ExecuteMsg {
     // market initializer updates AMM structure
     InitializeMarket {
         market_index: u64,
+        market_name: String,
         amm_base_asset_reserve: u128,
         amm_quote_asset_reserve: u128,
         amm_periodicity: u128,
@@ -99,26 +100,18 @@ pub enum ExecuteMsg {
         denominator: u128,
     },
     UpdatePartialLiquidationLiquidatorShareDenominator {
-        denominator: u128,
+        denominator: u64,
     },
     UpdateFullLiquidationLiquidatorShareDenominator {
-        denominator: u128,
+        denominator: u64,
     },
     UpdateFee {
         fee_numerator: u128,
         fee_denominator: u128,
-        t1_minimum_balance: u64,
-        t1_discount_numerator: u128,
-        t1_discount_denominator: u128,
-
-        t2_minimum_balance: u64,
-        t2_discount_numerator: u128,
-        t2_discount_denominator: u128,
-
-        t3_minimum_balance: u64,
-        t3_discount_numerator: u128,
-        t3_discount_denominator: u128,
-
+        first_tier: DiscountTokenTier,
+        second_tier: DiscountTokenTier,
+        third_tier: DiscountTokenTier,
+        fourth_tier: DiscountTokenTier,
         referrer_reward_numerator: u128,
         referrer_reward_denominator: u128,
         referee_discount_numerator: u128,
