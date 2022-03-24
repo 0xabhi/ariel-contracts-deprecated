@@ -3,18 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr};
 use cw_storage_plus::{Map, Item};
+use ariel::types::DepositDirection;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub enum DepositDirection {
-    DEPOSIT,
-    WITHDRAW,
-}
-
-impl Default for DepositDirection {
-    fn default() -> Self {
-        DepositDirection::DEPOSIT
-    }
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DepositRecord {

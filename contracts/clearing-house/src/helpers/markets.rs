@@ -2,7 +2,8 @@ use cosmwasm_std::{Addr};
 
 use crate::error::ContractError;
 
-use crate::states::market::{Amm, OracleSource};
+use crate::states::market::{Amm};
+use ariel::types::OracleSource;
 
 use crate::helpers::amm;
 // use crate::helpers::casting::{cast, cast_to_i128, cast_to_i64, cast_to_u128};

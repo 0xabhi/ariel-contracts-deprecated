@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use cw_storage_plus::Map;
 use cosmwasm_std::{Addr};
 
+use ariel::types::OracleSource;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Market {
     pub market_name: String,
@@ -41,17 +43,6 @@ pub struct Amm {
     pub last_oracle_price: i128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub enum OracleSource {
-    Oracle,
-    Simulated,
-    Zero,
-}
 
-impl Default for OracleSource {
-    fn default() -> Self {
-        OracleSource::Oracle
-    }
-}
 
 pub const Markets: Map<u64, Market> = Map::new("markets");
