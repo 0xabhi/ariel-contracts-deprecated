@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, OverflowError};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -6,8 +6,24 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("Unauthorized")]
-    Unauthorized {},
-    // Add any other custom errors you like here.
-    // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
+    #[error("Admin only")]
+    UnauthorizedAdmin {},
+
+    #[error("Clearing house only")]
+    UnauthorizedClearingHouse {},
+
+    #[error("Math error")]
+    MathError {},
+
+    #[error("Invalid asset")]
+    InvalidIncomingAsset {},
+
+    #[error("Insufficient funds")]
+    InsufficientFunds {},
+}
+
+impl From<OverflowError> for ContractError {
+    fn from(o: OverflowError) -> Self {
+        StdError::from(o).into()
+    }
 }
