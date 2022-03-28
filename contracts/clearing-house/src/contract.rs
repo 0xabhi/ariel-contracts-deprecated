@@ -540,16 +540,50 @@ pub fn try_open_position(
     controller::funding::settle_funding_payment(deps, &user_address, cast_to_i64(now)?)?;
 
     let market_position: Position;
+    let open_position: bool = false;
+    let position_index: u64;
     if user.positions_length > 0 {
         for n in 1..user.positions_length {
             let mark_position = Positions.load(deps.storage, (&user_address, n))?;
             if is_for(mark_position, market_index) {
                 market_position = mark_position;
+                open_position = true;
                 //get the position as n and save market data at (addr, n ) index?
                 break;
             }
         }
     }
+
+    if open_position {
+        let new_market_position = Position {
+            market_index,
+            base_asset_amount: 0,
+            quote_asset_amount: 0,
+            last_cumulative_funding_rate: 0,
+            last_cumulative_repeg_rebate: 0,
+            last_funding_rate_ts: 0,
+            stop_profit_price: 0,
+            stop_profit_amount: 0,
+            stop_loss_price: 0,
+            stop_loss_amount: 0,
+            transfer_to: Addr::unchecked("".to_string()),
+        };
+    }
+
+    let market_position = Positions.load(deps.storage, (&user_address, position_index))?;
+
+    let mut potentially_risk_increasing = true;
+
+    let mark_price_before: u128;
+    let oracle_mark_spread_pct_before: i128;
+    let is_oracle_valid: bool;
+
+    let market = Markets.load(deps.storage, market_index)?;
+    let mark_price_before = helpers::amm::calculate_price(
+        market.amm.quote_asset_reserve,
+        market.amm.base_asset_reserve,
+        market.amm.peg_multiplier,
+    )?;
 
     Ok(Response::new().add_attribute("method", "try_open_position"))
 }
