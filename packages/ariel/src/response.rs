@@ -1,6 +1,8 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::types::{DiscountTokenTier, DepositDirection, PositionDirection, OracleSource};
+
 // We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UserResponse {
@@ -10,7 +12,7 @@ pub struct UserResponse {
     pub total_token_discount: u128,
     pub total_referral_reward: u128,
     pub total_referee_discount: u128,
-    pub positions_length: u128,
+    pub positions_length: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -97,17 +99,10 @@ pub struct MaxDepositLimitResponse {
 pub struct FeeStructureResponse {
     pub fee_numerator: u128,
     pub fee_denominator: u128,
-    pub t1_minimum_balance: u64,
-    pub t1_discount_numerator: u128,
-    pub t1_discount_denominator: u128,
-
-    pub t2_minimum_balance: u64,
-    pub t2_discount_numerator: u128,
-    pub t2_discount_denominator: u128,
-
-    pub t3_minimum_balance: u64,
-    pub t3_discount_numerator: u128,
-    pub t3_discount_denominator: u128,
+    pub first_tier: DiscountTokenTier,
+    pub second_tier: DiscountTokenTier,
+    pub third_tier: DiscountTokenTier,
+    pub fourth_tier: DiscountTokenTier,
 
     pub referrer_reward_numerator: u128,
     pub referrer_reward_denominator: u128,
@@ -154,7 +149,7 @@ pub struct DepositHistoryResponse {
     pub ts: i64,
     pub record_id: u128,
     pub user: String,
-    pub direction: String,
+    pub direction: DepositDirection,
     pub collateral_before: u128,
     pub cumulative_deposits_before: i128,
     pub amount: u64,
@@ -168,7 +163,7 @@ pub struct FundingPaymentHistoryLengthResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct FundingPaymentHistoryResponse {
     pub ts: i64,
-    pub record_id: usize,
+    pub record_id: u64,
     pub user: String,
     pub market_index: u64,
     pub funding_payment: i128,
@@ -187,7 +182,7 @@ pub struct FundingRateHistoryLengthResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct FundingRateHistoryResponse {
     pub ts: i64,
-    pub record_id: usize,
+    pub record_id: u64,
     pub market_index: u64,
     pub funding_rate: i128,
     pub cumulative_funding_rate_long: i128,
@@ -229,7 +224,7 @@ pub struct TradeHistoryResponse {
     pub ts: i64,
     pub record_id: u128,
     pub user: String,
-    pub direction: String,
+    pub direction: PositionDirection,
     pub base_asset_amount: u128,
     pub quote_asset_amount: u128,
     pub mark_price_before: u128,
@@ -252,7 +247,7 @@ pub struct MarketInfoResponse {
     pub base_asset_amount: i128, // net market bias
     pub open_interest: u128,  
     pub oracle: String,
-    pub oracle_source: String,
+    pub oracle_source: OracleSource,
     pub base_asset_reserve: u128,
     pub quote_asset_reserve: u128,
     pub cumulative_repeg_rebate_long: u128,

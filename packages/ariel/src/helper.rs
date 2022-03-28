@@ -1,4 +1,7 @@
-use cosmwasm_std::{StdError, Addr, Api, StdResult, MessageInfo};
+use cosmwasm_std::{
+    Addr, Api, BalanceResponse, BankQuery, MessageInfo, QuerierWrapper, QueryRequest, StdError,
+    StdResult, Uint128,
+};
 use schemars::JsonSchema;
 use serde::{Serialize, Deserialize};
 
@@ -12,42 +15,43 @@ pub fn addr_validate_to_lower(api: &dyn Api, addr: &str) -> StdResult<Addr> {
     api.addr_validate(addr)
 }
 
-
-impl Asset{
-    pub fn assert_sent_native_token_balance(&self, message_info: &MessageInfo) -> StdResult<()> {
-        if let AssetInfo::NativeToken { denom } = &self.info {
-            match message_info.funds.iter().find(|x| x.denom == *denom) {
-                Some(coin) => {
-                    if self.amount == coin.amount.into() {
-                        Ok(())
-                    } else {
-                        Err(StdError::generic_err("Native token balance mismatch between the argument and the transferred"))
-                    }
-                }
-                None => {
-                    if self.amount == 0 {
-                        Ok(())
-                    } else {
-                        Err(StdError::generic_err("Native token balance mismatch between the argument and the transferred"))
-                    }
-                }
+pub fn assert_sent_uusd_balance(message_info: &MessageInfo, input_amount: u128) -> StdResult<()> {
+    let amount = Uint128::from(input_amount);
+    match message_info.funds.iter().find(|x| x.denom == "uusd") {
+        Some(coin) => {
+            if amount == coin.amount {
+                Ok(())
+            } else {
+                Err(StdError::generic_err(
+                    "Native token balance mismatch between the argument and the transferred",
+                ))
             }
-        } else {
-            Ok(())
+        }
+        None => {
+            if amount.is_zero() {
+                Ok(())
+            } else {
+                Err(StdError::generic_err(
+                    "Native token balance mismatch between the argument and the transferred",
+                ))
+            }
         }
     }
-    
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum AssetInfo {
-    NativeToken { denom: String },
+pub fn query_balance(querier: &QuerierWrapper, account_addr: Addr) -> StdResult<u128> {
+    let balance: BalanceResponse = querier.query(&QueryRequest::Bank(BankQuery::Balance {
+        address: String::from(account_addr),
+        denom: "uusd".to_string(),
+    }))?;
+    Ok(balance.amount.amount.u128())
 }
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Asset {
-    /// Information about an asset stored in a [`AssetInfo`] struct
-    pub info: AssetInfo,
-    /// A token amount
-    pub amount: u128,
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum VaultInterface {
+    WithdrawFunds{
+        to_address: String,
+        amount: u128
+    }
 }

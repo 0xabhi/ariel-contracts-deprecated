@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, JsonSchema, Copy, Serialize, Deserialize, PartialEq)]
 pub enum PositionDirection {
@@ -30,7 +30,7 @@ impl Default for SwapDirection {
 pub struct FeeStructure {
     pub fee_numerator: u128,
     pub fee_denominator: u128,
-    
+
     pub first_tier: DiscountTokenTier,
     pub second_tier: DiscountTokenTier,
     pub third_tier: DiscountTokenTier,
@@ -59,4 +59,29 @@ pub struct OracleGuardRails {
     pub slots_before_stale: i64,
     pub confidence_interval_max_size: u128,
     pub too_volatile_ratio: i128,
+}
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+
+pub enum DepositDirection {
+    DEPOSIT,
+    WITHDRAW,
+}
+
+impl Default for DepositDirection {
+    fn default() -> Self {
+        DepositDirection::DEPOSIT
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum OracleSource {
+    Oracle,
+    Simulated,
+    Zero,
+}
+
+impl Default for OracleSource {
+    fn default() -> Self {
+        OracleSource::Oracle
+    }
 }

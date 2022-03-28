@@ -33,10 +33,12 @@ pub enum QueryMsg {
     },
     GetDepositHistoryLength{},
     GetDepositHistory{
+        user_address: String,
         index: u64
     },
     GetFundingPaymentHistoryLength{},
     GetFundingPaymentHistory{
+        user_address: String,
         index: u64
     },
     GetFundingRateHistoryLength{},
@@ -46,10 +48,12 @@ pub enum QueryMsg {
 
     GetLiquidationHistoryLength{},
     GetLiquidationHistory{
+        user_address: String,
         index: u64
     },
     GetTradeHistoryLength{},
     GetTradeHistory{
+        user_address: String,
         index: u64
     },
     GetMarketInfo{
