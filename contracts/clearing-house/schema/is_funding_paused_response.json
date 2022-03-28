@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IsFundingPausedResponse",
+  "type": "object",
+  "required": [
+    "funding_paused"
+  ],
+  "properties": {
+    "funding_paused": {
+      "type": "boolean"
+    }
+  }
+}

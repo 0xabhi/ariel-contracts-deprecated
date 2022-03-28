@@ -14,7 +14,7 @@ use crate::helpers::pnl::calculate_pnl;
 use crate::controller::amm;
 
 pub fn increase(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     direction: PositionDirection,
     new_quote_asset_notional_amount: u128,
     market_index : u64,
@@ -22,8 +22,8 @@ pub fn increase(
     position_index: u64,
     now: i64,
 ) -> Result<i128, ContractError> {
-    let market = Markets.load(deps.storage, market_index)?;
-    let market_position = Positions.load(deps.storage, (user_addr, position_index))?;
+    let mut market = Markets.load(deps.storage, market_index)?;
+    let mut market_position = Positions.load(deps.storage, (user_addr, position_index))?;
     if new_quote_asset_notional_amount == 0 {
         return Ok(0);
     }
@@ -94,7 +94,7 @@ pub fn increase(
 }
 
 pub fn reduce(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     direction: PositionDirection,
     quote_asset_swap_amount: u128,
     user_addr: &Addr,
@@ -103,9 +103,9 @@ pub fn reduce(
     now: i64,
     precomputed_mark_price: Option<u128>,
 ) -> Result<i128, ContractError> {
-    let user = Users.load(deps.storage, user_addr)?;
-    let market = Markets.load(deps.storage, market_index)?;
-    let market_position = Positions.load(deps.storage, (user_addr, position_index))?;
+    let mut user = Users.load(deps.storage, user_addr)?;
+    let mut market = Markets.load(deps.storage, market_index)?;
+    let mut market_position = Positions.load(deps.storage, (user_addr, position_index))?;
     
     let swap_direction = match direction {
         PositionDirection::Long => SwapDirection::Add,
@@ -193,15 +193,15 @@ pub fn reduce(
 }
 
 pub fn close(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     user_addr: &Addr,
     market_index : u64,
     position_index: u64,
     now: i64,
 ) -> Result<(u128, i128), ContractError> {
-    let user = Users.load(deps.storage, user_addr)?;
-    let market = Markets.load(deps.storage, market_index)?;
-    let market_position = Positions.load(deps.storage, (user_addr, position_index))?;
+    let mut user = Users.load(deps.storage, user_addr)?;
+    let mut market = Markets.load(deps.storage, market_index)?;
+    let mut market_position = Positions.load(deps.storage, (user_addr, position_index))?;
     
     // If user has no base asset, return early
     if market_position.base_asset_amount == 0 {

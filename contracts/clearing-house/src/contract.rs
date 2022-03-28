@@ -318,54 +318,54 @@ pub fn try_initialize_market(
     // Verify oracle is readable
 
     //TODO:: oracle price check
-    let (_, oracle_price_twap, _, _, _) = market
-        .amm
-        .get_oracle_price(&ctx.accounts.oracle, clock_slot)
-        .unwrap();
+    // let (_, oracle_price_twap, _, _, _) = market
+    //     .amm
+    //     .get_oracle_price(&ctx.accounts.oracle, clock_slot)
+    //     .unwrap();
 
-    let market = Market {
-        market_name: market_name,
-        initialized: true,
-        base_asset_amount_long: 0,
-        base_asset_amount_short: 0,
-        base_asset_amount: 0,
-        open_interest: 0,
-        amm: AMM {
-            oracle: *ctx.accounts.oracle.key, //TODO add oracle address
-            oracle_source: OracleSource::Pyth,
-            base_asset_reserve: amm_base_asset_reserve,
-            quote_asset_reserve: amm_quote_asset_reserve,
-            cumulative_repeg_rebate_long: 0,
-            cumulative_repeg_rebate_short: 0,
-            cumulative_funding_rate_long: 0,
-            cumulative_funding_rate_short: 0,
-            last_funding_rate: 0,
-            last_funding_rate_ts: now,
-            funding_period: amm_periodicity,
-            last_oracle_price_twap: oracle_price_twap,
-            last_mark_price_twap: init_mark_price,
-            last_mark_price_twap_ts: now,
-            sqrt_k: amm_base_asset_reserve,
-            peg_multiplier: amm_peg_multiplier,
-            total_fee: 0,
-            total_fee_withdrawn: 0,
-            total_fee_minus_distributions: 0,
-            minimum_trade_size: 10000000,
-            last_oracle_price_twap_ts: now,
-        },
-    };
-    Markets.save(deps.storage, market_index, &market)?;
+    // let market = Market {
+    //     market_name: market_name,
+    //     initialized: true,
+    //     base_asset_amount_long: 0,
+    //     base_asset_amount_short: 0,
+    //     base_asset_amount: 0,
+    //     open_interest: 0,
+    //     amm: AMM {
+    //         oracle: *ctx.accounts.oracle.key, //TODO add oracle address
+    //         oracle_source: OracleSource::Pyth,
+    //         base_asset_reserve: amm_base_asset_reserve,
+    //         quote_asset_reserve: amm_quote_asset_reserve,
+    //         cumulative_repeg_rebate_long: 0,
+    //         cumulative_repeg_rebate_short: 0,
+    //         cumulative_funding_rate_long: 0,
+    //         cumulative_funding_rate_short: 0,
+    //         last_funding_rate: 0,
+    //         last_funding_rate_ts: now,
+    //         funding_period: amm_periodicity,
+    //         last_oracle_price_twap: oracle_price_twap,
+    //         last_mark_price_twap: init_mark_price,
+    //         last_mark_price_twap_ts: now,
+    //         sqrt_k: amm_base_asset_reserve,
+    //         peg_multiplier: amm_peg_multiplier,
+    //         total_fee: 0,
+    //         total_fee_withdrawn: 0,
+    //         total_fee_minus_distributions: 0,
+    //         minimum_trade_size: 10000000,
+    //         last_oracle_price_twap_ts: now,
+    //     },
+    // };
+    // Markets.save(deps.storage, market_index, &market)?;
     Ok(Response::new().add_attribute("method", "try_initialize_market"))
 }
 
 pub fn try_deposit_collateral(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     amount: i128,
 ) -> Result<Response, ContractError> {
     let user_address = info.sender.clone();
-    let user = Users.load(deps.storage, &user_address)?;
+    let mut user = Users.load(deps.storage, &user_address)?;
     let now = env.block.time.seconds();
 
     if amount == 0 {
@@ -386,7 +386,7 @@ pub fn try_deposit_collateral(
         .checked_add(amount)
         .ok_or_else(|| return ContractError::MathError {})?;
 
-    controller::funding::settle_funding_payment(deps, &user_address, cast_to_i64(now)?)?;
+    controller::funding::settle_funding_payment(&mut deps, &user_address, cast_to_i64(now)?)?;
     //get and send tokens to collateral v
     let state = STATE.load(deps.storage)?;
     let bankMsg = BankMsg::Send {
@@ -398,13 +398,13 @@ pub fn try_deposit_collateral(
         .len
         .checked_add(1)
         .ok_or_else(|| (ContractError::MathError))?;
-    DepositHistoryInfo.update(deps.storage, |i| -> Result<DepositInfo, ContractError> {
+    DepositHistoryInfo.update(deps.storage, |mut i| -> Result<DepositInfo, ContractError> {
         i.len = deposit_history_info_length;
         Ok(i)
     });
     DepositHistory.save(
         deps.storage,
-        (deposit_history_info_length as u64, user_address),
+        (deposit_history_info_length as u64, user_address.clone()),
         &DepositRecord {
             ts: cast_to_i64(now)?,
             record_id: cast(deposit_history_info_length)?,
@@ -424,27 +424,27 @@ pub fn try_deposit_collateral(
 }
 
 pub fn try_withdraw_collateral(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     amount: i128,
 ) -> Result<Response, ContractError> {
     let user_address = info.sender.clone();
-    let user = Users.load(deps.storage, &user_address)?;
+    let mut user = Users.load(deps.storage, &user_address)?;
     let now = env.block.time.seconds();
 
     let collateral_before = user.collateral;
     let cumulative_deposits_before = user.cumulative_deposits;
 
-    controller::funding::settle_funding_payment(deps, &user_address, cast_to_i64(now)?)?;
+    controller::funding::settle_funding_payment(&mut deps, &user_address, cast_to_i64(now)?)?;
 
     if cast_to_u128(amount)? > user.collateral {
         return Err(ContractError::InsufficientCollateral.into());
     }
 
     let state = STATE.load(deps.storage)?;
-    let collateral_balance = query_balance(&deps.querier, state.collateral_vault)?;
-    let insurance_balance = query_balance(&deps.querier, state.insurance_vault)?;
+    let collateral_balance = query_balance(&deps.querier, state.collateral_vault.clone())?;
+    let insurance_balance = query_balance(&deps.querier, state.insurance_vault.clone())?;
     let (collateral_account_withdrawal, insurance_account_withdrawal) =
         calculate_withdrawal_amounts(
             cast(amount)?,
@@ -470,7 +470,7 @@ pub fn try_withdraw_collateral(
         .ok_or_else(|| (ContractError::MathError))?;
 
     let (_total_collateral, _unrealized_pnl, _base_asset_value, margin_ratio) =
-        calculate_margin_ratio(deps, &user_address)?;
+        calculate_margin_ratio(&deps, &user_address)?;
 
     if margin_ratio < state.margin_ratio_initial {
         return Err(ContractError::InsufficientCollateral.into());
@@ -478,7 +478,7 @@ pub fn try_withdraw_collateral(
     let mut messages: Vec<CosmosMsg> = vec![];
 
     messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: state.collateral_vault.to_string(),
+        contract_addr: state.collateral_vault.clone().to_string(),
         msg: to_binary(&VaultInterface::WithdrawFunds {
             to_address: info.sender.to_string(),
             amount: cast(collateral_account_withdrawal)?,
@@ -502,13 +502,13 @@ pub fn try_withdraw_collateral(
         .len
         .checked_add(1)
         .ok_or_else(|| (ContractError::MathError))?;
-    DepositHistoryInfo.update(deps.storage, |i| -> Result<DepositInfo, ContractError> {
+    DepositHistoryInfo.update(deps.storage, |mut i| -> Result<DepositInfo, ContractError> {
         i.len = deposit_history_info_length;
         Ok(i)
     });
     DepositHistory.save(
         deps.storage,
-        (deposit_history_info_length as u64, user_address),
+        (deposit_history_info_length as u64, user_address.clone()),
         &DepositRecord {
             ts: cast_to_i64(now)?,
             record_id: cast(deposit_history_info_length)?,
@@ -525,7 +525,7 @@ pub fn try_withdraw_collateral(
 }
 
 pub fn try_open_position(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     direction: PositionDirection,
@@ -537,15 +537,15 @@ pub fn try_open_position(
     let user = Users.load(deps.storage, &user_address)?;
     let now = env.block.time.seconds();
 
-    controller::funding::settle_funding_payment(deps, &user_address, cast_to_i64(now)?)?;
+    controller::funding::settle_funding_payment(&mut deps, &user_address, cast_to_i64(now)?)?;
 
     let market_position: Position;
-    let open_position: bool = false;
-    let position_index: u64;
+    let mut open_position: bool = false;
+    let mut position_index: u64 = 0;
     if user.positions_length > 0 {
         for n in 1..user.positions_length {
             let mark_position = Positions.load(deps.storage, (&user_address, n))?;
-            if is_for(mark_position, market_index) {
+            if is_for(mark_position.clone(), market_index) {
                 market_position = mark_position;
                 open_position = true;
                 //get the position as n and save market data at (addr, n ) index?
@@ -589,7 +589,7 @@ pub fn try_open_position(
 }
 
 pub fn try_close_position(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     market_index: u64,
@@ -598,15 +598,15 @@ pub fn try_close_position(
     let user = Users.load(deps.storage, &user_address)?;
     let now = env.block.time.seconds();
     let clock_slot = now.clone();
-    controller::funding::settle_funding_payment(deps, &user_address, cast_to_i64(now)?)?;
+    controller::funding::settle_funding_payment(&mut deps, &user_address, cast_to_i64(now)?)?;
 
-    let market_position: Position;
-    let open_position: bool = false;
+    let mut market_position: Position;
+    let mut open_position: bool = false;
     let position_index: u64;
     if user.positions_length > 0 {
         for n in 1..user.positions_length {
             let mark_position = Positions.load(deps.storage, (&user_address, n))?;
-            if is_for(mark_position, market_index) {
+            if is_for(mark_position.clone(), market_index) {
                 market_position = mark_position;
                 open_position = true;
                 //get the position as n and save market data at (addr, n ) index?
@@ -636,16 +636,16 @@ pub fn try_close_position(
             Some(mark_price_before),
         )?;
 
-    let direction_to_close =
-        helpers::position::direction_to_close_position(market_position.base_asset_amount);
-    let (quote_asset_amount, base_asset_amount) = controller::position::close(
-        deps,
-        &user_address,
-        market_index,
-        position_index,
-        cast_to_i64(now)?,
-    )?;
-    let base_asset_amount = base_asset_amount.unsigned_abs();
+    // let direction_to_close =
+    //     helpers::position::direction_to_close_position(market_position.base_asset_amount);
+    // let (quote_asset_amount, base_asset_amount) = controller::position::close(
+    //     &mut deps,
+    //     &user_address,
+    //     market_index,
+    //     position_index,
+    //     cast_to_i64(now)?,
+    // )?;
+    // let base_asset_amount = base_asset_amount.unsigned_abs();
     //optional account TODO
     Ok(Response::new().add_attribute("method", "try_close_position"))
 }
@@ -660,13 +660,13 @@ pub fn try_liquidate(
 }
 
 pub fn try_move_amm_price(
-    deps: DepsMut,
+    mut deps: DepsMut,
     info: MessageInfo,
     base_asset_reserve: u128,
     quote_asset_reserve: u128,
     market_index: u64,
 ) -> Result<Response, ContractError> {
-    controller::amm::move_price(deps, market_index, base_asset_reserve, quote_asset_reserve)?;
+    controller::amm::move_price(&mut deps, market_index, base_asset_reserve, quote_asset_reserve)?;
     Ok(Response::new().add_attribute("method", "try_move_amm_price"))
 }
 
@@ -677,7 +677,7 @@ pub fn try_withdraw_fees(
     amount: u64,
 ) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
-    let market = Markets.load(deps.storage, market_index)?;
+    let mut market = Markets.load(deps.storage, market_index)?;
 
     // A portion of fees must always remain in protocol to be used to keep markets optimal
     let max_withdraw = market
@@ -723,7 +723,7 @@ pub fn try_withdraw_from_insurance_vault_to_market(
         return Err(ContractError::Unauthorized {});
     }
 
-    let market = Markets.load(deps.storage, market_index)?;
+    let mut market = Markets.load(deps.storage, market_index)?;
     market.amm.total_fee_minus_distributions = market
         .amm
         .total_fee_minus_distributions
@@ -749,7 +749,7 @@ pub fn try_withdraw_from_insurance_vault_to_market(
 }
 
 pub fn try_repeg_amm_curve(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     new_peg_candidate: u128,
@@ -768,7 +768,7 @@ pub fn try_repeg_amm_curve(
     let price_oracle = Addr::unchecked("".to_string());
 
     let adjustment_cost = controller::repeg::repeg(
-        deps,
+        &mut deps,
         market_index,
         &price_oracle,
         new_peg_candidate,
@@ -787,7 +787,7 @@ pub fn try_repeg_amm_curve(
         .ok_or_else(|| (ContractError::MathError))?;
     CurveHistoryInfo.update(
         deps.storage,
-        |i: CurveInfo| -> Result<CurveInfo, ContractError> {
+        |mut i: CurveInfo| -> Result<CurveInfo, ContractError> {
             i.len = curve_history_info_length;
             Ok(i)
         },
@@ -826,18 +826,18 @@ pub fn try_repeg_amm_curve(
 }
 
 pub fn try_settle_funding_payment(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
     let now = env.block.time.seconds();
     let user_address = info.sender;
 
-    controller::funding::settle_funding_payment(deps, &user_address, cast_to_i64(now)?)?;
+    controller::funding::settle_funding_payment(&mut deps, &user_address, cast_to_i64(now)?)?;
     Ok(Response::new().add_attribute("method", "try_settle_funding_payment"))
 }
 pub fn try_update_funding_rate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     market_index: u64,
@@ -849,7 +849,7 @@ pub fn try_update_funding_rate(
     let price_oracle = Addr::unchecked("".to_string());
     let funding_paused = STATE.load(deps.storage).unwrap().funding_paused;
     controller::funding::update_funding_rate(
-        deps,
+        &mut deps,
         market_index,
         &price_oracle,
         cast_to_i64(now)?,
@@ -860,14 +860,14 @@ pub fn try_update_funding_rate(
 }
 
 pub fn try_update_k(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     market_index: u64,
     sqrt_k: u128,
 ) -> Result<Response, ContractError> {
     let now = env.block.time.seconds();
-    let market = Markets.load(deps.storage, market_index)?;
+    let mut market = Markets.load(deps.storage, market_index)?;
 
     let base_asset_amount_long = market.base_asset_amount_long.unsigned_abs();
     let base_asset_amount_short = market.base_asset_amount_short.unsigned_abs();
@@ -886,7 +886,7 @@ pub fn try_update_k(
     let sqrt_k_before = market.amm.sqrt_k;
 
     let adjustment_cost =
-        controller::amm::adjust_k_cost(deps, market_index, helpers::bn::U256::from(sqrt_k))?;
+        controller::amm::adjust_k_cost(&mut deps, market_index, helpers::bn::U256::from(sqrt_k))?;
 
     if adjustment_cost > 0 {
         let max_cost = market
@@ -942,7 +942,7 @@ pub fn try_update_k(
         .ok_or_else(|| (ContractError::MathError))?;
     CurveHistoryInfo.update(
         deps.storage,
-        |i: CurveInfo| -> Result<CurveInfo, ContractError> {
+        |mut i: CurveInfo| -> Result<CurveInfo, ContractError> {
             i.len = curve_history_info_length;
             Ok(i)
         },
@@ -985,7 +985,7 @@ pub fn try_update_market_minimum_trade_size(
     market_index: u64,
     minimum_trade_size: u128,
 ) -> Result<Response, ContractError> {
-    let market = Markets.load(deps.storage, market_index)?;
+    let mut market = Markets.load(deps.storage, market_index)?;
     market.amm.minimum_trade_size = minimum_trade_size;
     Markets.update(
         deps.storage,

@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LiquidationHistoryResponse",
+  "type": "object",
+  "required": [
+    "base_asset_value",
+    "base_asset_value_closed",
+    "collateral",
+    "fee_to_insurance_fund",
+    "fee_to_liquidator",
+    "liquidation_fee",
+    "liquidator",
+    "margin_ratio",
+    "partial",
+    "record_id",
+    "total_collateral",
+    "ts",
+    "unrealized_pnl",
+    "user"
+  ],
+  "properties": {
+    "base_asset_value": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "base_asset_value_closed": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "collateral": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "fee_to_insurance_fund": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "fee_to_liquidator": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "liquidation_fee": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "liquidator": {
+      "type": "string"
+    },
+    "margin_ratio": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "partial": {
+      "type": "boolean"
+    },
+    "record_id": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "total_collateral": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "ts": {
+      "type": "integer",
+      "format": "int64"
+    },
+    "unrealized_pnl": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "user": {
+      "type": "string"
+    }
+  }
+}

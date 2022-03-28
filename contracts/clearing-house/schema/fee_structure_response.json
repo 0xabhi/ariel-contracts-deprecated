@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeeStructureResponse",
+  "type": "object",
+  "required": [
+    "fee_denominator",
+    "fee_numerator",
+    "first_tier",
+    "fourth_tier",
+    "referee_discount_denominator",
+    "referee_discount_numerator",
+    "referrer_reward_denominator",
+    "referrer_reward_numerator",
+    "second_tier",
+    "third_tier"
+  ],
+  "properties": {
+    "fee_denominator": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "fee_numerator": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "first_tier": {
+      "$ref": "#/definitions/DiscountTokenTier"
+    },
+    "fourth_tier": {
+      "$ref": "#/definitions/DiscountTokenTier"
+    },
+    "referee_discount_denominator": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "referee_discount_numerator": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "referrer_reward_denominator": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "referrer_reward_numerator": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "second_tier": {
+      "$ref": "#/definitions/DiscountTokenTier"
+    },
+    "third_tier": {
+      "$ref": "#/definitions/DiscountTokenTier"
+    }
+  },
+  "definitions": {
+    "DiscountTokenTier": {
+      "type": "object",
+      "required": [
+        "discount_denominator",
+        "discount_numerator",
+        "minimum_balance"
+      ],
+      "properties": {
+        "discount_denominator": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "discount_numerator": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "minimum_balance": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    }
+  }
+}

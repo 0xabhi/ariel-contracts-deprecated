@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CurveRecord",
+  "type": "object",
+  "required": [
+    "adjustment_cost",
+    "base_asset_amount",
+    "base_asset_amount_long",
+    "base_asset_amount_short",
+    "base_asset_reserve_after",
+    "base_asset_reserve_before",
+    "market_index",
+    "open_interest",
+    "oracle_price",
+    "peg_multiplier_after",
+    "peg_multiplier_before",
+    "quote_asset_reserve_after",
+    "quote_asset_reserve_before",
+    "record_id",
+    "sqrt_k_after",
+    "sqrt_k_before",
+    "total_fee",
+    "total_fee_minus_distributions",
+    "trade_record",
+    "ts"
+  ],
+  "properties": {
+    "adjustment_cost": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "base_asset_amount": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "base_asset_amount_long": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "base_asset_amount_short": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "base_asset_reserve_after": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "base_asset_reserve_before": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "market_index": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "open_interest": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "oracle_price": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "peg_multiplier_after": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "peg_multiplier_before": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "quote_asset_reserve_after": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "quote_asset_reserve_before": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "record_id": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "sqrt_k_after": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "sqrt_k_before": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "total_fee": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "total_fee_minus_distributions": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "trade_record": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "ts": {
+      "type": "integer",
+      "format": "int64"
+    }
+  }
+}

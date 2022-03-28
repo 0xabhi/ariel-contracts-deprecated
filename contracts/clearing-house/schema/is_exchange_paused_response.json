@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IsExchangePausedResponse",
+  "type": "object",
+  "required": [
+    "exchange_paused"
+  ],
+  "properties": {
+    "exchange_paused": {
+      "type": "boolean"
+    }
+  }
+}

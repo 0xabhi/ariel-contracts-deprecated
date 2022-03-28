@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FundingPaymentHistoryResponse",
+  "type": "object",
+  "required": [
+    "amm_cumulative_funding_long",
+    "amm_cumulative_funding_short",
+    "base_asset_amount",
+    "funding_payment",
+    "market_index",
+    "record_id",
+    "ts",
+    "user",
+    "user_last_cumulative_funding",
+    "user_last_funding_rate_ts"
+  ],
+  "properties": {
+    "amm_cumulative_funding_long": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "amm_cumulative_funding_short": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "base_asset_amount": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "funding_payment": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "market_index": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "record_id": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "ts": {
+      "type": "integer",
+      "format": "int64"
+    },
+    "user": {
+      "type": "string"
+    },
+    "user_last_cumulative_funding": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "user_last_funding_rate_ts": {
+      "type": "integer",
+      "format": "int64"
+    }
+  }
+}

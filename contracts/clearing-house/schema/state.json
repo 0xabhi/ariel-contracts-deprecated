@@ -3,22 +3,240 @@
   "title": "State",
   "type": "object",
   "required": [
-    "count",
-    "owner"
+    "admin",
+    "admin_controls_prices",
+    "collateral_vault",
+    "exchange_paused",
+    "fee_structure",
+    "full_liquidation_liquidator_share_denominator",
+    "full_liquidation_penalty_percentage_denominator",
+    "full_liquidation_penalty_percentage_numerator",
+    "funding_paused",
+    "insurance_vault",
+    "margin_ratio_initial",
+    "margin_ratio_maintenance",
+    "margin_ratio_partial",
+    "max_deposit",
+    "oracle_guard_rails",
+    "partial_liquidation_close_percentage_denominator",
+    "partial_liquidation_close_percentage_numerator",
+    "partial_liquidation_liquidator_share_denominator",
+    "partial_liquidation_penalty_percentage_denominator",
+    "partial_liquidation_penalty_percentage_numerator"
   ],
   "properties": {
-    "count": {
-      "type": "integer",
-      "format": "int32"
-    },
-    "owner": {
+    "admin": {
       "$ref": "#/definitions/Addr"
+    },
+    "admin_controls_prices": {
+      "type": "boolean"
+    },
+    "collateral_vault": {
+      "$ref": "#/definitions/Addr"
+    },
+    "exchange_paused": {
+      "type": "boolean"
+    },
+    "fee_structure": {
+      "$ref": "#/definitions/FeeStructure"
+    },
+    "full_liquidation_liquidator_share_denominator": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "full_liquidation_penalty_percentage_denominator": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "full_liquidation_penalty_percentage_numerator": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "funding_paused": {
+      "type": "boolean"
+    },
+    "insurance_vault": {
+      "$ref": "#/definitions/Addr"
+    },
+    "margin_ratio_initial": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "margin_ratio_maintenance": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "margin_ratio_partial": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "max_deposit": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "oracle_guard_rails": {
+      "$ref": "#/definitions/OracleGuardRails"
+    },
+    "partial_liquidation_close_percentage_denominator": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "partial_liquidation_close_percentage_numerator": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "partial_liquidation_liquidator_share_denominator": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "partial_liquidation_penalty_percentage_denominator": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "partial_liquidation_penalty_percentage_numerator": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
     }
   },
   "definitions": {
     "Addr": {
       "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
       "type": "string"
+    },
+    "DiscountTokenTier": {
+      "type": "object",
+      "required": [
+        "discount_denominator",
+        "discount_numerator",
+        "minimum_balance"
+      ],
+      "properties": {
+        "discount_denominator": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "discount_numerator": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "minimum_balance": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
+    "FeeStructure": {
+      "type": "object",
+      "required": [
+        "fee_denominator",
+        "fee_numerator",
+        "first_tier",
+        "fourth_tier",
+        "referee_discount_denominator",
+        "referee_discount_numerator",
+        "referrer_reward_denominator",
+        "referrer_reward_numerator",
+        "second_tier",
+        "third_tier"
+      ],
+      "properties": {
+        "fee_denominator": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "fee_numerator": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "first_tier": {
+          "$ref": "#/definitions/DiscountTokenTier"
+        },
+        "fourth_tier": {
+          "$ref": "#/definitions/DiscountTokenTier"
+        },
+        "referee_discount_denominator": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "referee_discount_numerator": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "referrer_reward_denominator": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "referrer_reward_numerator": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "second_tier": {
+          "$ref": "#/definitions/DiscountTokenTier"
+        },
+        "third_tier": {
+          "$ref": "#/definitions/DiscountTokenTier"
+        }
+      }
+    },
+    "OracleGuardRails": {
+      "type": "object",
+      "required": [
+        "confidence_interval_max_size",
+        "mark_oracle_divergence_denominator",
+        "mark_oracle_divergence_numerator",
+        "slots_before_stale",
+        "too_volatile_ratio",
+        "use_for_liquidations"
+      ],
+      "properties": {
+        "confidence_interval_max_size": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "mark_oracle_divergence_denominator": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "mark_oracle_divergence_numerator": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "slots_before_stale": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "too_volatile_ratio": {
+          "type": "integer",
+          "format": "int128"
+        },
+        "use_for_liquidations": {
+          "type": "boolean"
+        }
+      }
     }
   }
 }

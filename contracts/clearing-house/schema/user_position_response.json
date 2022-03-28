@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UserPositionResponse",
+  "type": "object",
+  "required": [
+    "base_asset_amount",
+    "last_cumulative_funding_rate",
+    "last_cumulative_repeg_rebate",
+    "last_funding_rate_ts",
+    "quote_asset_amount",
+    "stop_loss_amount",
+    "stop_loss_price",
+    "stop_profit_amount",
+    "stop_profit_price",
+    "transfer_to"
+  ],
+  "properties": {
+    "base_asset_amount": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "last_cumulative_funding_rate": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "last_cumulative_repeg_rebate": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "last_funding_rate_ts": {
+      "type": "integer",
+      "format": "int64"
+    },
+    "quote_asset_amount": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "stop_loss_amount": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "stop_loss_price": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "stop_profit_amount": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "stop_profit_price": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "transfer_to": {
+      "type": "string"
+    }
+  }
+}

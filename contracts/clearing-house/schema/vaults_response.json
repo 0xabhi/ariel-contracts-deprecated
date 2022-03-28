@@ -1,20 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "InstantiateMsg",
+  "title": "VaultsResponse",
   "type": "object",
   "required": [
-    "admin",
-    "admin_controls_prices",
     "collateral_vault",
     "insurance_vault"
   ],
   "properties": {
-    "admin": {
-      "type": "string"
-    },
-    "admin_controls_prices": {
-      "type": "boolean"
-    },
     "collateral_vault": {
       "type": "string"
     },

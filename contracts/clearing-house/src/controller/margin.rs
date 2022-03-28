@@ -10,7 +10,7 @@ use crate::helpers::constants::MARGIN_PRECISION;
 use crate::helpers::position::calculate_base_asset_value_and_pnl;
 
 pub fn calculate_margin_ratio(
-    deps: DepsMut, 
+    deps: &DepsMut, 
     user_addr: &Addr,
 ) -> Result<(u128, i128, u128, u128), ContractError> {
     let user = Users.load(deps.storage, user_addr)?;

@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "User",
+  "type": "object",
+  "required": [
+    "collateral",
+    "cumulative_deposits",
+    "positions_length",
+    "total_fee_paid",
+    "total_referee_discount",
+    "total_referral_reward",
+    "total_token_discount"
+  ],
+  "properties": {
+    "collateral": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "cumulative_deposits": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "positions_length": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "total_fee_paid": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "total_referee_discount": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "total_referral_reward": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "total_token_discount": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    }
+  }
+}

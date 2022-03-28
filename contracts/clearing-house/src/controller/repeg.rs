@@ -15,14 +15,14 @@ use crate::helpers::casting::cast_to_u128;
 use crate::helpers::markets::get_oracle_price;
 
 pub fn repeg(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     market_index: u64,
     price_oracle: &Addr,
     new_peg: u128,
     clock_slot: u64,
 ) -> Result<i128, ContractError> {
 
-    let market = Markets.load(deps.storage, market_index)?;
+    let mut market = Markets.load(deps.storage, market_index)?;
 
     let state = STATE.load(deps.storage)?;
     let oracle_guard_rails = state.oracle_guard_rails;

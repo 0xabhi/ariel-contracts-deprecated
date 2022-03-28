@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FullLiquidatorSharePercentageResponse",
+  "type": "object",
+  "required": [
+    "denominator"
+  ],
+  "properties": {
+    "denominator": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  }
+}

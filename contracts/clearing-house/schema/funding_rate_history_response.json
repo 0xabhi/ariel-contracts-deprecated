@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FundingRateHistoryResponse",
+  "type": "object",
+  "required": [
+    "cumulative_funding_rate_long",
+    "cumulative_funding_rate_short",
+    "funding_rate",
+    "mark_price_twap",
+    "market_index",
+    "oracle_price_twap",
+    "record_id",
+    "ts"
+  ],
+  "properties": {
+    "cumulative_funding_rate_long": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "cumulative_funding_rate_short": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "funding_rate": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "mark_price_twap": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "market_index": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "oracle_price_twap": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "record_id": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "ts": {
+      "type": "integer",
+      "format": "int64"
+    }
+  }
+}

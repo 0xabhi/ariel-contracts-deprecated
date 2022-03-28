@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DepositHistoryResponse",
+  "type": "object",
+  "required": [
+    "amount",
+    "collateral_before",
+    "cumulative_deposits_before",
+    "direction",
+    "record_id",
+    "ts",
+    "user"
+  ],
+  "properties": {
+    "amount": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "collateral_before": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "cumulative_deposits_before": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "direction": {
+      "$ref": "#/definitions/DepositDirection"
+    },
+    "record_id": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "ts": {
+      "type": "integer",
+      "format": "int64"
+    },
+    "user": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "DepositDirection": {
+      "type": "string",
+      "enum": [
+        "DEPOSIT",
+        "WITHDRAW"
+      ]
+    }
+  }
+}

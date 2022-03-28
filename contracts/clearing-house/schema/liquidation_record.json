@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LiquidationRecord",
+  "type": "object",
+  "required": [
+    "base_asset_value",
+    "base_asset_value_closed",
+    "collateral",
+    "fee_to_insurance_fund",
+    "fee_to_liquidator",
+    "liquidation_fee",
+    "liquidator",
+    "margin_ratio",
+    "partial",
+    "record_id",
+    "total_collateral",
+    "ts",
+    "unrealized_pnl",
+    "user"
+  ],
+  "properties": {
+    "base_asset_value": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "base_asset_value_closed": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "collateral": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "fee_to_insurance_fund": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "fee_to_liquidator": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "liquidation_fee": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "liquidator": {
+      "$ref": "#/definitions/Addr"
+    },
+    "margin_ratio": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "partial": {
+      "type": "boolean"
+    },
+    "record_id": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "total_collateral": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "ts": {
+      "type": "integer",
+      "format": "int64"
+    },
+    "unrealized_pnl": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "user": {
+      "$ref": "#/definitions/Addr"
+    }
+  },
+  "definitions": {
+    "Addr": {
+      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    }
+  }
+}

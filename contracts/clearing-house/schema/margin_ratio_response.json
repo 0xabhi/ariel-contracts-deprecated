@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MarginRatioResponse",
+  "type": "object",
+  "required": [
+    "margin_ratio_initial",
+    "margin_ratio_maintenance",
+    "margin_ratio_partial"
+  ],
+  "properties": {
+    "margin_ratio_initial": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "margin_ratio_maintenance": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "margin_ratio_partial": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    }
+  }
+}

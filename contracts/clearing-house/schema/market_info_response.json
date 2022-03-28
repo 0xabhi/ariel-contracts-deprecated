@@ -1,0 +1,167 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MarketInfoResponse",
+  "type": "object",
+  "required": [
+    "base_asset_amount",
+    "base_asset_amount_long",
+    "base_asset_amount_short",
+    "base_asset_reserve",
+    "cumulative_funding_rate_long",
+    "cumulative_funding_rate_short",
+    "cumulative_repeg_rebate_long",
+    "cumulative_repeg_rebate_short",
+    "funding_period",
+    "initialized",
+    "last_funding_rate",
+    "last_funding_rate_ts",
+    "last_mark_price_twap",
+    "last_mark_price_twap_ts",
+    "last_oracle_price",
+    "last_oracle_price_twap",
+    "last_oracle_price_twap_ts",
+    "market_name",
+    "minimum_trade_size",
+    "open_interest",
+    "oracle",
+    "oracle_source",
+    "peg_multiplier",
+    "quote_asset_reserve",
+    "sqrt_k",
+    "total_fee",
+    "total_fee_minus_distributions",
+    "total_fee_withdrawn"
+  ],
+  "properties": {
+    "base_asset_amount": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "base_asset_amount_long": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "base_asset_amount_short": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "base_asset_reserve": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "cumulative_funding_rate_long": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "cumulative_funding_rate_short": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "cumulative_repeg_rebate_long": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "cumulative_repeg_rebate_short": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "funding_period": {
+      "type": "integer",
+      "format": "int64"
+    },
+    "initialized": {
+      "type": "boolean"
+    },
+    "last_funding_rate": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "last_funding_rate_ts": {
+      "type": "integer",
+      "format": "int64"
+    },
+    "last_mark_price_twap": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "last_mark_price_twap_ts": {
+      "type": "integer",
+      "format": "int64"
+    },
+    "last_oracle_price": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "last_oracle_price_twap": {
+      "type": "integer",
+      "format": "int128"
+    },
+    "last_oracle_price_twap_ts": {
+      "type": "integer",
+      "format": "int64"
+    },
+    "market_name": {
+      "type": "string"
+    },
+    "minimum_trade_size": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "open_interest": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "oracle": {
+      "type": "string"
+    },
+    "oracle_source": {
+      "$ref": "#/definitions/OracleSource"
+    },
+    "peg_multiplier": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "quote_asset_reserve": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "sqrt_k": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "total_fee": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "total_fee_minus_distributions": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    },
+    "total_fee_withdrawn": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
+    }
+  },
+  "definitions": {
+    "OracleSource": {
+      "type": "string",
+      "enum": [
+        "Oracle",
+        "Simulated",
+        "Zero"
+      ]
+    }
+  }
+}

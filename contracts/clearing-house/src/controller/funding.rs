@@ -24,16 +24,16 @@ use crate::controller::amm;
 /// and the user's market position tracks how much funding the user been cumulatively paid for that market.
 /// If the two values are not equal, the user owes/is owed funding.
 pub fn settle_funding_payment(
-    deps: DepsMut, 
+    deps: &mut DepsMut, 
     user_addr: &Addr,
     now: i64,
 ) -> Result<(), ContractError> {
-    let user = Users.load(deps.storage, user_addr)?;
+    let mut user = Users.load(deps.storage, &user_addr.clone())?;
     let mut funding_payment: i128 = 0;
 
     if user.positions_length > 0 {
         for n in 1..user.positions_length {
-            let market_position = Positions.load(deps.storage, (user_addr, n))?;
+            let mut market_position = Positions.load(deps.storage, (user_addr, n))?;
             if market_position.base_asset_amount == 0 {
                 continue;
             }
@@ -49,14 +49,14 @@ pub fn settle_funding_payment(
                 let funding_payment_history_info_length = 
                     FundingPaymentHistoryInfo.load(deps.storage)?
                     .len.checked_add(1).ok_or_else(|| (ContractError::MathError))?;
-                FundingPaymentHistoryInfo.update(deps.storage, |i|-> Result<FundingPaymentInfo, ContractError> {
+                FundingPaymentHistoryInfo.update(deps.storage, |mut i|-> Result<FundingPaymentInfo, ContractError> {
                     i.len = funding_payment_history_info_length;
                     Ok(i)
                 });
                 FundingPaymentHistory.save(deps.storage, (funding_payment_history_info_length, user_addr), &FundingPaymentRecord {
                     ts: now,
                     record_id: funding_payment_history_info_length,
-                    user: *user_addr,
+                    user: user_addr.clone(),
                     market_index: market_position.market_index,
                     funding_payment: market_funding_rate_payment, //10e13
                     user_last_cumulative_funding: market_position.last_cumulative_funding_rate, //10e14
@@ -93,14 +93,14 @@ pub fn settle_funding_payment(
 }
 
 pub fn update_funding_rate(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     market_index: u64,
     price_oracle: &Addr,
     now: i64,
     clock_slot: u64,
     funding_paused: bool,
 ) -> Result<(), ContractError> {
-    let market = Markets.load(deps.storage, market_index)?;
+    let mut market = Markets.load(deps.storage, market_index)?;
     let guard_rails = STATE.load(deps.storage)?.oracle_guard_rails;      
     
     let time_since_last_update = now
@@ -188,13 +188,13 @@ pub fn update_funding_rate(
         market.amm.last_funding_rate_ts = now;
 
         Markets.update(deps.storage, market_index, |m| -> Result<Market, ContractError> {
-            Ok(market)
+            Ok(market.clone())
         })?;
 
         let funding_rate_history_info_length = 
             FundingRateHistoryInfo.load(deps.storage)?
             .len.checked_add(1).ok_or_else(|| (ContractError::MathError))?;
-        FundingRateHistoryInfo.update(deps.storage, |i : FundingRateInfo |-> Result<FundingRateInfo, ContractError> {
+        FundingRateHistoryInfo.update(deps.storage, |mut i : FundingRateInfo |-> Result<FundingRateInfo, ContractError> {
             i.len = funding_rate_history_info_length;
             Ok(i)
         });

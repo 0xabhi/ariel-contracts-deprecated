@@ -1,14 +1,310 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ExecuteMsg",
-  "anyOf": [
+  "oneOf": [
     {
       "type": "object",
       "required": [
-        "increment"
+        "initialize_market"
       ],
       "properties": {
-        "increment": {
+        "initialize_market": {
+          "type": "object",
+          "required": [
+            "amm_base_asset_reserve",
+            "amm_peg_multiplier",
+            "amm_periodicity",
+            "amm_quote_asset_reserve",
+            "market_index",
+            "market_name"
+          ],
+          "properties": {
+            "amm_base_asset_reserve": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "amm_peg_multiplier": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "amm_periodicity": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "amm_quote_asset_reserve": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "market_index": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "market_name": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "deposit_collateral"
+      ],
+      "properties": {
+        "deposit_collateral": {
+          "type": "object",
+          "required": [
+            "amount"
+          ],
+          "properties": {
+            "amount": {
+              "type": "integer",
+              "format": "int128"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "withdraw_collateral"
+      ],
+      "properties": {
+        "withdraw_collateral": {
+          "type": "object",
+          "required": [
+            "amount"
+          ],
+          "properties": {
+            "amount": {
+              "type": "integer",
+              "format": "int128"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "open_position"
+      ],
+      "properties": {
+        "open_position": {
+          "type": "object",
+          "required": [
+            "direction",
+            "limit_price",
+            "market_index",
+            "quote_asset_amount"
+          ],
+          "properties": {
+            "direction": {
+              "$ref": "#/definitions/PositionDirection"
+            },
+            "limit_price": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "market_index": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "quote_asset_amount": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "close_position"
+      ],
+      "properties": {
+        "close_position": {
+          "type": "object",
+          "required": [
+            "market_index"
+          ],
+          "properties": {
+            "market_index": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "liquidate"
+      ],
+      "properties": {
+        "liquidate": {
+          "type": "object",
+          "required": [
+            "market_index",
+            "user"
+          ],
+          "properties": {
+            "market_index": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "user": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "move_a_m_m_price"
+      ],
+      "properties": {
+        "move_a_m_m_price": {
+          "type": "object",
+          "required": [
+            "base_asset_reserve",
+            "market_index",
+            "quote_asset_reserve"
+          ],
+          "properties": {
+            "base_asset_reserve": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "market_index": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "quote_asset_reserve": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "withdraw_fees"
+      ],
+      "properties": {
+        "withdraw_fees": {
+          "type": "object",
+          "required": [
+            "amount",
+            "market_index"
+          ],
+          "properties": {
+            "amount": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "market_index": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "withdraw_from_insurance_vault_to_market"
+      ],
+      "properties": {
+        "withdraw_from_insurance_vault_to_market": {
+          "type": "object",
+          "required": [
+            "amount",
+            "market_index"
+          ],
+          "properties": {
+            "amount": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "market_index": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "repeg_a_m_m_curve"
+      ],
+      "properties": {
+        "repeg_a_m_m_curve": {
+          "type": "object",
+          "required": [
+            "market_index",
+            "new_peg_candidate"
+          ],
+          "properties": {
+            "market_index": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "new_peg_candidate": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "settle_funding_payment"
+      ],
+      "properties": {
+        "settle_funding_payment": {
           "type": "object"
         }
       },
@@ -17,23 +313,486 @@
     {
       "type": "object",
       "required": [
-        "reset"
+        "update_funding_rate"
       ],
       "properties": {
-        "reset": {
+        "update_funding_rate": {
           "type": "object",
           "required": [
-            "count"
+            "market_index"
           ],
           "properties": {
-            "count": {
+            "market_index": {
               "type": "integer",
-              "format": "int32"
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_k"
+      ],
+      "properties": {
+        "update_k": {
+          "type": "object",
+          "required": [
+            "market_index",
+            "sqrt_k"
+          ],
+          "properties": {
+            "market_index": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "sqrt_k": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_market_minimum_trade_size"
+      ],
+      "properties": {
+        "update_market_minimum_trade_size": {
+          "type": "object",
+          "required": [
+            "market_index",
+            "minimum_trade_size"
+          ],
+          "properties": {
+            "market_index": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "minimum_trade_size": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_margin_ratio"
+      ],
+      "properties": {
+        "update_margin_ratio": {
+          "type": "object",
+          "required": [
+            "margin_ratio_initial",
+            "margin_ratio_maintenance",
+            "margin_ratio_partial"
+          ],
+          "properties": {
+            "margin_ratio_initial": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "margin_ratio_maintenance": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "margin_ratio_partial": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_partial_liquidation_close_percentage"
+      ],
+      "properties": {
+        "update_partial_liquidation_close_percentage": {
+          "type": "object",
+          "required": [
+            "denominator",
+            "numerator"
+          ],
+          "properties": {
+            "denominator": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "numerator": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_partial_liquidation_penalty_percentage"
+      ],
+      "properties": {
+        "update_partial_liquidation_penalty_percentage": {
+          "type": "object",
+          "required": [
+            "denominator",
+            "numerator"
+          ],
+          "properties": {
+            "denominator": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "numerator": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_full_liquidation_penalty_percentage"
+      ],
+      "properties": {
+        "update_full_liquidation_penalty_percentage": {
+          "type": "object",
+          "required": [
+            "denominator",
+            "numerator"
+          ],
+          "properties": {
+            "denominator": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "numerator": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_partial_liquidation_liquidator_share_denominator"
+      ],
+      "properties": {
+        "update_partial_liquidation_liquidator_share_denominator": {
+          "type": "object",
+          "required": [
+            "denominator"
+          ],
+          "properties": {
+            "denominator": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_full_liquidation_liquidator_share_denominator"
+      ],
+      "properties": {
+        "update_full_liquidation_liquidator_share_denominator": {
+          "type": "object",
+          "required": [
+            "denominator"
+          ],
+          "properties": {
+            "denominator": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_fee"
+      ],
+      "properties": {
+        "update_fee": {
+          "type": "object",
+          "required": [
+            "fee_denominator",
+            "fee_numerator",
+            "first_tier",
+            "fourth_tier",
+            "referee_discount_denominator",
+            "referee_discount_numerator",
+            "referrer_reward_denominator",
+            "referrer_reward_numerator",
+            "second_tier",
+            "third_tier"
+          ],
+          "properties": {
+            "fee_denominator": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "fee_numerator": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "first_tier": {
+              "$ref": "#/definitions/DiscountTokenTier"
+            },
+            "fourth_tier": {
+              "$ref": "#/definitions/DiscountTokenTier"
+            },
+            "referee_discount_denominator": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "referee_discount_numerator": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "referrer_reward_denominator": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "referrer_reward_numerator": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "second_tier": {
+              "$ref": "#/definitions/DiscountTokenTier"
+            },
+            "third_tier": {
+              "$ref": "#/definitions/DiscountTokenTier"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_orace_guard_rails"
+      ],
+      "properties": {
+        "update_orace_guard_rails": {
+          "type": "object",
+          "required": [
+            "confidence_interval_max_size",
+            "mark_oracle_divergence_denominator",
+            "mark_oracle_divergence_numerator",
+            "slots_before_stale",
+            "too_volatile_ratio",
+            "use_for_liquidations"
+          ],
+          "properties": {
+            "confidence_interval_max_size": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "mark_oracle_divergence_denominator": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "mark_oracle_divergence_numerator": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
+            "slots_before_stale": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "too_volatile_ratio": {
+              "type": "integer",
+              "format": "int128"
+            },
+            "use_for_liquidations": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_admin"
+      ],
+      "properties": {
+        "update_admin": {
+          "type": "object",
+          "required": [
+            "admin"
+          ],
+          "properties": {
+            "admin": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_max_deposit"
+      ],
+      "properties": {
+        "update_max_deposit": {
+          "type": "object",
+          "required": [
+            "max_deposit"
+          ],
+          "properties": {
+            "max_deposit": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_exchange_paused"
+      ],
+      "properties": {
+        "update_exchange_paused": {
+          "type": "object",
+          "required": [
+            "exchange_paused"
+          ],
+          "properties": {
+            "exchange_paused": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "disable_admin_controls_prices"
+      ],
+      "properties": {
+        "disable_admin_controls_prices": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_funding_paused"
+      ],
+      "properties": {
+        "update_funding_paused": {
+          "type": "object",
+          "required": [
+            "funding_paused"
+          ],
+          "properties": {
+            "funding_paused": {
+              "type": "boolean"
             }
           }
         }
       },
       "additionalProperties": false
     }
-  ]
+  ],
+  "definitions": {
+    "DiscountTokenTier": {
+      "type": "object",
+      "required": [
+        "discount_denominator",
+        "discount_numerator",
+        "minimum_balance"
+      ],
+      "properties": {
+        "discount_denominator": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "discount_numerator": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "minimum_balance": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
+    "PositionDirection": {
+      "type": "string",
+      "enum": [
+        "Long",
+        "Short"
+      ]
+    }
+  }
 }
