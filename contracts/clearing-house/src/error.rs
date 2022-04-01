@@ -85,4 +85,50 @@ pub enum ContractError {
     InvalidFundingProfitability,
     #[error("Casting Failure")]
     CastingFailure,
-}
+    #[error("Oracle offset limit price below zero")]
+    InvalidOracleOffset,
+    #[error("Could not find oracle to calculate oracle offset limit price")]
+    OracleNotFoundToOffset,
+    #[error("Invalid Order")]
+    InvalidOrder,
+    #[error("User has no order")]
+    UserHasNoOrder,
+    #[error("Order Amount Too Small")]
+    OrderAmountTooSmall,
+    #[error("Max number of orders taken")]
+    MaxNumberOfOrders,
+    #[error("Order does not exist")]
+    OrderDoesNotExist,
+    #[error("Order not open")]
+    OrderNotOpen,
+    #[error("CouldNotFillOrder")]
+    CouldNotFillOrder,
+    #[error("Reduce only order increased risk")]
+    ReduceOnlyOrderIncreasedRisk,
+    #[error("Order state already initialized")]
+    OrderStateAlreadyInitialized,
+    #[error("Unable to load AccountLoader")]
+    UnableToLoadAccountLoader,
+    #[error("Trade Size Too Large")]
+    TradeSizeTooLarge,
+    #[error("Unable to write to remaining account")]
+    UnableToWriteToRemainingAccount,
+    #[error("User cant refer themselves")]
+    UserCantReferThemselves,
+    #[error("Did not receive expected referrer")]
+    DidNotReceiveExpectedReferrer,
+    #[error("Could not deserialize referrer")]
+    CouldNotDeserializeReferrer,
+    #[error("Market order must be in place and fill")]
+    MarketOrderMustBeInPlaceAndFill,
+    #[error("User Order Id Already In Use")]
+    UserOrderIdAlreadyInUse,
+    #[error("No positions liquidatable")]
+    NoPositionsLiquidatable,
+    #[error("Invalid Margin Ratio")]
+    InvalidMarginRatio,
+    #[error("Cant Cancel Post Only Order")]
+    CantCancelPostOnlyOrder,
+    #[error("CantExpireOrders")]
+    CantExpireOrders,
+} 
