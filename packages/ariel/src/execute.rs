@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{PositionDirection, DiscountTokenTier};
+use crate::types::{DiscountTokenTier, OracleSource, PositionDirection};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -22,6 +22,10 @@ pub enum ExecuteMsg {
         amm_quote_asset_reserve: u128,
         amm_periodicity: u128,
         amm_peg_multiplier: u128,
+        oracle_source: OracleSource,
+        margin_ratio_initial: u32,
+        margin_ratio_partial: u32,
+        margin_ratio_maintenance: u32,
     },
     //deposit collateral, updates user struct
     DepositCollateral {

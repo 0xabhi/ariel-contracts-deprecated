@@ -52,7 +52,7 @@ pub fn settle_funding_payment(
                 FundingPaymentHistoryInfo.update(deps.storage, |mut i|-> Result<FundingPaymentInfo, ContractError> {
                     i.len = funding_payment_history_info_length;
                     Ok(i)
-                });
+                })?;
                 FundingPaymentHistory.save(deps.storage, (funding_payment_history_info_length, user_addr), &FundingPaymentRecord {
                     ts: now,
                     record_id: funding_payment_history_info_length,
@@ -197,7 +197,7 @@ pub fn update_funding_rate(
         FundingRateHistoryInfo.update(deps.storage, |mut i : FundingRateInfo |-> Result<FundingRateInfo, ContractError> {
             i.len = funding_rate_history_info_length;
             Ok(i)
-        });
+        })?;
         FundingRateHistory.save(deps.storage, funding_rate_history_info_length, &FundingRateRecord {
             ts: now,
             record_id: funding_rate_history_info_length,

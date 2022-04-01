@@ -77,10 +77,12 @@ impl Default for DepositDirection {
 pub enum OracleSource {
     Oracle,
     Simulated,
-    Zero,
+    Zero
 }
 
+
 impl Default for OracleSource {
+    // UpOnly
     fn default() -> Self {
         OracleSource::Oracle
     }
