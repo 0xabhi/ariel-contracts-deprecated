@@ -1,15 +1,24 @@
+use crate::msg::*;
+use crate::state::{State, STATE};
+use cosmwasm_std::Addr;
+
+use crate::contract::*;
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
-    use cosmwasm_std::{coins, from_binary};
- 
+    use cosmwasm_std::{coins, from_binary, Uint128};
+
     // initlization and verify data
     #[test]
     fn proper_initialization() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
 
-        let msg = InstantiateMsg { count: 17 };
+        let msg = InstantiateMsg {
+            clearing_house: Addr::unchecked("testaddr"),
+            denom_stable: "uusd".to_string(),
+        };
         let info = mock_info("creator", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success
@@ -17,86 +26,70 @@ mod tests {
         assert_eq!(0, res.messages.len());
 
         // it worked, let's query the state
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(17, value.count);
+        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetConfig {}).unwrap();
+        let value: ConfigResponse = from_binary(&res).unwrap();
+        assert_eq!( Addr::unchecked("testaddr"), value.clearing_house);
+        assert_eq!("creator", value.admin);
+        assert_eq!("uusd", value.denom);
+
     }
 
-    // admin only functions & fails
+
     #[test]
-    fn increment() {
+    fn proper_deposit() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
 
-        let msg = InstantiateMsg { count: 17 };
-        let info = mock_info("creator", &coins(2, "token"));
-        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let msg = InstantiateMsg {
+            clearing_house: Addr::unchecked("testaddr"),
+            denom_stable: "uusd".to_string(),
+        };
+        let info = mock_info("creator", &coins(1000, "earth"));
 
-        // beneficiary can release it
-        let info = mock_info("anyone", &coins(2, "token"));
-        let msg = ExecuteMsg::Increment {};
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        // we can just call .unwrap() to assert this was a success
+        instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        
+        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetBalance {}).unwrap();
+        let value: BalanceResponse = from_binary(&res).unwrap();
+        assert_eq!(Uint128::from(0u64), value.balance);
 
-        // should increase counter by 1
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(18, value.count);
+        // let dep_msg = ExecuteMsg::Deposit{};
+        let dep_info = mock_info("testaddr", &coins(1000000, "uusd"));
+
+
+        deposit(deps.as_mut(),  dep_info).unwrap();
+        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetBalance {}).unwrap();
+        let value: BalanceResponse = from_binary(&res).unwrap();
+        assert_eq!(Uint128::from(1000000u64), value.balance);
+
     }
 
-    // clearing house only functions & fails
     #[test]
-    fn reset() {
+    fn proper_admin_clearing_house_update() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
 
-        let msg = InstantiateMsg { count: 17 };
-        let info = mock_info("creator", &coins(2, "token"));
-        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let msg = InstantiateMsg {
+            clearing_house: Addr::unchecked("testaddr"),
+            denom_stable: "uusd".to_string(),
+        };
+        let info = mock_info("creator", &coins(1000, "earth"));
 
-        // beneficiary can release it
-        let unauth_info = mock_info("anyone", &coins(2, "token"));
-        let msg = ExecuteMsg::Reset { count: 5 };
-        let res = execute(deps.as_mut(), mock_env(), unauth_info, msg);
-        match res {
-            Err(ContractError::Unauthorized {}) => {}
-            _ => panic!("Must return unauthorized error"),
-        }
- 
-        // only the original creator can reset the counter
-        let auth_info = mock_info("creator", &coins(2, "token"));
-        let msg = ExecuteMsg::Reset { count: 5 };
-        let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
 
-        // should now be 5
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(5, value.count);
-    }
+        // it worked, let's query the state
+        
+        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetConfig {}).unwrap();
+        let value: ConfigResponse = from_binary(&res).unwrap();
+        assert_eq!( Addr::unchecked("testaddr"), value.clearing_house);
+        let dep_info = mock_info("creator", &coins(1000000, "uusd"));
 
-    // clearing house deposit & withdraw
-    #[test]
-    fn resetA() {
-        let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
-
-        let msg = InstantiateMsg { count: 17 };
-        let info = mock_info("creator", &coins(2, "token"));
-        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-        // beneficiary can release it
-        let unauth_info = mock_info("anyone", &coins(2, "token"));
-        let msg = ExecuteMsg::Reset { count: 5 };
-        let res = execute(deps.as_mut(), mock_env(), unauth_info, msg);
-        match res {
-            Err(ContractError::Unauthorized {}) => {}
-            _ => panic!("Must return unauthorized error"),
-        }
-
-        // only the original creator can reset the counter
-        let auth_info = mock_info("creator", &coins(2, "token"));
-        let msg = ExecuteMsg::Reset { count: 5 };
-        let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
-
-        // should now be 5
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(5, value.count);
+        change_clearing_house(deps.as_mut(),  dep_info.clone(), Addr::unchecked("newclearing")).unwrap();
+        change_admin(deps.as_mut(),  dep_info, Addr::unchecked("newadmin")).unwrap();
+        
+        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetConfig {}).unwrap();
+        let value: ConfigResponse = from_binary(&res).unwrap();
+        assert_eq!( Addr::unchecked("newclearing"), value.clearing_house);
+        assert_eq!("newadmin", value.admin);
     }
 }

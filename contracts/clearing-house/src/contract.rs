@@ -14,7 +14,7 @@ use crate::helpers::constants::*;
 use crate::helpers::withdrawal::calculate_withdrawal_amounts;
 use crate::states::curve_history::*;
 use crate::states::liquidation_history::{LiquidationHistory, LiquidationHistoryInfo};
-use crate::states::market::{Market, Markets};
+use crate::states::market::{Amm, Market, Markets};
 use crate::states::state::{State, STATE};
 use crate::states::trade_history::{TradeHistory, TradeHistoryInfo};
 use crate::states::user::{is_for, Position, Positions, User, Users};
@@ -135,6 +135,7 @@ pub fn execute(
             _env,
             info,
             market_index,
+            market_name,
             amm_base_asset_reserve,
             amm_quote_asset_reserve,
             amm_periodicity,
@@ -295,6 +296,7 @@ pub fn try_initialize_market(
     env: Env,
     info: MessageInfo,
     market_index: u64,
+    market_name: String,
     amm_base_asset_reserve: u128,
     amm_quote_asset_reserve: u128,
     amm_periodicity: i64,
@@ -327,25 +329,69 @@ pub fn try_initialize_market(
         .ok_or_else(|| return ContractError::MathError {})?;
 
     // Verify oracle is readable
-    let OraclePriceData {
-        price: oracle_price,
-        ..
-    } = match oracle_source {
-        OracleSource::Pyth => market
-            .amm
-            .get_pyth_price(&ctx.accounts.oracle, clock_slot)
-            .unwrap(),
-        OracleSource::Switchboard => market
-            .amm
-            .get_switchboard_price(&ctx.accounts.oracle, clock_slot)
-            .unwrap(),
-    };
+    //Todo() get the oracle fix here
+    // let OraclePriceData {
+    //     price: oracle_price,
+    //     ..
+    // } = match oracle_source {
+    //     OracleSource::Oracle => market
+    //         .amm
+    //         .get_pyth_price(&ctx.accounts.oracle, clock_slot)
+    //         .unwrap(),
+    //     OracleSource::Switchboard => market
+    //         .amm
+    //         .get_switchboard_price(&ctx.accounts.oracle, clock_slot)
+    //         .unwrap(),
+    // };
 
-    let last_oracle_price_twap = match helper::market.amm.get_oracle_twap(&ctx.accounts.oracle)? {
-        Some(last_oracle_price_twap) => last_oracle_price_twap,
-        None => oracle_price,
-    };
+    // let last_oracle_price_twap = match oracle_source {
+    //     OracleSource::Oracle => market.amm.get_pyth_twap(&ctx.accounts.oracle)?,
+    //     OracleSource::Simulated => oracle_price,
+    // };
 
+    // validate_margin(
+    //     margin_ratio_initial,
+    //     margin_ratio_initial,
+    //     margin_ratio_maintenance,
+    // )?;
+
+    // let market = Market {
+    //     market_name: market_name,
+    //     initialized: true,
+    //     base_asset_amount_long: 0,
+    //     base_asset_amount_short: 0,
+    //     base_asset_amount: 0,
+    //     open_interest: 0,
+    //     margin_ratio_initial, // unit is 20% (+2 decimal places)
+    //     margin_ratio_partial,
+    //     margin_ratio_maintenance,
+    //     amm: Amm {
+    //         oracle: todo!(),
+    //         oracle_source,
+    //         base_asset_reserve: amm_base_asset_reserve,
+    //         quote_asset_reserve: amm_quote_asset_reserve,
+    //         cumulative_repeg_rebate_long: 0,
+    //         cumulative_repeg_rebate_short: 0,
+    //         cumulative_funding_rate_long: 0,
+    //         cumulative_funding_rate_short: 0,
+    //         last_funding_rate: 0,
+    //         last_funding_rate_ts: cast_to_i64(now)?,
+    //         funding_period: amm_periodicity,
+    //         last_oracle_price_twap: todo!(),
+    //         last_mark_price_twap: init_mark_price,
+    //         last_mark_price_twap_ts: cast_to_i64(now)?,
+    //         sqrt_k: amm_base_asset_reserve,
+    //         peg_multiplier: amm_peg_multiplier,
+    //         total_fee: 0,
+    //         total_fee_minus_distributions: 0,
+    //         total_fee_withdrawn: 0,
+    //         minimum_quote_asset_trade_size: 10000000,
+    //         last_oracle_price_twap_ts: now,
+    //         last_oracle_price: oracle_price,
+    //         minimum_base_asset_trade_size: 10000000,
+    //     },
+    // };
+    // Markets.save(deps.storage, market_index, &market)?;
     Ok(Response::new().add_attribute("method", "try_initialize_market"))
 }
 
@@ -378,7 +424,7 @@ pub fn try_deposit_collateral(
         .ok_or_else(|| return ContractError::MathError {})?;
 
     controller::funding::settle_funding_payment(&mut deps, &user_address, cast_to_i64(now)?)?;
-    //get and send tokens to collateral v
+    //get and send tokens to collateral vault
     let state = STATE.load(deps.storage)?;
     let bankMsg = BankMsg::Send {
         to_address: state.collateral_vault.into_string(),
@@ -402,7 +448,7 @@ pub fn try_deposit_collateral(
         &DepositRecord {
             ts: cast_to_i64(now)?,
             record_id: cast(deposit_history_info_length)?,
-            user: user_address,
+            user: user_address.clone(),
             direction: DepositDirection::DEPOSIT,
             collateral_before,
             cumulative_deposits_before,
@@ -468,12 +514,14 @@ pub fn try_withdraw_collateral(
         .checked_sub(cast(insurance_account_withdrawal)?)
         .ok_or_else(|| (ContractError::MathError))?;
 
-    let (_total_collateral, _unrealized_pnl, _base_asset_value, margin_ratio) =
-        calculate_margin_ratio(&deps, &user_address)?;
+    // TODO: change this to meets initial margin requirement from margin.rs
+    // let (_total_collateral, _unrealized_pnl, _base_asset_value, margin_ratio) =
+    //     calculate_margin_ratio(&deps, &user_address)?;
 
-    if margin_ratio < state.margin_ratio_initial {
-        return Err(ContractError::InsufficientCollateral.into());
-    }
+    // if margin_ratio < state.margin_ratio_initial {
+    //     return Err(ContractError::InsufficientCollateral.into());
+    // }
+
     let mut messages: Vec<CosmosMsg> = vec![];
 
     messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -507,7 +555,7 @@ pub fn try_withdraw_collateral(
             i.len = deposit_history_info_length;
             Ok(i)
         },
-    );
+    )?;
     DepositHistory.save(
         deps.storage,
         (deposit_history_info_length as u64, user_address.clone()),

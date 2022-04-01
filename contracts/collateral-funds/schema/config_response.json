@@ -1,17 +1,17 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "InstantiateMsg",
+  "title": "ConfigResponse",
   "type": "object",
   "required": [
-    "clearing_house",
-    "denom_stable"
+    "admin",
+    "clearing_house"
   ],
   "properties": {
-    "clearing_house": {
+    "admin": {
       "$ref": "#/definitions/Addr"
     },
-    "denom_stable": {
-      "type": "string"
+    "clearing_house": {
+      "$ref": "#/definitions/Addr"
     }
   },
   "definitions": {

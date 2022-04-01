@@ -1,3 +1,5 @@
+use crate::state::{State, STATE};
+use crate::msg::*;
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -20,7 +20,7 @@ pub enum ExecuteMsg {
         market_name: String,
         amm_base_asset_reserve: u128,
         amm_quote_asset_reserve: u128,
-        amm_periodicity: u128,
+        amm_periodicity: i64,
         amm_peg_multiplier: u128,
         oracle_source: OracleSource,
         margin_ratio_initial: u32,

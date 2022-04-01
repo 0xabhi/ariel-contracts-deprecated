@@ -11,10 +11,10 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    ChangeAdmin { new_admin : Addr },
-    ChangeClearingHouse { new_clearing_house: Addr },
+    UpdateAdmin { new_admin : Addr },
+    UpdateClearingHouse { new_clearing_house: Addr },
     Deposit {},
-    Withdraw { to: Addr, amount: u128 },
+    Withdraw { to_address: Addr, amount: u128 },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -30,6 +30,7 @@ pub enum QueryMsg {
 pub struct ConfigResponse {
     pub clearing_house: Addr,
     pub admin : Addr,
+    pub denom: String
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
