@@ -15,6 +15,9 @@ pub struct Market {
     pub base_asset_amount: i128, // net market bias
     pub open_interest: u128,     // number of users in a position
     pub amm : Amm,
+    pub margin_ratio_initial: u32,
+    pub margin_ratio_partial: u32,
+    pub margin_ratio_maintenance: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -38,11 +41,10 @@ pub struct Amm {
     pub total_fee: u128,
     pub total_fee_minus_distributions: u128,
     pub total_fee_withdrawn: u128,
-    pub minimum_trade_size: u128,
+    pub minimum_quote_asset_trade_size: u128,
     pub last_oracle_price_twap_ts: i64,
     pub last_oracle_price: i128,
+    pub minimum_base_asset_trade_size: u128,
 }
-
-
 
 pub const Markets: Map<u64, Market> = Map::new("markets");
