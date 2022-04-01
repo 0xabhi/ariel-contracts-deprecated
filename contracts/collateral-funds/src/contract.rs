@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -92,7 +90,7 @@ pub fn change_clearing_house(
     if info.sender != state.admin {
         return Err(ContractError::UnauthorizedAdmin {});
     }
-    STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
+    STATE.update(deps.storage, |mut state| -> Result<State, ContractError> {
         state.clearing_house = clearing_house.clone();
         Ok(state)
     })?;
@@ -116,7 +114,7 @@ pub fn deposit(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractErr
     }
 
     state.total_deposit = state.total_deposit.checked_add(info.funds[0].amount)?;
-    STATE.update(deps.storage, |state| -> Result<_, ContractError> {
+    STATE.update(deps.storage, |_s| -> Result<State, ContractError> {
         Ok(state)
     })?;
     Ok(Response::new()
@@ -145,10 +143,10 @@ pub fn withdraw(
 
     let send_tx_msg = BankMsg::Send {
         to_address: to.into_string(),
-        amount: coins(amount.u128(), state.denom_stable),
+        amount: coins(amount.u128(), state.denom_stable.clone()),
     };
 
-    STATE.update(deps.storage, |state| -> Result<_, ContractError> {
+    STATE.update(deps.storage, |_s| -> Result<State, ContractError> {
         Ok(state)
     })?;
 
