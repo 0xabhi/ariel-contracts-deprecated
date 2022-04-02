@@ -3,6 +3,7 @@ mod error;
 pub mod states;
 pub mod controller;
 pub mod helpers;
+pub mod views;
 
 #[cfg(test)]
 mod tests;

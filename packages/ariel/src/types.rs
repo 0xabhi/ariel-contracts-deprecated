@@ -1,6 +1,8 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use cosmwasm_std::Addr;
+
 #[derive(Clone, Debug, JsonSchema, Copy, Serialize, Deserialize, PartialEq)]
 pub enum PositionDirection {
     Long,
@@ -87,3 +89,68 @@ impl Default for OracleSource {
         OracleSource::Oracle
     }
 }
+
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Order {
+    pub status: OrderStatus,
+    pub order_type: OrderType,
+    pub ts: i64,
+    pub order_id: u128,
+    pub user_order_id: u8,
+    pub market_index: u64,
+    pub price: u128,
+    pub user_base_asset_amount: i128,
+    pub quote_asset_amount: u128,
+    pub base_asset_amount: u128,
+    pub base_asset_amount_filled: u128,
+    pub quote_asset_amount_filled: u128,
+    pub fee: u128,
+    pub direction: PositionDirection,
+    pub reduce_only: bool,
+    pub post_only: bool,
+    pub immediate_or_cancel: bool,
+    pub discount_tier: OrderDiscountTier,
+    pub trigger_price: u128,
+    pub trigger_condition: OrderTriggerCondition,
+    pub referrer: Addr,
+    pub oracle_price_offset: i128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum OrderStatus {
+    Init,
+    Open,
+}
+
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum OrderType {
+    Market,
+    Limit,
+    TriggerMarket,
+    TriggerLimit,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum OrderTriggerCondition {
+    Above,
+    Below,
+}
+
+impl Default for OrderTriggerCondition {
+    // UpOnly
+    fn default() -> Self {
+        OrderTriggerCondition::Above
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum OrderDiscountTier {
+    None,
+    First,
+    Second,
+    Third,
+    Fourth,
+}
+

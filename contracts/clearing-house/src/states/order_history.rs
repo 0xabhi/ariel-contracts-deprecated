@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::{Addr};
 use cw_storage_plus::{Map, Item};
 
-use crate::states::order::Order;
+use ariel::types::Order;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum OrderAction {

@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{DiscountTokenTier, OracleSource, PositionDirection};
+use crate::types::{DiscountTokenTier, OracleSource, Order, PositionDirection};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -29,11 +29,11 @@ pub enum ExecuteMsg {
     },
     //deposit collateral, updates user struct
     DepositCollateral {
-        amount: i128,
+        amount: u64,
     },
     //user function withdraw collateral, updates user struct
     WithdrawCollateral {
-        amount: i128,
+        amount: u64,
     },
     OpenPosition {
         direction: PositionDirection,
@@ -44,6 +44,25 @@ pub enum ExecuteMsg {
     ClosePosition {
         market_index: u64,
     },
+
+    // order related messages
+    PlaceOrder {
+        order: Order,
+    },
+    CancelOrder {
+        order_id: u128,
+    },
+    CancelOrderByUserId {
+        user_order_id: u8,
+    },
+    ExpireOrders {},
+    FillOrder {
+        order_id: u128,
+    },
+    PlaceAndFillOrder {
+        order: Order,
+    },
+
     // liquidation policy to be discussed
     Liquidate {
         user: String,
@@ -73,6 +92,13 @@ pub enum ExecuteMsg {
         market_index: u64,
     },
 
+    UpdateAMMOracleTwap {
+        market_index: u64,
+    },
+
+    ResetAMMOracleTwap {
+        market_index: u64,
+    },
     //user calls it we get the user identification from msg address sender
     SettleFundingPayment {},
     UpdateFundingRate {
@@ -128,6 +154,27 @@ pub enum ExecuteMsg {
         slots_before_stale: i64,
         confidence_interval_max_size: u128,
         too_volatile_ratio: i128,
+    },
+
+    UpdateOrderFillerRewardSystem {
+        reward_numerator: u128,
+        reward_denominator: u128,
+        time_based_reward_lower_bound: u128,
+    },
+    UpdateMarketOracle {
+        market_index: u64,
+        oracle: String,
+        oracle_source: OracleSource,
+    },
+
+    UpdateMarketMinimumQuoteAssetTradeSize {
+        market_index: u64,
+        minimum_trade_size: u128,
+    },
+
+    UpdateMarketMinimumBaseAssetTradeSize {
+        market_index: u64,
+        minimum_trade_size: u128,
     },
     // will move to admin controller
     UpdateAdmin {
