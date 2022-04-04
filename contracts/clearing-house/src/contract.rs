@@ -3,8 +3,9 @@ use cosmwasm_std::{
 };
 
 use cw2::set_contract_version;
+use cw_utils::maybe_addr;
 
-use crate::states::state::{State, STATE};
+use crate::states::state::{State, STATE, ADMIN};
 
 use ariel::execute::{ExecuteMsg, InstantiateMsg};
 use ariel::helper::addr_validate_to_lower;
@@ -66,7 +67,6 @@ pub fn instantiate(
         too_volatile_ratio: 0,
     };
     let state = State {
-        admin: addr_validate_to_lower(deps.api, &msg.admin).unwrap(),
         exchange_paused: true,
         funding_paused: true,
         admin_controls_prices: true,
@@ -89,6 +89,7 @@ pub fn instantiate(
     };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     STATE.save(deps.storage, &state)?;
+    ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("owner", info.sender))
@@ -101,6 +102,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let api = deps.api;
     match msg {
         ExecuteMsg::InitializeMarket {
             market_index,
@@ -276,7 +278,7 @@ pub fn execute(
             confidence_interval_max_size,
             too_volatile_ratio,
         ),
-        ExecuteMsg::UpdateAdmin { admin } => try_update_admin(deps, info, admin),
+        ExecuteMsg::UpdateAdmin { admin } => Ok(ADMIN.execute_update_admin(deps, info, maybe_addr(api, admin.into())?)?),
         ExecuteMsg::UpdateMaxDeposit { max_deposit } => {
             try_update_max_deposit(deps, info, max_deposit)
         }

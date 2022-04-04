@@ -5,10 +5,11 @@ use cosmwasm_std::{
     Uint128,
 };
 use cw2::set_contract_version;
+use cw_utils::maybe_addr;
 
 use crate::error::ContractError;
 use crate::msg::{BalanceResponse, ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, STATE};
+use crate::state::{State, STATE, ADMIN};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:insurance-funds";
@@ -16,7 +17,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -26,12 +27,11 @@ pub fn instantiate(
     let state = State {
         total_deposit: Uint128::zero(),
         clearing_house: msg.clearing_house,
-        admin: info.sender.clone(),
         denom_stable: msg.denom_stable,
     };
 
     STATE.save(deps.storage, &state)?;
-
+    ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("clearing_house", info.sender.clone())
@@ -45,8 +45,11 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let api = deps.api;
     match msg {
-        ExecuteMsg::UpdateAdmin { new_admin } => change_admin(deps, info, new_admin),
+        ExecuteMsg::UpdateAdmin { new_admin } => {
+            Ok(ADMIN.execute_update_admin(deps, info, maybe_addr(api, new_admin.into())?)?)
+        },
         ExecuteMsg::UpdateClearingHouse { new_clearing_house } => {
             change_clearing_house(deps, info, new_clearing_house)
         }
@@ -63,33 +66,14 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn change_admin(
-    deps: DepsMut,
-    info: MessageInfo,
-    new_admin: Addr,
-) -> Result<Response, ContractError> {
-    let state: State = STATE.load(deps.storage)?;
-    if info.sender != state.admin {
-        return Err(ContractError::UnauthorizedAdmin {});
-    }
-    STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        state.admin = new_admin.clone();
-        Ok(state)
-    })?;
-    Ok(Response::new()
-        .add_attribute("method", "change_admin")
-        .add_attribute("new_admin", new_admin.clone()))
-}
+
 
 pub fn change_clearing_house(
     deps: DepsMut,
     info: MessageInfo,
     clearing_house: Addr,
 ) -> Result<Response, ContractError> {
-    let state: State = STATE.load(deps.storage)?;
-    if info.sender != state.admin {
-        return Err(ContractError::UnauthorizedAdmin {});
-    }
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
         state.clearing_house = clearing_house.clone();
         Ok(state)
@@ -114,7 +98,7 @@ pub fn deposit(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractErr
     }
 
     state.total_deposit = state.total_deposit.checked_add(info.funds[0].amount)?;
-    STATE.update(deps.storage, |state| -> Result<_, ContractError> {
+    STATE.update(deps.storage, |_state| -> Result<_, ContractError> {
         Ok(state)
     })?;
     Ok(Response::new()
@@ -158,9 +142,10 @@ pub fn withdraw(
 
 fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let state = STATE.load(deps.storage)?;
+    let res = ADMIN.query_admin(deps).unwrap();
     Ok(ConfigResponse {
         clearing_house: state.clearing_house,
-        admin: state.admin,
+        admin: res.admin.unwrap(),
         denom: state.denom_stable,
     })
 }
@@ -168,6 +153,6 @@ fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 fn query_balance(deps: Deps) -> StdResult<BalanceResponse> {
     let state = STATE.load(deps.storage)?;
     Ok(BalanceResponse {
-        balance: state.total_deposit.u128(),
+        balance: state.total_deposit,
     })
 }

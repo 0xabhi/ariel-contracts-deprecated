@@ -9,6 +9,7 @@ use crate::states::curve_history::*;
 
 use crate::states::deposit_history::*;
 use crate::states::market::{Amm, Market, Markets};
+use crate::states::state::ADMIN;
 use crate::states::state::{State, STATE};
 use crate::states::user::{is_for, Position, Positions, User, Users};
 
@@ -41,6 +42,7 @@ pub fn try_initialize_market(
     margin_ratio_partial: u32,
     margin_ratio_maintenance: u32,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let now = env.block.time.seconds();
     let clock_slot = now.clone();
 
@@ -519,6 +521,7 @@ pub fn try_withdraw_fees(
     market_index: u64,
     amount: u64,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let state = STATE.load(deps.storage)?;
     let mut market = Markets.load(deps.storage, market_index)?;
 
@@ -561,10 +564,8 @@ pub fn try_withdraw_from_insurance_vault_to_market(
     market_index: u64,
     amount: u64,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let state = STATE.load(deps.storage)?;
-    if info.sender != state.admin {
-        return Err(ContractError::Unauthorized {});
-    }
 
     let mut market = Markets.load(deps.storage, market_index)?;
     market.amm.total_fee_minus_distributions = market
@@ -703,6 +704,7 @@ pub fn try_update_funding_rate(
     info: MessageInfo,
     market_index: u64,
 ) -> Result<Response, ContractError> {
+
     let market = Markets.load(deps.storage, market_index)?;
     let now = env.block.time.seconds();
     let clock_slot = now.clone();
@@ -846,6 +848,7 @@ pub fn try_update_market_minimum_trade_size(
     market_index: u64,
     minimum_trade_size: u128,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let mut market = Markets.load(deps.storage, market_index)?;
     // market.amm.minimum_trade_size = minimum_trade_size;
     Markets.update(
@@ -863,10 +866,8 @@ pub fn try_update_margin_ratio(
     margin_ratio_partial: u128,
     margin_ratio_maintenance: u128,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        if info.sender != state.admin {
-            return Err(ContractError::Unauthorized {});
-        }
         state.margin_ratio_initial = margin_ratio_initial;
         state.margin_ratio_partial = margin_ratio_partial;
         state.margin_ratio_maintenance = margin_ratio_maintenance;
@@ -881,10 +882,8 @@ pub fn try_update_partial_liquidation_close_percentage(
     numerator: u128,
     denominator: u128,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        if info.sender != state.admin {
-            return Err(ContractError::Unauthorized {});
-        }
         state.partial_liquidation_close_percentage_numerator = numerator;
         state.partial_liquidation_close_percentage_denominator = denominator;
         Ok(state)
@@ -899,10 +898,8 @@ pub fn try_update_partial_liquidation_penalty_percentage(
     numerator: u128,
     denominator: u128,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        if info.sender != state.admin {
-            return Err(ContractError::Unauthorized {});
-        }
         state.partial_liquidation_penalty_percentage_numerator = numerator;
         state.partial_liquidation_penalty_percentage_denominator = denominator;
         Ok(state)
@@ -919,10 +916,8 @@ pub fn try_update_full_liquidation_penalty_percentage(
     numerator: u128,
     denominator: u128,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        if info.sender != state.admin {
-            return Err(ContractError::Unauthorized {});
-        }
         state.full_liquidation_penalty_percentage_numerator = numerator;
         state.full_liquidation_penalty_percentage_denominator = denominator;
         Ok(state)
@@ -935,10 +930,8 @@ pub fn try_update_partial_liquidation_liquidator_share_denominator(
     info: MessageInfo,
     denominator: u64,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        if info.sender != state.admin {
-            return Err(ContractError::Unauthorized {});
-        }
         state.partial_liquidation_liquidator_share_denominator = denominator;
         Ok(state)
     })?;
@@ -953,10 +946,8 @@ pub fn try_update_full_liquidation_liquidator_share_denominator(
     info: MessageInfo,
     denominator: u64,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        if info.sender != state.admin {
-            return Err(ContractError::Unauthorized {});
-        }
         state.full_liquidation_liquidator_share_denominator = denominator;
         Ok(state)
     })?;
@@ -982,6 +973,7 @@ pub fn try_update_fee(
     referee_discount_numerator: u128,
     referee_discount_denominator: u128,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let fee_structure = FeeStructure {
         fee_numerator,
         fee_denominator,
@@ -995,9 +987,6 @@ pub fn try_update_fee(
         referee_discount_denominator,
     };
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        if info.sender != state.admin {
-            return Err(ContractError::Unauthorized {});
-        }
         state.fee_structure = fee_structure;
         Ok(state)
     })?;
@@ -1033,6 +1022,7 @@ pub fn try_update_oracle_guard_rails(
     confidence_interval_max_size: u128,
     too_volatile_ratio: i128,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let oracle_gr = OracleGuardRails {
         use_for_liquidations,
         mark_oracle_divergence_numerator,
@@ -1042,29 +1032,11 @@ pub fn try_update_oracle_guard_rails(
         too_volatile_ratio,
     };
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        if info.sender != state.admin {
-            return Err(ContractError::Unauthorized {});
-        }
         state.oracle_guard_rails = oracle_gr;
         Ok(state)
     })?;
 
     Ok(Response::new().add_attribute("method", "try_update_oracle_guard_rails"))
-}
-pub fn try_update_admin(
-    deps: DepsMut,
-    info: MessageInfo,
-    admin: String,
-) -> Result<Response, ContractError> {
-    let admin_addr = addr_validate_to_lower(deps.api, &admin)?;
-    STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        if info.sender != state.admin {
-            return Err(ContractError::Unauthorized {});
-        }
-        state.admin = admin_addr;
-        Ok(state)
-    })?;
-    Ok(Response::new().add_attribute("method", "try_update_admin"))
 }
 
 pub fn try_update_max_deposit(
@@ -1072,10 +1044,8 @@ pub fn try_update_max_deposit(
     info: MessageInfo,
     max_deposit: u128,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        if info.sender != state.admin {
-            return Err(ContractError::Unauthorized {});
-        }
         state.max_deposit = max_deposit;
         Ok(state)
     })?;
@@ -1087,10 +1057,8 @@ pub fn try_update_exchange_paused(
     info: MessageInfo,
     exchange_paused: bool,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        if info.sender != state.admin {
-            return Err(ContractError::Unauthorized {});
-        }
         state.exchange_paused = exchange_paused;
         Ok(state)
     })?;
@@ -1101,10 +1069,8 @@ pub fn try_disable_admin_control_prices(
     deps: DepsMut,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        if info.sender != state.admin {
-            return Err(ContractError::Unauthorized {});
-        }
         state.admin_controls_prices = false;
         Ok(state)
     })?;
@@ -1115,10 +1081,8 @@ pub fn try_update_funding_paused(
     info: MessageInfo,
     funding_paused: bool,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        if info.sender != state.admin {
-            return Err(ContractError::Unauthorized {});
-        }
         state.funding_paused = funding_paused;
         Ok(state)
     })?;
@@ -1131,6 +1095,7 @@ pub fn try_update_market_minimum_quote_asset_trade_size(
     market_index: u64,
     minimum_trade_size: u128,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let mut market = Markets.load(deps.storage, market_index)?;
     // market.amm.minimum_trade_size = minimum_trade_size;
     Markets.update(
@@ -1147,6 +1112,7 @@ pub fn try_update_market_minimum_base_asset_trade_size(
     market_index: u64,
     minimum_trade_size: u128,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let mut market = Markets.load(deps.storage, market_index)?;
     // market.amm.minimum_trade_size = minimum_trade_size;
     Markets.update(

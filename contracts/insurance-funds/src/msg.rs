@@ -1,4 +1,4 @@
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -11,7 +11,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    UpdateAdmin { new_admin : Addr },
+    UpdateAdmin { new_admin : String },
     UpdateClearingHouse { new_clearing_house: Addr },
     Deposit {},
     Withdraw { to_address: Addr, amount: u128 },
@@ -29,11 +29,11 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
     pub clearing_house: Addr,
-    pub admin : Addr,
+    pub admin : String,
     pub denom: String
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BalanceResponse {
-    pub balance : u128,
+    pub balance : Uint128,
 }

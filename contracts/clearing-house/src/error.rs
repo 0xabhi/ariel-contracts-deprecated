@@ -1,4 +1,5 @@
 use cosmwasm_std::StdError;
+use cw_controllers::AdminError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -7,6 +8,8 @@ pub enum ContractError {
     Std(#[from] StdError),
     #[error("Unauthorized")]
     Unauthorized {},
+    #[error("{0}")]
+    Admin(#[from] AdminError),
     #[error("Clearing house cannot call collateral contract")]
     InvalidCollateralAccountAuthority,
     #[error("Clearing house cannot call insurance contract")]
