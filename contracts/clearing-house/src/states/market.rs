@@ -6,6 +6,10 @@ use cosmwasm_std::{Addr};
 
 use ariel::types::OracleSource;
 
+use crate::ContractError;
+
+use crate::helpers::amm;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Market {
     pub market_name: String,
@@ -48,3 +52,13 @@ pub struct Amm {
 }
 
 pub const Markets: Map<u64, Market> = Map::new("markets");
+
+impl Amm {
+    pub fn mark_price(&self) -> Result<u128, ContractError> {
+        amm::calculate_price(
+            self.quote_asset_reserve,
+            self.base_asset_reserve,
+            self.peg_multiplier,
+        )
+    }
+}

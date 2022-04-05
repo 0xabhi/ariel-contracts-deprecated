@@ -392,11 +392,3 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
     }
 }
-
-// response query template
-// fn (deps: Deps) -> StdResult<> {
-//     let state = STATE.load(deps.storage)?;
-//     let  =  {
-//     };
-//     Ok()
-// }
