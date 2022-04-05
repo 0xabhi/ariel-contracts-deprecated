@@ -2,13 +2,13 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::Addr;
+use cw_controllers::Admin;
 use cw_storage_plus::Item;
 
 use ariel::types::{FeeStructure, OracleGuardRails};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
-    pub admin: Addr,
     pub exchange_paused: bool,
     pub funding_paused: bool,
     pub admin_controls_prices: bool,
@@ -32,3 +32,4 @@ pub struct State {
 }
 
 pub const STATE: Item<State> = Item::new("state");
+pub const ADMIN: Admin = Admin::new("admin");

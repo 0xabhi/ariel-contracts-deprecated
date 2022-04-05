@@ -2,7 +2,7 @@
 use crate::states::curve_history::*;
 use crate::states::liquidation_history::{LiquidationHistory, LiquidationHistoryInfo};
 use crate::states::market::Markets;
-use crate::states::state::STATE;
+use crate::states::state::{STATE, ADMIN};
 use crate::states::trade_history::{TradeHistory, TradeHistoryInfo};
 use crate::states::user::{Positions, Users};
 use crate::states::{deposit_history::*, funding_history::*};
@@ -57,7 +57,7 @@ pub fn get_user_position(
 pub fn get_admin(deps: Deps) -> StdResult<AdminResponse> {
     let state = STATE.load(deps.storage)?;
     let admin = AdminResponse {
-        admin: state.admin.into(),
+        admin: ADMIN.query_admin(deps).unwrap().admin.unwrap(),
     };
     Ok(admin)
 }

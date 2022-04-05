@@ -5,7 +5,6 @@ use crate::types::{DiscountTokenTier, OracleSource, Order, PositionDirection};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub admin: String,
     pub collateral_vault: String,
     pub insurance_vault: String,
     pub admin_controls_prices: bool,

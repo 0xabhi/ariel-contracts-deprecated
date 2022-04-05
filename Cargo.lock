@@ -108,9 +108,9 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-controllers",
+ "cw-controllers 0.12.1",
  "cw-storage-plus 0.11.1",
- "cw0",
+ "cw-utils 0.11.1",
  "cw2",
  "schemars",
  "serde",
@@ -125,7 +125,9 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
+ "cw-controllers 0.13.1",
  "cw-storage-plus 0.11.1",
+ "cw-utils 0.11.1",
  "cw2",
  "schemars",
  "serde",
@@ -255,7 +257,21 @@ checksum = "2e125c834c186f20b48106917329fae6459b41715fd1c6a4f4be4a49e4185c49"
 dependencies = [
  "cosmwasm-std",
  "cw-storage-plus 0.12.1",
- "cw-utils",
+ "cw-utils 0.12.1",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-controllers"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8c595e35ed11f798b222cae9c2d75a1b4463e24cedb008b4ea122325dd8f573"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus 0.13.1",
+ "cw-utils 0.13.1",
  "schemars",
  "serde",
  "thiserror",
@@ -284,6 +300,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-storage-plus"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e8b7f9a758c030d375520df947323c052704f784561fc28dcaab4f988c50a30"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw-utils"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef842a1792e4285beff7b3b518705f760fa4111dc1e296e53f3e92d1ef7f6220"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw-utils"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -296,10 +335,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw0"
-version = "0.10.3"
+name = "cw-utils"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ae676b6cced78a3d38ad4b01ab4ed66fc78ac191c3c0d6bfd5372cb2efd473b"
+checksum = "2aa10861dc5d74400eaf0ed920b6f8fdbc36ce53840ffee1688d9757dfc9fc9f"
 dependencies = [
  "cosmwasm-std",
  "schemars",
@@ -476,7 +515,9 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
+ "cw-controllers 0.13.1",
  "cw-storage-plus 0.11.1",
+ "cw-utils 0.11.1",
  "cw2",
  "schemars",
  "serde",

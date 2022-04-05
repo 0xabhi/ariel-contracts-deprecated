@@ -1,14 +1,11 @@
-use crate::msg::*;
-use crate::state::{State, STATE};
-use cosmwasm_std::Addr;
-
-use crate::contract::*;
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::contract::{instantiate, query, deposit, change_clearing_house, execute};
+    use crate::msg::{InstantiateMsg, ConfigResponse, QueryMsg, BalanceResponse, ExecuteMsg};
+
+    
     use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
-    use cosmwasm_std::{coins, from_binary, Uint128};
+    use cosmwasm_std::{coins, from_binary, Uint128, Addr};
 
     // initlization and verify data
     #[test]
@@ -28,12 +25,10 @@ mod tests {
         // it worked, let's query the state
         let res = query(deps.as_ref(), mock_env(), QueryMsg::GetConfig {}).unwrap();
         let value: ConfigResponse = from_binary(&res).unwrap();
-        assert_eq!( Addr::unchecked("testaddr"), value.clearing_house);
+        assert_eq!(Addr::unchecked("testaddr"), value.clearing_house);
         assert_eq!("creator", value.admin);
         assert_eq!("uusd", value.denom);
-
     }
-
 
     #[test]
     fn proper_deposit() {
@@ -47,7 +42,7 @@ mod tests {
 
         // we can just call .unwrap() to assert this was a success
         instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        
+
         let res = query(deps.as_ref(), mock_env(), QueryMsg::GetBalance {}).unwrap();
         let value: BalanceResponse = from_binary(&res).unwrap();
         assert_eq!(Uint128::from(0u64), value.balance);
@@ -55,12 +50,10 @@ mod tests {
         // let dep_msg = ExecuteMsg::Deposit{};
         let dep_info = mock_info("testaddr", &coins(1000000, "uusd"));
 
-
-        deposit(deps.as_mut(),  dep_info).unwrap();
+        deposit(deps.as_mut(), dep_info).unwrap();
         let res = query(deps.as_ref(), mock_env(), QueryMsg::GetBalance {}).unwrap();
         let value: BalanceResponse = from_binary(&res).unwrap();
         assert_eq!(Uint128::from(1000000u64), value.balance);
-
     }
 
     #[test]
@@ -78,18 +71,31 @@ mod tests {
         assert_eq!(0, res.messages.len());
 
         // it worked, let's query the state
-        
+
         let res = query(deps.as_ref(), mock_env(), QueryMsg::GetConfig {}).unwrap();
         let value: ConfigResponse = from_binary(&res).unwrap();
-        assert_eq!( Addr::unchecked("testaddr"), value.clearing_house);
+        assert_eq!(Addr::unchecked("testaddr"), value.clearing_house);
         let dep_info = mock_info("creator", &coins(1000000, "uusd"));
 
-        change_clearing_house(deps.as_mut(),  dep_info.clone(), Addr::unchecked("newclearing")).unwrap();
-        change_admin(deps.as_mut(),  dep_info, Addr::unchecked("newadmin")).unwrap();
-        
+        change_clearing_house(
+            deps.as_mut(),
+            dep_info.clone(),
+            Addr::unchecked("newclearing"),
+        )
+        .unwrap();
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            dep_info.clone(),
+            ExecuteMsg::UpdateAdmin {
+                new_admin: "newadmin".to_string(),
+            },
+        )
+        .unwrap();
         let res = query(deps.as_ref(), mock_env(), QueryMsg::GetConfig {}).unwrap();
         let value: ConfigResponse = from_binary(&res).unwrap();
-        assert_eq!( Addr::unchecked("newclearing"), value.clearing_house);
+        assert_eq!(Addr::unchecked("newclearing"), value.clearing_house);
         assert_eq!("newadmin", value.admin);
     }
 }
