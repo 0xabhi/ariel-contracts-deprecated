@@ -1,10 +1,11 @@
-use std::cmp::max;
+use std::cmp::{max, min};
 
 use cosmwasm_std::{DepsMut};
 use cosmwasm_std::Addr;
 
 use crate::error::ContractError;
 
+use crate::helpers::amm::normalise_oracle_price;
 use crate::states::funding_history::{FundingPaymentHistory, FundingRateRecord, FundingPaymentRecord, FundingPaymentHistoryInfo, FundingRateInfo, FundingRateHistory, FundingRateHistoryInfo, FundingPaymentInfo};
 use crate::states::market::{Markets, Market};
 use crate::states::state::{STATE};
@@ -95,10 +96,11 @@ pub fn settle_funding_payment(
 pub fn update_funding_rate(
     deps: &mut DepsMut,
     market_index: u64,
-    price_oracle: &Addr,
+    price_oracle: Addr,
     now: i64,
     clock_slot: u64,
     funding_paused: bool,
+    precomputed_mark_price: Option<u128>,
 ) -> Result<(), ContractError> {
     let mut market = Markets.load(deps.storage, market_index)?;
     let guard_rails = STATE.load(deps.storage)?.oracle_guard_rails;      
@@ -108,8 +110,15 @@ pub fn update_funding_rate(
         .ok_or_else(|| (ContractError::MathError))?;
 
     // Pause funding if oracle is invalid or if mark/oracle spread is too divergent
-    let (block_funding_rate_update, oracle_price) =
-        oracle::block_operation(&market.amm, price_oracle, clock_slot, &guard_rails, None)?;
+    let (block_funding_rate_update, oracle_price_data) =
+        oracle::block_operation(  &market.amm,	
+            &price_oracle,	
+            clock_slot,	
+            &guard_rails,	
+            precomputed_mark_price
+        )?;
+
+    let normalised_oracle_price = normalise_oracle_price(&market.amm, &oracle_price_data, precomputed_mark_price)?;	
 
     // round next update time to be available on the hour
     let mut next_update_wait = market.amm.funding_period;
@@ -145,7 +154,7 @@ pub fn update_funding_rate(
     }
 
     if !funding_paused && !block_funding_rate_update && time_since_last_update >= next_update_wait {
-        let oracle_price_twap = amm::update_oracle_price_twap(deps, market_index, now, oracle_price)?;
+        let oracle_price_twap = amm::update_oracle_price_twap(deps, market_index, now, normalised_oracle_price)?;
         let mark_price_twap = amm::update_mark_twap(deps, market_index, now, None)?;
 
         let one_hour_i64 = cast_to_i64(ONE_HOUR)?;
@@ -160,6 +169,12 @@ pub fn update_funding_rate(
         let price_spread = cast_to_i128(mark_price_twap)?
             .checked_sub(oracle_price_twap)
             .ok_or_else(|| (ContractError::MathError))?;
+
+        // clamp price divergence to 3% for funding rate calculation	
+        let max_price_spread = oracle_price_twap	
+        .checked_div(33)	
+        .ok_or_else(|| (ContractError::MathError))?; // 3%	
+        let clamped_price_spread = max(-max_price_spread, min(price_spread, max_price_spread));
 
         let funding_rate = price_spread
             .checked_mul(cast(FUNDING_PAYMENT_PRECISION)?)

@@ -6,7 +6,7 @@ use ariel::types::SwapDirection;
 
 use crate::states::market::{Market, Markets};
 
-use crate::helpers::amm::calculate_quote_asset_amount_swapped;
+use crate::helpers::amm::{calculate_quote_asset_amount_swapped, calculate_new_oracle_price_twap};
 use crate::helpers::casting::{cast, cast_to_i128};
 use crate::helpers::constants::{MARK_PRICE_PRECISION};
 use crate::helpers::{amm, bn};
@@ -36,14 +36,46 @@ pub fn update_oracle_price_twap(
     oracle_price: i128,
 ) -> Result<i128, ContractError> {
     let mut market = Markets.load(deps.storage, market_index)?;
-    let oracle_price_twap = amm::calculate_new_oracle_price_twap(&market.amm, now, oracle_price)?;
-    market.amm.last_oracle_price_twap = oracle_price_twap;
-    market.amm.last_oracle_price_twap_ts = now;
+    let a = market.amm.clone();
+    let new_oracle_price_spread = oracle_price
+        .checked_sub(a.last_oracle_price_twap)
+        .ok_or_else(|| (ContractError::MathError))?;
+
+    // cap new oracle update to 33% delta from twap
+    let oracle_price_33pct = oracle_price.checked_div(3).ok_or_else(|| (ContractError::MathError))?;
+
+    let capped_oracle_update_price =
+        if new_oracle_price_spread.unsigned_abs() > oracle_price_33pct.unsigned_abs() {
+            if oracle_price > a.last_oracle_price_twap {
+                a.last_oracle_price_twap
+                    .checked_add(oracle_price_33pct)
+                    .ok_or_else(|| (ContractError::MathError))?
+            } else {
+                a.last_oracle_price_twap
+                    .checked_sub(oracle_price_33pct)
+                    .ok_or_else(|| (ContractError::MathError))?
+            }
+        } else {
+            oracle_price
+        };
+
+    // sanity check
+    let oracle_price_twap: i128;
+    if capped_oracle_update_price > 0 && oracle_price > 0 {
+        oracle_price_twap = calculate_new_oracle_price_twap(&a, now, capped_oracle_update_price)?;
+        a.last_oracle_price = capped_oracle_update_price;
+        a.last_oracle_price_twap = oracle_price_twap;
+        a.last_oracle_price_twap_ts = now;
+    } else {
+        oracle_price_twap = a.last_oracle_price_twap
+    }
+
+    market.amm = a;
     Markets.update(deps.storage, market_index, |m| -> Result<Market, ContractError> {
         Ok(market)
     })?;
- 
-    return Ok(oracle_price_twap);
+
+    Ok(oracle_price_twap)
 }
 
 /// To find the cost of adjusting k, compare the the net market value before and after adjusting k
@@ -120,7 +152,7 @@ pub fn swap_quote_asset(
     let quote_asset_reserve_amount =
         asset_to_reserve_amount(quote_asset_amount, a.peg_multiplier)?;
 
-    if quote_asset_reserve_amount < a.minimum_trade_size {
+    if quote_asset_reserve_amount < a.minimum_quote_asset_trade_size {
         return Err(ContractError::TradeSizeTooSmall);
     }
 
