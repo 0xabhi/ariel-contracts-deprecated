@@ -1,6 +1,7 @@
 use crate::error::ContractError;
 
 use ariel::types::{OracleGuardRails, OraclePriceData, OracleStatus};
+use cosmwasm_std::Addr;
 
 use crate::states::market::Amm;
 
@@ -8,7 +9,7 @@ use crate::helpers::amm;
 
 pub fn block_operation(
     a: &Amm,
-    oracle_account_info: &AccountInfo,
+    oracle_account_info: Addr,
     clock_slot: u64,
     guard_rails: &OracleGuardRails,
     precomputed_mark_price: Option<u128>,
@@ -32,12 +33,12 @@ pub fn block_operation(
 
 pub fn get_oracle_status(
     a: &Amm,
-    oracle_account_info: &AccountInfo,
+    oracle_account_info: Addr,
     clock_slot: u64,
     guard_rails: &OracleGuardRails,
     precomputed_mark_price: Option<u128>,
 ) -> Result<OracleStatus, ContractError> {
-    let oracle_price_data = a.get_oracle_price(oracle_account_info, clock_slot)?;
+    let oracle_price_data = get_oracle_price(oracle_account_info, clock_slot)?;
     let oracle_is_valid = amm::is_oracle_valid(a, &oracle_price_data, &guard_rails)?;
     let oracle_mark_spread_pct =
         amm::calculate_oracle_mark_spread_pct(a, &oracle_price_data, precomputed_mark_price)?;
@@ -52,7 +53,11 @@ pub fn get_oracle_status(
     })
 }
 
-pub fn get_oracle_price() -> Result<> {
-
-    
+pub fn get_oracle_price(oracle_account_info: Addr, clock_slot: u64) -> Result<OraclePriceData, ContractError> {
+    Ok(OraclePriceData {
+        price: 0,
+        confidence: 0,
+        delay: 0,
+        has_sufficient_number_of_data_points: true,
+    })    
 }

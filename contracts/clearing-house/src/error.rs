@@ -135,14 +135,3 @@ pub enum ContractError {
     #[error("CantExpireOrders")]
     CantExpireOrders,
 }
-
-#[macro_export]
-macro_rules! math_error {
-    () => {{
-        || {
-            let error_code = ErrorCode::MathError;
-            msg!("Error {} thrown at {}:{}", error_code, file!(), line!());
-            error_code
-        }
-    }};
-}

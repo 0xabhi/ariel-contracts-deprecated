@@ -6,6 +6,8 @@ use crate::{error::ContractError, states::order::OrderFillerRewardStructure};
 
 use crate::helpers::casting::cast_to_u128;
 
+use num_integer::Roots;
+
 use ariel::types::{FeeStructure, DiscountTokenTier, OrderDiscountTier};
 
 pub fn calculate_fee_for_trade(
@@ -130,32 +132,32 @@ pub fn calculate_order_fee_tier(
     discount_token_amt: u64,
 ) -> Result<OrderDiscountTier, ContractError> {
     if discount_token_amt == 0 {
-        return 0;
+        return Ok(OrderDiscountTier::None);
     }
 
     if belongs_to_tier(
-        &fee_structure.discount_token_tiers.first_tier,
+        &fee_structure.first_tier,
         discount_token_amt,
     ) {
         return Ok(OrderDiscountTier::First);
     }
 
     if belongs_to_tier(
-        &fee_structure.discount_token_tiers.second_tier,
+        &fee_structure.second_tier,
         discount_token_amt,
     ) {
         return Ok(OrderDiscountTier::Second);
     }
 
     if belongs_to_tier(
-        &fee_structure.discount_token_tiers.third_tier,
+        &fee_structure.third_tier,
         discount_token_amt,
     ) {
         return Ok(OrderDiscountTier::Third);
     }
 
     if belongs_to_tier(
-        &fee_structure.discount_token_tiers.fourth_tier,
+        &fee_structure.fourth_tier,
         discount_token_amt,
     ) {
         return Ok(OrderDiscountTier::Fourth);
@@ -236,19 +238,19 @@ fn calculate_token_discount_for_limit_order(
     match order_discount_tier {
         OrderDiscountTier::None => Ok(0),
         OrderDiscountTier::First => {
-            try_calculate_token_discount_for_tier(fee, &fee_structure.discount_token_tiers.first_tier)
+            try_calculate_token_discount_for_tier(fee, &fee_structure.first_tier)
                 .ok_or_else(|| (ContractError::MathError))
         }
         OrderDiscountTier::Second => {
-            try_calculate_token_discount_for_tier(fee, &fee_structure.discount_token_tiers.second_tier)
+            try_calculate_token_discount_for_tier(fee, &fee_structure.second_tier)
                 .ok_or_else(|| (ContractError::MathError))
         }
         OrderDiscountTier::Third => {
-            try_calculate_token_discount_for_tier(fee, &fee_structure.discount_token_tiers.third_tier)
+            try_calculate_token_discount_for_tier(fee, &fee_structure.third_tier)
                 .ok_or_else(|| (ContractError::MathError))
         }
         OrderDiscountTier::Fourth => {
-            try_calculate_token_discount_for_tier(fee, &fee_structure.discount_token_tiers.fourth_tier)
+            try_calculate_token_discount_for_tier(fee, &fee_structure.fourth_tier)
                 .ok_or_else(|| (ContractError::MathError))
         }
     }
