@@ -90,6 +90,8 @@ fn calculate_capped_funding_rate(
         .ok_or_else(|| (ContractError::MathError))?
         .checked_div(SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_DENOMINATOR)
         .ok_or_else(|| (ContractError::MathError))?;
+
+    // limit to 2/3 of current fee pool per funding period
     let funding_rate_pnl_limit =
         if market.amm.total_fee_minus_distributions > total_fee_minus_distributions_lower_bound {
             -cast_to_i128(
@@ -97,6 +99,10 @@ fn calculate_capped_funding_rate(
                     .amm
                     .total_fee_minus_distributions
                     .checked_sub(total_fee_minus_distributions_lower_bound)
+                    .ok_or_else(|| (ContractError::MathError))?
+                    .checked_mul(2)
+                    .ok_or_else(|| (ContractError::MathError))?
+                    .checked_div(3)
                     .ok_or_else(|| (ContractError::MathError))?,
             )?
         } else {
@@ -221,5 +227,5 @@ fn calculate_funding_payment_in_quote_precision(
         .checked_div(cast_to_i128(AMM_TO_QUOTE_PRECISION_RATIO)?)
         .ok_or_else(|| (ContractError::MathError))?;
 
-    return Ok(funding_payment_collateral);
+    Ok(funding_payment_collateral)
 }

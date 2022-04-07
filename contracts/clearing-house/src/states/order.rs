@@ -30,11 +30,11 @@ pub struct OrderInfo {
 pub const Orders: Map<(&Addr, u64), Order> = Map::new("orders");
 pub const OrdersInfo: Item<OrderInfo> = Item::new("order_info");
 
-pub fn has_oracle_price_offset(oo: Order) -> bool {
+pub fn has_oracle_price_offset(oo: &Order) -> bool {
     oo.oracle_price_offset != 0
 }
 
-pub fn get_limit_price(oo: Order, valid_oracle_price: Option<i128>) -> Result<u128, ContractError> {
+pub fn get_limit_price(oo: &Order, valid_oracle_price: Option<i128>) -> Result<u128, ContractError> {
     // the limit price can be hardcoded on order or derived from oracle_price + oracle_price_offset
     let price = if has_oracle_price_offset(oo) {
         if let Some(oracle_price) = valid_oracle_price {

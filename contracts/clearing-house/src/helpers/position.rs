@@ -9,6 +9,8 @@ use crate::helpers::amm;
 use crate::helpers::amm::calculate_quote_asset_amount_swapped;
 use crate::helpers::pnl::calculate_pnl;
 
+use crate::helpers::constants::{AMM_RESERVE_PRECISION, PRICE_TO_QUOTE_PRECISION_RATIO};
+
 pub fn calculate_base_asset_value_and_pnl(
     market_position: &Position,
     a: &Amm,
@@ -48,6 +50,39 @@ pub fn _calculate_base_asset_value_and_pnl(
     let pnl = calculate_pnl(base_asset_value, quote_asset_amount, swap_direction)?;
 
     return Ok((base_asset_value, pnl));
+}
+
+pub fn calculate_base_asset_value_and_pnl_with_oracle_price(
+    market_position: &Position,
+    oracle_price: i128,
+) -> Result<(u128, i128), ContractError> {
+    if market_position.base_asset_amount == 0 {
+        return Ok((0, 0));
+    }
+
+    let swap_direction = swap_direction_to_close_position(market_position.base_asset_amount);
+
+    let oracle_price = if oracle_price > 0 {
+        oracle_price.unsigned_abs()
+    } else {
+        0
+    };
+
+    let base_asset_value = market_position
+        .base_asset_amount
+        .unsigned_abs()
+        .checked_mul(oracle_price)
+        .ok_or_else(|| (ContractError::MathError))?
+        .checked_div(AMM_RESERVE_PRECISION * PRICE_TO_QUOTE_PRECISION_RATIO)
+        .ok_or_else(|| (ContractError::MathError))?;
+
+    let pnl = calculate_pnl(
+        base_asset_value,
+        market_position.quote_asset_amount,
+        swap_direction,
+    )?;
+
+    Ok((base_asset_value, pnl))
 }
 
 pub fn direction_to_close_position(base_asset_amount: i128) -> PositionDirection {

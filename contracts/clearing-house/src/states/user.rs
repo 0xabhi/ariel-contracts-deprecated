@@ -23,20 +23,27 @@ pub struct Position {
     pub last_cumulative_funding_rate: i128,
     pub last_cumulative_repeg_rebate: u128,
     pub last_funding_rate_ts: i64,
-    pub stop_loss_price: u128,
-    pub stop_loss_amount: u128,
-    pub stop_profit_price: u128,
-    pub stop_profit_amount: u128,
-    pub transfer_to: Addr,
+    pub open_orders: u128,
 }
 
 pub const Users : Map<&Addr, User> = Map::new("users");
 pub const Positions: Map<(&Addr, u64),  Position> = Map::new("market_positions");
 
-pub fn is_for(m : Position, market_index: u64) -> bool {
-    m.market_index == market_index && is_open_position(m)
-}
 
-pub fn is_open_position(m :Position) -> bool {
-    m.base_asset_amount != 0
+impl Position {
+    pub fn is_for(&self, market_index: u64) -> bool {
+        self.market_index == market_index && (self.is_open_position() || self.has_open_order())
+    }
+
+    pub fn is_available(&self) -> bool {
+        !self.is_open_position() && !self.has_open_order()
+    }
+
+    pub fn is_open_position(&self) -> bool {
+        self.base_asset_amount != 0
+    }
+
+    pub fn has_open_order(&self) -> bool {
+        self.open_orders != 0
+    }
 }

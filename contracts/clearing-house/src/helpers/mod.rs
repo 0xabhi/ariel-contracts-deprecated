@@ -11,3 +11,5 @@ pub mod pnl;
 pub mod position;
 pub mod quote_asset;
 pub mod withdrawal;
+pub mod order;
+pub mod slippage;
