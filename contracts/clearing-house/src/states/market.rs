@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 use cw_storage_plus::Map;
 use cosmwasm_std::{Addr};
 
-use ariel::types::OracleSource;
+use ariel::types::{OracleSource, OracleStatus};
 
-use crate::ContractError;
+use crate::error::ContractError;
 
 use crate::helpers::amm;
 
@@ -62,3 +62,34 @@ impl Amm {
         )
     }
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum LiquidationType {
+    NONE,
+    PARTIAL,
+    FULL,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct LiquidationStatus {
+    pub liquidation_type: LiquidationType,
+    pub margin_requirement: u128,
+    pub total_collateral: u128,
+    pub unrealized_pnl: i128,
+    pub adjusted_total_collateral: u128,
+    pub base_asset_value: u128,
+    pub margin_ratio: u128,
+    pub market_statuses: Vec<MarketStatus>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct MarketStatus {
+    pub market_index: u64,
+    pub partial_margin_requirement: u128,
+    pub maintenance_margin_requirement: u128,
+    pub base_asset_value: u128,
+    pub mark_price_before: u128,
+    pub close_position_slippage: Option<i128>,
+    pub oracle_status: OracleStatus,
+}
+

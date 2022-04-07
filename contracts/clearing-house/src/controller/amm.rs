@@ -184,11 +184,12 @@ pub fn swap_base_asset(
     base_asset_swap_amount: u128,
     direction: SwapDirection,
     now: i64,
+    precomputed_mark_price: Option<u128>
 ) -> Result<u128, ContractError> {
     let mut market = Markets.load(deps.storage, market_index)?;
     let a = market.amm.clone();
     
-    update_mark_twap(deps, market_index, now, None)?;
+    update_mark_twap(deps, market_index, now, precomputed_mark_price)?;
 
     let initial_quote_asset_reserve = a.quote_asset_reserve;
     let (new_quote_asset_reserve, new_base_asset_reserve) = amm::calculate_swap_output(
