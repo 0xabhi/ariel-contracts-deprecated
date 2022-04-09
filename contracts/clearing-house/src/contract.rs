@@ -1,11 +1,12 @@
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
 };
 
 use cw2::set_contract_version;
 use cw_utils::maybe_addr;
 
-use crate::states::state::{State, STATE, ADMIN};
+use crate::helpers::constants::*;
+use crate::states::state::{State, ADMIN, STATE};
 
 use ariel::execute::{ExecuteMsg, InstantiateMsg};
 use ariel::helper::addr_validate_to_lower;
@@ -30,60 +31,61 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     //TODO:: adding condition to check the initialization, if it's done already
     let fs = FeeStructure {
-        fee_numerator: 0,
-        fee_denominator: 0,
+        fee_numerator: DEFAULT_FEE_NUMERATOR,
+        fee_denominator: DEFAULT_FEE_DENOMINATOR,
         first_tier: DiscountTokenTier {
-            minimum_balance: 0,
-            discount_numerator: 0,
-            discount_denominator: 0,
+            minimum_balance: DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_MINIMUM_BALANCE,
+            discount_numerator: DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_DISCOUNT_NUMERATOR,
+            discount_denominator: DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_DISCOUNT_DENOMINATOR,
         },
 
         second_tier: DiscountTokenTier {
-            minimum_balance: 0,
-            discount_numerator: 0,
-            discount_denominator: 0,
+            minimum_balance: DEFAULT_DISCOUNT_TOKEN_SECOND_TIER_MINIMUM_BALANCE,
+            discount_numerator: DEFAULT_DISCOUNT_TOKEN_SECOND_TIER_DISCOUNT_NUMERATOR,
+            discount_denominator: DEFAULT_DISCOUNT_TOKEN_SECOND_TIER_DISCOUNT_DENOMINATOR,
         },
         third_tier: DiscountTokenTier {
-            minimum_balance: 0,
-            discount_numerator: 0,
-            discount_denominator: 0,
+            minimum_balance: DEFAULT_DISCOUNT_TOKEN_THIRD_TIER_MINIMUM_BALANCE,
+            discount_numerator: DEFAULT_DISCOUNT_TOKEN_THIRD_TIER_DISCOUNT_NUMERATOR,
+            discount_denominator: DEFAULT_DISCOUNT_TOKEN_THIRD_TIER_DISCOUNT_DENOMINATOR,
         },
         fourth_tier: DiscountTokenTier {
-            minimum_balance: 0,
-            discount_numerator: 0,
-            discount_denominator: 0,
+            minimum_balance: DEFAULT_DISCOUNT_TOKEN_FOURTH_TIER_MINIMUM_BALANCE,
+            discount_numerator: DEFAULT_DISCOUNT_TOKEN_FOURTH_TIER_DISCOUNT_NUMERATOR,
+            discount_denominator: DEFAULT_DISCOUNT_TOKEN_FOURTH_TIER_DISCOUNT_DENOMINATOR,
         },
-        referrer_reward_numerator: 0,
-        referrer_reward_denominator: 0,
-        referee_discount_numerator: 0,
-        referee_discount_denominator: 0,
+        referrer_reward_numerator: DEFAULT_REFERRER_REWARD_NUMERATOR,
+        referrer_reward_denominator: DEFAULT_REFERRER_REWARD_DENOMINATOR,
+        referee_discount_numerator: DEFAULT_REFEREE_DISCOUNT_NUMERATOR,
+        referee_discount_denominator: DEFAULT_REFEREE_DISCOUNT_DENOMINATOR,
     };
     let oracle_gr = OracleGuardRails {
         use_for_liquidations: true,
-        mark_oracle_divergence_numerator: 0,
-        mark_oracle_divergence_denominator: 0,
-        slots_before_stale: 0,
-        confidence_interval_max_size: 0,
-        too_volatile_ratio: 0,
+        mark_oracle_divergence_numerator: 1,
+        mark_oracle_divergence_denominator: 10,
+        slots_before_stale: 1000,
+        confidence_interval_max_size: 4,
+        too_volatile_ratio: 5,
     };
     let state = State {
-        exchange_paused: true,
-        funding_paused: true,
+        exchange_paused: false,
+        funding_paused: false,
         admin_controls_prices: true,
         collateral_vault: addr_validate_to_lower(deps.api, &msg.collateral_vault).unwrap(),
         insurance_vault: addr_validate_to_lower(deps.api, &msg.insurance_vault).unwrap(),
-        margin_ratio_initial: 0,
-        margin_ratio_maintenance: 0,
-        margin_ratio_partial: 0,
-        partial_liquidation_close_percentage_numerator: 0,
-        partial_liquidation_close_percentage_denominator: 0,
-        partial_liquidation_penalty_percentage_numerator: 0,
-        partial_liquidation_penalty_percentage_denominator: 0,
-        full_liquidation_penalty_percentage_numerator: 0,
-        full_liquidation_penalty_percentage_denominator: 0,
-        partial_liquidation_liquidator_share_denominator: 0,
-        full_liquidation_liquidator_share_denominator: 0,
-        max_deposit: 1000000,
+        oracle: addr_validate_to_lower(deps.api, &msg.oracle)?,
+        margin_ratio_initial: 2000,
+        margin_ratio_maintenance: 500,
+        margin_ratio_partial: 625,
+        partial_liquidation_close_percentage_numerator: 25,
+        partial_liquidation_close_percentage_denominator: 100,
+        partial_liquidation_penalty_percentage_numerator: 25,
+        partial_liquidation_penalty_percentage_denominator: 100,
+        full_liquidation_penalty_percentage_numerator: 1,
+        full_liquidation_penalty_percentage_denominator: 1,
+        partial_liquidation_liquidator_share_denominator: 2,
+        full_liquidation_liquidator_share_denominator: 20,
+        max_deposit: 0,
         fee_structure: fs,
         oracle_guard_rails: oracle_gr,
     };
@@ -203,17 +205,15 @@ pub fn execute(
             market_index,
             sqrt_k,
         } => try_update_k(deps, _env, info, market_index, sqrt_k),
-        ExecuteMsg::UpdateMarketMinimumTradeSize {
-            market_index,
-            minimum_trade_size,
-        } => try_update_market_minimum_trade_size(deps, info, market_index, minimum_trade_size),
         ExecuteMsg::UpdateMarginRatio {
+            market_index,
             margin_ratio_initial,
             margin_ratio_partial,
             margin_ratio_maintenance,
         } => try_update_margin_ratio(
             deps,
             info,
+            market_index,
             margin_ratio_initial,
             margin_ratio_partial,
             margin_ratio_maintenance,
@@ -278,7 +278,9 @@ pub fn execute(
             confidence_interval_max_size,
             too_volatile_ratio,
         ),
-        ExecuteMsg::UpdateAdmin { admin } => Ok(ADMIN.execute_update_admin(deps, info, maybe_addr(api, admin.into())?)?),
+        ExecuteMsg::UpdateAdmin { admin } => {
+            Ok(ADMIN.execute_update_admin(deps, info, maybe_addr(api, admin.into())?)?)
+        }
         ExecuteMsg::UpdateMaxDeposit { max_deposit } => {
             try_update_max_deposit(deps, info, max_deposit)
         }
@@ -321,8 +323,9 @@ pub fn execute(
         ExecuteMsg::UpdateMarketOracle {
             market_index,
             oracle,
-            oracle_source
-        } => try_update_market_oracle(deps, info, market_index, oracle, oracle_source)
+            oracle_source,
+        } => try_update_market_oracle(deps, info, market_index, oracle, oracle_source),
+        ExecuteMsg::UpdateOracleAddress { oracle } => try_update_oracle_address(deps, info, oracle),
     }
 }
 

@@ -1,8 +1,8 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use cosmwasm_std::Addr;
 use cw_storage_plus::Map;
-use cosmwasm_std::{Addr};
 
 use ariel::types::{OracleSource, OracleStatus};
 
@@ -18,7 +18,7 @@ pub struct Market {
     pub base_asset_amount_short: i128,
     pub base_asset_amount: i128, // net market bias
     pub open_interest: u128,     // number of users in a position
-    pub amm : Amm,
+    pub amm: Amm,
     pub margin_ratio_initial: u32,
     pub margin_ratio_partial: u32,
     pub margin_ratio_maintenance: u32,

@@ -1,10 +1,10 @@
 use crate::error::ContractError;
 
-use ariel::types::{OracleGuardRails, OraclePriceData, OracleStatus};
+use ariel::types::{OracleGuardRails, OraclePriceData, OracleSource, OracleStatus};
 use cosmwasm_std::Addr;
 
-use crate::states::market::Amm;
 use crate::helpers::amm;
+use crate::states::market::Amm;
 
 pub fn block_operation(
     a: &Amm,
@@ -29,7 +29,6 @@ pub fn block_operation(
     let block = !oracle_is_valid || is_oracle_mark_too_divergent;
     Ok((block, oracle_price_data))
 }
-
 
 pub fn get_oracle_data(
     a: &Amm,
@@ -90,15 +89,31 @@ pub fn get_oracle_data(
     Ok((0, 0, 0, 0, 0))
 }
 
-pub fn get_oracle_price(a: &Amm, oracle_account_info: &Addr, clock_slot: u64) -> Result<OraclePriceData, ContractError> {
+pub fn get_oracle_price(
+    a: &Amm,
+    oracle_account_info: &Addr,
+    clock_slot: u64,
+) -> Result<OraclePriceData, ContractError> {
     Ok(OraclePriceData {
         price: 0,
         confidence: 0,
         delay: 0,
         has_sufficient_number_of_data_points: true,
-    })    
+    })
 }
 
+pub fn get_switchboard_price(
+    a: &Amm,
+    oracle_account_info: &Addr,
+    clock_slot: u64,
+) -> Result<OraclePriceData, ContractError> {
+    Ok(OraclePriceData {
+        price: 0,
+        confidence: 0,
+        delay: 0,
+        has_sufficient_number_of_data_points: true,
+    })
+}
 
 pub fn get_oracle_status(
     a: &Amm,
@@ -122,3 +137,8 @@ pub fn get_oracle_status(
     })
 }
 
+//TODO get oracle price twap
+pub fn get_oracle_twap(price_oracle: &Addr) -> Result<Option<i128>, ContractError> {
+    //todo
+    Ok(Some(0))
+}

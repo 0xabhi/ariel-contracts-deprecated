@@ -50,8 +50,10 @@ pub fn query_balance(querier: &QuerierWrapper, account_addr: Addr) -> StdResult<
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum VaultInterface {
-    WithdrawFunds{
-        to_address: String,
+    Withdraw{
+        to_address: Addr,
         amount: u128
-    }
+    },
+    Deposit {}
+
 }

@@ -11,12 +11,13 @@ use crate::states::deposit_history::*;
 use crate::states::market::{Amm, Market, Markets};
 use crate::states::state::ADMIN;
 use crate::states::state::{State, STATE};
-use crate::states::user::{is_for, Position, Positions, User, Users};
+use crate::states::user::{Position, Positions, User, Users};
 
 use ariel::helper::addr_validate_to_lower;
 use ariel::helper::assert_sent_uusd_balance;
 use ariel::helper::query_balance;
 use ariel::helper::VaultInterface;
+use ariel::types::OraclePriceData;
 use ariel::types::Order;
 use ariel::types::{
     DepositDirection, DiscountTokenTier, FeeStructure, OracleGuardRails, OracleSource,
@@ -67,68 +68,80 @@ pub fn try_initialize_market(
 
     // Verify oracle is readable
     //Todo() get the oracle fix here
-    // let OraclePriceData {
-    //     price: oracle_price,
-    //     ..
-    // } = match oracle_source {
-    //     OracleSource::Oracle => market
-    //         .amm
-    //         .get_pyth_price(&ctx.accounts.oracle, clock_slot)
-    //         .unwrap(),
-    //     OracleSource::Switchboard => market
-    //         .amm
-    //         .get_switchboard_price(&ctx.accounts.oracle, clock_slot)
-    //         .unwrap(),
-    // };
+    let OraclePriceData {
+        price: oracle_price,
+        ..
+    } = match oracle_source {
+        OracleSource::Oracle => helpers::oracle::get_oracle_price(
+            &existing_market.amm,
+            &existing_market.amm.oracle,
+            clock_slot,
+        )?,
+        OracleSource::Simulated => helpers::oracle::get_switchboard_price(
+            &existing_market.amm,
+            &existing_market.amm.oracle,
+            clock_slot,
+        )?,
+        OracleSource::Zero => todo!(),
+    };
 
-    // let last_oracle_price_twap = match oracle_source {
-    //     OracleSource::Oracle => market.amm.get_pyth_twap(&ctx.accounts.oracle)?,
-    //     OracleSource::Simulated => oracle_price,
-    // };
+    let last_oracle_price_twap = match oracle_source {
+        OracleSource::Oracle => helpers::oracle::get_oracle_price(
+            &existing_market.amm,
+            &existing_market.amm.oracle,
+            clock_slot,
+        )?,
+        OracleSource::Simulated => helpers::oracle::get_oracle_price(
+            &existing_market.amm,
+            &existing_market.amm.oracle,
+            clock_slot,
+        )?,
+        OracleSource::Zero => todo!(),
+    };
 
-    // validate_margin(
-    //     margin_ratio_initial,
-    //     margin_ratio_initial,
-    //     margin_ratio_maintenance,
-    // )?;
-
-    // let market = Market {
-    //     market_name: market_name,
-    //     initialized: true,
-    //     base_asset_amount_long: 0,
-    //     base_asset_amount_short: 0,
-    //     base_asset_amount: 0,
-    //     open_interest: 0,
-    //     margin_ratio_initial, // unit is 20% (+2 decimal places)
-    //     margin_ratio_partial,
-    //     margin_ratio_maintenance,
-    //     amm: Amm {
-    //         oracle: todo!(),
-    //         oracle_source,
-    //         base_asset_reserve: amm_base_asset_reserve,
-    //         quote_asset_reserve: amm_quote_asset_reserve,
-    //         cumulative_repeg_rebate_long: 0,
-    //         cumulative_repeg_rebate_short: 0,
-    //         cumulative_funding_rate_long: 0,
-    //         cumulative_funding_rate_short: 0,
-    //         last_funding_rate: 0,
-    //         last_funding_rate_ts: cast_to_i64(now)?,
-    //         funding_period: amm_periodicity,
-    //         last_oracle_price_twap: todo!(),
-    //         last_mark_price_twap: init_mark_price,
-    //         last_mark_price_twap_ts: cast_to_i64(now)?,
-    //         sqrt_k: amm_base_asset_reserve,
-    //         peg_multiplier: amm_peg_multiplier,
-    //         total_fee: 0,
-    //         total_fee_minus_distributions: 0,
-    //         total_fee_withdrawn: 0,
-    //         minimum_quote_asset_trade_size: 10000000,
-    //         last_oracle_price_twap_ts: now,
-    //         last_oracle_price: oracle_price,
-    //         minimum_base_asset_trade_size: 10000000,
-    //     },
-    // };
-    // Markets.save(deps.storage, market_index, &market)?;
+    helpers::margin_validation::validate_margin(
+        margin_ratio_initial,
+        margin_ratio_partial,
+        margin_ratio_maintenance,
+    )?;
+    let state = STATE.load(deps.storage)?;
+    let market = Market {
+        market_name: market_name,
+        initialized: true,
+        base_asset_amount_long: 0,
+        base_asset_amount_short: 0,
+        base_asset_amount: 0,
+        open_interest: 0,
+        margin_ratio_initial, // unit is 20% (+2 decimal places)
+        margin_ratio_partial,
+        margin_ratio_maintenance,
+        amm: Amm {
+            oracle: state.oracle,
+            oracle_source,
+            base_asset_reserve: amm_base_asset_reserve,
+            quote_asset_reserve: amm_quote_asset_reserve,
+            cumulative_repeg_rebate_long: 0,
+            cumulative_repeg_rebate_short: 0,
+            cumulative_funding_rate_long: 0,
+            cumulative_funding_rate_short: 0,
+            last_funding_rate: 0,
+            last_funding_rate_ts: cast_to_i64(now)?,
+            funding_period: amm_periodicity,
+            last_oracle_price_twap: last_oracle_price_twap.price,
+            last_mark_price_twap: init_mark_price,
+            last_mark_price_twap_ts: cast_to_i64(now)?,
+            sqrt_k: amm_base_asset_reserve,
+            peg_multiplier: amm_peg_multiplier,
+            total_fee: 0,
+            total_fee_minus_distributions: 0,
+            total_fee_withdrawn: 0,
+            minimum_quote_asset_trade_size: 10000000,
+            last_oracle_price_twap_ts: cast_to_i64(now)?,
+            last_oracle_price: oracle_price,
+            minimum_base_asset_trade_size: 10000000,
+        },
+    };
+    Markets.save(deps.storage, market_index, &market)?;
     Ok(Response::new().add_attribute("method", "try_initialize_market"))
 }
 
@@ -163,10 +176,11 @@ pub fn try_deposit_collateral(
     controller::funding::settle_funding_payment(&mut deps, &user_address, cast_to_i64(now)?)?;
     //get and send tokens to collateral vault
     let state = STATE.load(deps.storage)?;
-    let bankMsg = BankMsg::Send {
-        to_address: state.collateral_vault.into_string(),
-        amount: coins(cast_to_u128(amount)?, "uusd"),
-    };
+    let message: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: state.insurance_vault.to_string(),
+        msg: to_binary(&VaultInterface::Deposit {})?,
+        funds: coins(amount.into(), "uusd"),
+    });
     let deposit_history_info_length = DepositHistoryInfo
         .load(deps.storage)?
         .len
@@ -201,7 +215,7 @@ pub fn try_deposit_collateral(
         |m| -> Result<User, ContractError> { Ok(user) },
     )?;
     Ok(Response::new()
-        .add_message(bankMsg)
+        .add_message(message)
         .add_attribute("method", "try_deposit_collateral"))
 }
 
@@ -263,8 +277,8 @@ pub fn try_withdraw_collateral(
 
     messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: state.collateral_vault.clone().to_string(),
-        msg: to_binary(&VaultInterface::WithdrawFunds {
-            to_address: info.sender.to_string(),
+        msg: to_binary(&VaultInterface::Withdraw {
+            to_address: info.sender.clone(),
             amount: cast(collateral_account_withdrawal)?,
         })?,
         funds: vec![],
@@ -273,8 +287,8 @@ pub fn try_withdraw_collateral(
     if insurance_account_withdrawal > 0 {
         messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: state.insurance_vault.to_string(),
-            msg: to_binary(&VaultInterface::WithdrawFunds {
-                to_address: info.sender.to_string(),
+            msg: to_binary(&VaultInterface::Withdraw {
+                to_address: info.sender.clone(),
                 amount: cast(insurance_account_withdrawal)?,
             })?,
             funds: vec![],
@@ -306,6 +320,11 @@ pub fn try_withdraw_collateral(
             amount: cast(amount_withdraw)?,
         },
     )?;
+    Users.update(
+        deps.storage,
+        &user_address.clone(),
+        |u| -> Result<User, ContractError> { Ok(user) },
+    )?;
     Ok(Response::new()
         .add_messages(messages)
         .add_attribute("method", "try_withdraw_collateral"))
@@ -329,33 +348,33 @@ pub fn try_open_position(
     let market_position: Position;
     let mut open_position: bool = false;
     let mut position_index: u64 = 0;
-    if user.positions_length > 0 {
-        for n in 1..user.positions_length {
-            let mark_position = Positions.load(deps.storage, (&user_address, n))?;
-            if is_for(mark_position.clone(), market_index) {
-                market_position = mark_position;
-                open_position = true;
-                //get the position as n and save market data at (addr, n ) index?
-                break;
-            }
-        }
-    }
+    // if user.positions_length > 0 {
+    //     for n in 1..user.positions_length {
+    //         let mark_position = Positions.load(deps.storage, (&user_address, n))?;
+    //         if is_for(mark_position.clone(), market_index) {
+    //             market_position = mark_position;
+    //             open_position = true;
+    //             //get the position as n and save market data at (addr, n ) index?
+    //             break;
+    //         }
+    //     }
+    // }
 
-    if open_position {
-        let new_market_position = Position {
-            market_index,
-            base_asset_amount: 0,
-            quote_asset_amount: 0,
-            last_cumulative_funding_rate: 0,
-            last_cumulative_repeg_rebate: 0,
-            last_funding_rate_ts: 0,
-            stop_profit_price: 0,
-            stop_profit_amount: 0,
-            stop_loss_price: 0,
-            stop_loss_amount: 0,
-            transfer_to: Addr::unchecked("".to_string()),
-        };
-    }
+    // if open_position {
+    //     let new_market_position = Position {
+    //         market_index,
+    //         base_asset_amount: 0,
+    //         quote_asset_amount: 0,
+    //         last_cumulative_funding_rate: 0,
+    //         last_cumulative_repeg_rebate: 0,
+    //         last_funding_rate_ts: 0,
+    //         stop_profit_price: 0,
+    //         stop_profit_amount: 0,
+    //         stop_loss_price: 0,
+    //         stop_loss_amount: 0,
+    //         transfer_to: Addr::unchecked("".to_string()),
+    //     };
+    // }
 
     let market_position = Positions.load(deps.storage, (&user_address, position_index))?;
 
@@ -390,17 +409,17 @@ pub fn try_close_position(
     let mut market_position: Position;
     let mut open_position: bool = false;
     let position_index: u64;
-    if user.positions_length > 0 {
-        for n in 1..user.positions_length {
-            let mark_position = Positions.load(deps.storage, (&user_address, n))?;
-            if is_for(mark_position.clone(), market_index) {
-                market_position = mark_position;
-                open_position = true;
-                //get the position as n and save market data at (addr, n ) index?
-                break;
-            }
-        }
-    }
+    // if user.positions_length > 0 {
+    //     for n in 1..user.positions_length {
+    //         let mark_position = Positions.load(deps.storage, (&user_address, n))?;
+    //         if is_for(mark_position.clone(), market_index) {
+    //             market_position = mark_position;
+    //             open_position = true;
+    //             //get the position as n and save market data at (addr, n ) index?
+    //             break;
+    //         }
+    //     }
+    // }
 
     if open_position {
         return Err(ContractError::UserHasNoPositionInMarket.into());
@@ -413,15 +432,15 @@ pub fn try_close_position(
     )?;
 
     //price oracle address
-    let price_oracle = Addr::unchecked("".to_string());
-    let (oracle_price, _, oracle_mark_spread_pct_before) =
-        helpers::amm::calculate_oracle_mark_spread_pct(
-            &market.amm,
-            &price_oracle,
-            0,
-            clock_slot,
-            Some(mark_price_before),
-        )?;
+    // let price_oracle = Addr::unchecked("".to_string());
+    // let (oracle_price, _, oracle_mark_spread_pct_before) =
+    //     helpers::amm::calculate_oracle_mark_spread_pct(
+    //         &market.amm,
+    //         &price_oracle,
+    //         0,
+    //         clock_slot,
+    //         Some(mark_price_before),
+    //     )?;
 
     // let direction_to_close =
     //     helpers::position::direction_to_close_position(market_position.base_asset_amount);
@@ -540,10 +559,11 @@ pub fn try_withdraw_fees(
         return Err(ContractError::AdminWithdrawTooLarge.into());
     }
 
+    //todo recipient who? is it only admin function
     let message: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: state.collateral_vault.to_string(),
-        msg: to_binary(&VaultInterface::WithdrawFunds {
-            to_address: info.sender.to_string(),
+        msg: to_binary(&VaultInterface::Withdraw {
+            to_address: info.sender.clone(),
             amount: cast(amount)?,
         })?,
         funds: vec![],
@@ -555,7 +575,15 @@ pub fn try_withdraw_fees(
         .checked_add(cast(amount)?)
         .ok_or_else(|| (ContractError::MathError))?;
 
-    Ok(Response::new().add_attribute("method", "try_withdraw_fees"))
+    Markets.update(
+        deps.storage,
+        market_index,
+        |m| -> Result<Market, ContractError> { Ok(market) },
+    );
+
+    Ok(Response::new()
+        .add_message(message)
+        .add_attribute("method", "try_withdraw_fees"))
 }
 
 pub fn try_withdraw_from_insurance_vault_to_market(
@@ -573,20 +601,20 @@ pub fn try_withdraw_from_insurance_vault_to_market(
         .total_fee_minus_distributions
         .checked_add(cast(amount)?)
         .ok_or_else(|| (ContractError::MathError))?;
-    Markets.update(
-        deps.storage,
-        market_index,
-        |m| -> Result<Market, ContractError> { Ok(market) },
-    )?;
 
     let message: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: state.insurance_vault.to_string(),
-        msg: to_binary(&VaultInterface::WithdrawFunds {
-            to_address: state.collateral_vault.to_string(),
+        msg: to_binary(&VaultInterface::Withdraw {
+            to_address: state.collateral_vault.clone(),
             amount: cast(amount)?,
         })?,
         funds: vec![],
     });
+    Markets.update(
+        deps.storage,
+        market_index,
+        |m| -> Result<Market, ContractError> { Ok(market) },
+    );
     Ok(Response::new()
         .add_message(message)
         .add_attribute("method", "try_withdraw_from_insurance_vault_to_market"))
@@ -602,14 +630,17 @@ pub fn try_repeg_amm_curve(
     let now = env.block.time.seconds();
     let clock_slot = now.clone();
     let market = Markets.load(deps.storage, market_index)?;
-
+    let OraclePriceData {
+        price: oracle_price,
+        ..
+    } = helpers::oracle::get_oracle_price(&market.amm, &market.amm.oracle, clock_slot)?;
     let peg_multiplier_before = market.amm.peg_multiplier;
     let base_asset_reserve_before = market.amm.base_asset_reserve;
     let quote_asset_reserve_before = market.amm.quote_asset_reserve;
     let sqrt_k_before = market.amm.sqrt_k;
 
-    //TODO:: set price_oracle
-    let price_oracle = Addr::unchecked("".to_string());
+    let state = STATE.load(deps.storage)?;
+    let price_oracle = state.oracle;
 
     let adjustment_cost = controller::repeg::repeg(
         &mut deps,
@@ -637,9 +668,6 @@ pub fn try_repeg_amm_curve(
         },
     )?;
 
-    //TODO:: oracle price fetch and trade record impl
-    let oracle_price = 100;
-    let trade_record = 100;
     CurveHistory.save(
         deps.storage,
         curve_history_info_length as u64,
@@ -663,7 +691,7 @@ pub fn try_repeg_amm_curve(
             total_fee_minus_distributions: market.amm.total_fee_minus_distributions,
             adjustment_cost,
             oracle_price,
-            trade_record,
+            trade_record: 0,
         },
     )?;
     Ok(Response::new().add_attribute("method", "try_repeg_amm_curve"))
@@ -675,6 +703,44 @@ pub fn try_update_amm_oracle_twap(
     info: MessageInfo,
     market_index: u64,
 ) -> Result<Response, ContractError> {
+    let now = env.block.time.seconds();
+    let clock_slot = now.clone();
+    let market = Markets.load(deps.storage, market_index)?;
+    let state = STATE.load(deps.storage)?;
+    let price_oracle = state.oracle;
+    // todo get_oracle_twap is not defined yet
+    let oracle_twap = helpers::oracle::get_oracle_twap(&price_oracle)?;
+
+    if let Some(oracle_twap) = oracle_twap {
+        let oracle_mark_gap_before = cast_to_i128(market.amm.last_mark_price_twap)?
+            .checked_sub(market.amm.last_oracle_price_twap)
+            .ok_or_else(|| (ContractError::MathError))?;
+
+        let oracle_mark_gap_after = cast_to_i128(market.amm.last_mark_price_twap)?
+            .checked_sub(oracle_twap)
+            .ok_or_else(|| (ContractError::MathError))?;
+
+        if (oracle_mark_gap_after > 0 && oracle_mark_gap_before < 0)
+            || (oracle_mark_gap_after < 0 && oracle_mark_gap_before > 0)
+        {
+            market.amm.last_oracle_price_twap = cast_to_i128(market.amm.last_mark_price_twap)?;
+            market.amm.last_oracle_price_twap_ts = cast_to_i64(now)?;
+        } else if oracle_mark_gap_after.unsigned_abs() <= oracle_mark_gap_before.unsigned_abs() {
+            market.amm.last_oracle_price_twap = oracle_twap;
+            market.amm.last_oracle_price_twap_ts = cast_to_i64(now)?;
+        } else {
+            return Err(ContractError::OracleMarkSpreadLimit.into());
+        }
+    } else {
+        return Err(ContractError::InvalidOracle.into());
+    }
+
+    Markets.update(
+        deps.storage,
+        market_index,
+        |m| -> Result<Market, ContractError> { Ok(market) },
+    );
+
     Ok(Response::new().add_attribute("method", "try_update_amm_oracle_twap"))
 }
 
@@ -684,6 +750,26 @@ pub fn try_reset_amm_oracle_twap(
     info: MessageInfo,
     market_index: u64,
 ) -> Result<Response, ContractError> {
+    let now = env.block.time.seconds();
+    let clock_slot = now.clone();
+    let market = Markets.load(deps.storage, market_index)?;
+    let state = STATE.load(deps.storage)?;
+    let price_oracle = state.oracle;
+    let oracle_price_data =
+        helpers::oracle::get_oracle_price(&market.amm, &market.amm.oracle, clock_slot)?;
+
+    //todo oracle validity function in oracle
+    let is_oracle_valid = true;
+
+    if !is_oracle_valid {
+        market.amm.last_oracle_price_twap = cast_to_i128(market.amm.last_mark_price_twap)?;
+        market.amm.last_oracle_price_twap_ts = cast_to_i64(now)?;
+    }
+    Markets.update(
+        deps.storage,
+        market_index,
+        |m| -> Result<Market, ContractError> { Ok(market) },
+    );
     Ok(Response::new().add_attribute("method", "try_reset_amm_oracle_twap"))
 }
 
@@ -704,20 +790,19 @@ pub fn try_update_funding_rate(
     info: MessageInfo,
     market_index: u64,
 ) -> Result<Response, ContractError> {
-
     let market = Markets.load(deps.storage, market_index)?;
     let now = env.block.time.seconds();
     let clock_slot = now.clone();
-    //TODO:: add oracle address
-    let price_oracle = Addr::unchecked("".to_string());
+    let price_oracle = STATE.load(deps.storage).unwrap().oracle;
     let funding_paused = STATE.load(deps.storage).unwrap().funding_paused;
     controller::funding::update_funding_rate(
         &mut deps,
         market_index,
-        &price_oracle,
+        price_oracle,
         cast_to_i64(now)?,
         clock_slot,
         funding_paused,
+        None,
     )?;
     Ok(Response::new().add_attribute("method", "try_update_funding_rate"))
 }
@@ -730,6 +815,7 @@ pub fn try_update_k(
     sqrt_k: u128,
 ) -> Result<Response, ContractError> {
     let now = env.block.time.seconds();
+    let clock_slot = now.clone();
     let mut market = Markets.load(deps.storage, market_index)?;
 
     let base_asset_amount_long = market.base_asset_amount_long.unsigned_abs();
@@ -810,9 +896,12 @@ pub fn try_update_k(
             Ok(i)
         },
     );
-    //TODO:: oracle price fetch and trade record impl
-    let oracle_price = 100;
-    let trade_record = 100;
+
+    let OraclePriceData {
+        price: oracle_price,
+        ..
+    } = helpers::oracle::get_oracle_price(&market.amm, &market.amm.oracle, clock_slot)?;
+
     CurveHistory.save(
         deps.storage,
         curve_history_info_length as u64,
@@ -836,43 +925,42 @@ pub fn try_update_k(
             total_fee,
             total_fee_minus_distributions,
             oracle_price,
-            trade_record,
+            trade_record: 0,
         },
     );
-    Ok(Response::new().add_attribute("method", "try_update_k"))
-}
-
-pub fn try_update_market_minimum_trade_size(
-    deps: DepsMut,
-    info: MessageInfo,
-    market_index: u64,
-    minimum_trade_size: u128,
-) -> Result<Response, ContractError> {
-    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
-    let mut market = Markets.load(deps.storage, market_index)?;
-    // market.amm.minimum_trade_size = minimum_trade_size;
     Markets.update(
         deps.storage,
         market_index,
         |m| -> Result<Market, ContractError> { Ok(market) },
-    )?;
-    Ok(Response::new().add_attribute("method", "try_update_market_minimum_trade_size"))
+    );
+    Ok(Response::new().add_attribute("method", "try_update_k"))
 }
 
 pub fn try_update_margin_ratio(
     deps: DepsMut,
     info: MessageInfo,
-    margin_ratio_initial: u128,
-    margin_ratio_partial: u128,
-    margin_ratio_maintenance: u128,
+    market_index: u64,
+    margin_ratio_initial: u32,
+    margin_ratio_partial: u32,
+    margin_ratio_maintenance: u32,
 ) -> Result<Response, ContractError> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
-    STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        state.margin_ratio_initial = margin_ratio_initial;
-        state.margin_ratio_partial = margin_ratio_partial;
-        state.margin_ratio_maintenance = margin_ratio_maintenance;
-        Ok(state)
-    })?;
+    helpers::margin_validation::validate_margin(
+        margin_ratio_initial,
+        margin_ratio_partial,
+        margin_ratio_maintenance,
+    )?;
+    let mut market = Markets.load(deps.storage, market_index)?;
+    Markets.update(
+        deps.storage,
+        market_index,
+        |m| -> Result<Market, ContractError> {
+            market.margin_ratio_initial = margin_ratio_initial;
+            market.margin_ratio_partial = margin_ratio_partial;
+            market.margin_ratio_maintenance = margin_ratio_maintenance;
+            Ok(market)
+        },
+    );
     Ok(Response::new().add_attribute("method", "try_update_margin_ratio"))
 }
 
@@ -1000,6 +1088,8 @@ pub fn try_update_order_filler_reward_structure(
     reward_denominator: u128,
     time_based_reward_lower_bound: u128,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
+
     Ok(Response::new().add_attribute("method", "try_update_order_filler_reward_structure"))
 }
 pub fn try_update_market_oracle(
@@ -1009,6 +1099,15 @@ pub fn try_update_market_oracle(
     oracle: String,
     oracle_source: OracleSource,
 ) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
+    let mut market = Markets.load(deps.storage, market_index)?;
+    market.amm.oracle = addr_validate_to_lower(deps.api, &oracle)?;
+    market.amm.oracle_source = oracle_source;
+    Markets.update(
+        deps.storage,
+        market_index,
+        |m| -> Result<Market, ContractError> { Ok(market) },
+    );
     Ok(Response::new().add_attribute("method", "try_update_market_oracle"))
 }
 
@@ -1097,11 +1196,13 @@ pub fn try_update_market_minimum_quote_asset_trade_size(
 ) -> Result<Response, ContractError> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let mut market = Markets.load(deps.storage, market_index)?;
-    // market.amm.minimum_trade_size = minimum_trade_size;
     Markets.update(
         deps.storage,
         market_index,
-        |m| -> Result<Market, ContractError> { Ok(market) },
+        |m| -> Result<Market, ContractError> {
+            market.amm.minimum_quote_asset_trade_size = minimum_trade_size;
+            Ok(market)
+        },
     )?;
     Ok(Response::new().add_attribute("method", "try_update_market_minimum_quote_asset_trade_size"))
 }
@@ -1114,11 +1215,26 @@ pub fn try_update_market_minimum_base_asset_trade_size(
 ) -> Result<Response, ContractError> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let mut market = Markets.load(deps.storage, market_index)?;
-    // market.amm.minimum_trade_size = minimum_trade_size;
     Markets.update(
         deps.storage,
         market_index,
-        |m| -> Result<Market, ContractError> { Ok(market) },
+        |m| -> Result<Market, ContractError> {
+            market.amm.minimum_base_asset_trade_size = minimum_trade_size;
+            Ok(market)
+        },
     )?;
     Ok(Response::new().add_attribute("method", "try_update_market_minimum_base_asset_trade_size"))
+}
+
+pub fn try_update_oracle_address(
+    deps: DepsMut,
+    info: MessageInfo,
+    oracle: String,
+) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
+    STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
+        state.oracle = addr_validate_to_lower(deps.api, &oracle)?;
+        Ok(state)
+    })?;
+    Ok(Response::new().add_attribute("method", "try_update_oracle_address"))
 }
