@@ -1,4 +1,4 @@
-use ariel::types::Order;
+use ariel::types::{Order, OrderType, PositionDirection, OrderTriggerCondition};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -20,6 +20,24 @@ pub struct OrderFillerRewardStructure {
     pub reward_numerator: u128,
     pub reward_denominator: u128,
     pub time_based_reward_lower_bound: u128, // minimum filler reward for time-based reward
+}
+
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct OrderParams {
+    pub order_type: OrderType,
+    pub direction: PositionDirection,
+    pub quote_asset_amount: u128,
+    pub base_asset_amount: u128,
+    pub price: u128,
+    pub market_index: u64,
+    pub reduce_only: bool,
+    pub post_only: bool,
+    pub immediate_or_cancel: bool,
+    pub trigger_price: u128,
+    pub trigger_condition: OrderTriggerCondition,
+    pub position_limit: u128,
+    pub oracle_price_offset: i128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

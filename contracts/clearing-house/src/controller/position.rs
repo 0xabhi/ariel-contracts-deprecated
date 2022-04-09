@@ -820,3 +820,21 @@ fn calculate_quote_asset_amount_surplus(
 
     Ok((quote_asset_amount, quote_asset_amount_surplus))
 }
+
+
+pub fn get_position_index(
+    deps: &mut DepsMut,
+    user_addr: &Addr,
+    market_index: u64,
+) -> Result<u64, ContractError> {
+    let user = Users.load(deps.storage, user_addr)?;
+    if user.positions_length > 0 {
+        for i in 1..user.position_length {
+            let position = Positions.load(deps.storage, (user_addr, i))?;
+            if position.market_index == market_index {
+                Ok(i)
+            }
+        }
+    }
+    Ok(0)
+}

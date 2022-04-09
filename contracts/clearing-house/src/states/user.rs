@@ -12,7 +12,9 @@ pub struct User {
     pub total_token_discount: u128,
     pub total_referral_reward: u128,
     pub total_referee_discount: u128,
-    pub positions_length: u64 ,
+    pub positions_length: u64,
+    pub order_length: u64,
+    pub referrer: Option<Addr>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -28,7 +30,6 @@ pub struct Position {
 
 pub const Users : Map<&Addr, User> = Map::new("users");
 pub const Positions: Map<(&Addr, u64),  Position> = Map::new("market_positions");
-
 
 impl Position {
     pub fn is_for(&self, market_index: u64) -> bool {

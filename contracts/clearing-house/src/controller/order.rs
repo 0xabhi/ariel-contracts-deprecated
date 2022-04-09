@@ -1,5 +1,8 @@
 use crate::error::ContractError;
-use crate::states::market::Market;
+use crate::helpers::fees::calculate_order_fee_tier;
+use crate::states::market::{Market, Markets};
+use crate::states::order::{Orders, OrderParams};
+use crate::states::state::{State, STATE};
 
 use std::cell::RefMut;
 use std::cmp::min;
@@ -13,9 +16,12 @@ use crate::helpers::constants::{
 };
 use crate::controller::margin::calculate_free_collateral;
 use crate::helpers::quote_asset::asset_to_reserve_amount;
-use crate::states::user::{User, Position};
+use crate::states::user::{User, Users, Positions};
 use crate::helpers::amm;
 
+use crate::controller::funding::settle_funding_payment;
+
+use super::position::get_position_index;
 
 pub fn calculate_base_asset_amount_user_can_execute(
     deps: &DepsMut,
@@ -23,18 +29,22 @@ pub fn calculate_base_asset_amount_user_can_execute(
     order_index: u64,
     market_index: u64,
 ) -> Result<u128, ContractError> {
-    let position_index = get_position_index(user_positions, market_index)?;
+
+    let mut user = Users.load(deps.storage, user_addr)?;
+    let position_index = get_position_index(deps, user_addr, market_index)?;
+    let mut market_position = Positions.load(deps.storage, (user_addr, position_index))?;
+    let mut market = Markets.load(deps.storage, market_index)?;
+    
+    let order = Orders.load(deps.storage, (user_addr, order_index))?;
 
     let quote_asset_amount = calculate_available_quote_asset_user_can_execute(
-        user,
-        order,
+        deps,
+        user_addr,
+        order_index,
         position_index,
-        user_positions,
-        markets,
     )?;
 
-    let market = markets.get_market_mut(market_index);
-
+    
     let order_swap_direction = match order.direction {
         PositionDirection::Long => SwapDirection::Add,
         PositionDirection::Short => SwapDirection::Remove,
@@ -67,14 +77,20 @@ pub fn calculate_base_asset_amount_user_can_execute(
 }
 
 pub fn calculate_available_quote_asset_user_can_execute(
-    user: &User,
-    order: &Order,
-    position_index: usize,
-    user_positions: &mut Position,
-    markets: &Market,
+    deps: &DepsMut,
+    user_addr: &Addr,
+    order_index: u64,
+    position_index: u64,
 ) -> Result<u128, ContractError> {
-    let market_position = &user_positions.positions[position_index];
-    let market = markets.get_market(market_position.market_index);
+
+    let mut user = Users.load(deps.storage, user_addr)?;
+    let mut market_position = Positions.load(deps.storage, (user_addr, position_index))?;
+    
+    let market_index = market_position.market_index;
+    let mut market = Markets.load(deps.storage, market_index)?;
+    
+    let order = Orders.load(deps.storage, position_index)?;
+
     let max_leverage = MARGIN_PRECISION
         .checked_div(
             // add one to initial margin ratio so we don't fill exactly to max leverage
@@ -89,7 +105,11 @@ pub fn calculate_available_quote_asset_user_can_execute(
         || market_position.base_asset_amount < 0 && order.direction == PositionDirection::Short;
 
     let available_quote_asset_for_order = if risk_increasing_in_same_direction {
-        let (free_collateral, _) = calculate_free_collateral(user, user_positions, markets, None)?;
+        let (free_collateral, _) = calculate_free_collateral(
+            deps,
+            user_addr,
+            None, 
+        )?;
 
         free_collateral
             .checked_mul(max_leverage)
@@ -97,7 +117,7 @@ pub fn calculate_available_quote_asset_user_can_execute(
     } else {
         let market_index = market_position.market_index;
         let (free_collateral, closed_position_base_asset_value) =
-            calculate_free_collateral(user, user_positions, markets, Some(market_index))?;
+            calculate_free_collateral(deps, user_addr, Some(market_index))?;
 
         free_collateral
             .checked_mul(max_leverage)
@@ -110,72 +130,39 @@ pub fn calculate_available_quote_asset_user_can_execute(
 }
 
 pub fn place_order(
-    state: &State,
-    order_state: &OrderState,
-    user: &mut Box<Account<User>>,
-    user_positions: &AccountLoader<UserPositions>,
-    markets: &AccountLoader<Markets>,
-    user_orders: &AccountLoader<UserOrders>,
-    funding_payment_history: &AccountLoader<FundingPaymentHistory>,
-    order_history: &AccountLoader<OrderHistory>,
-    discount_token: Option<TokenAccount>,
-    referrer: &Option<Account<User>>,
-    clock: &Clock,
+    deps: &DepsMut,
+    user_addr: &Addr,
+    order_index: u64,
+    now: i64,
     params: OrderParams,
-    oracle: Option<&AccountInfo>,
+    oracle: &Addr,
 ) -> Result<bool, ContractError> {
-    let now = clock.unix_timestamp;
 
-    let user_positions = &mut user_positions
-        .load_mut()
-        .or(Err(ErrorCode::UnableToLoadAccountLoader))?;
-    let funding_payment_history = &mut funding_payment_history
-        .load_mut()
-        .or(Err(ErrorCode::UnableToLoadAccountLoader))?;
-    let markets = &markets
-        .load()
-        .or(Err(ErrorCode::UnableToLoadAccountLoader))?;
-    controller::funding::settle_funding_payment(
+    let state = STATE.load(deps.storage)?;
+
+    let mut user = Users.load(deps.storage, user_addr)?;
+    let position_index = get_position_index(deps, user_addr, params.market_index)?;
+    let mut market_position = Positions.load(deps.storage, (user_addr, position_index))?;
+    
+    let market_index = market_position.market_index;
+    let mut market = Markets.load(deps.storage, market_index)?;
+   
+    settle_funding_payment(
         user,
-        user_positions,
-        markets,
-        funding_payment_history,
+        user_addr,
         now,
     )?;
 
-    let user_orders = &mut user_orders
-        .load_mut()
-        .or(Err(ErrorCode::UnableToLoadAccountLoader))?;
-    let new_order_idx = user_orders
-        .orders
-        .iter()
-        .position(|order| order.status.eq(&OrderStatus::Init))
-        .ok_or(ErrorCode::MaxNumberOfOrders)?;
-    let discount_tier = calculate_order_fee_tier(&state.fee_structure, discount_token)?;
-    let order_history_account = &mut order_history
-        .load_mut()
-        .or(Err(ErrorCode::UnableToLoadAccountLoader))?;
-
-    if params.user_order_id > 0 {
-        let user_order_id_already_used = user_orders
-            .orders
-            .iter()
-            .position(|order| order.user_order_id == params.user_order_id);
-
-        if user_order_id_already_used.is_some() {
-            msg!("user_order_id is already in use {}", params.user_order_id);
-            return Err(ErrorCode::UserOrderIdAlreadyInUse);
-        }
-    }
-
-    let market_index = params.market_index;
-    let market = markets.get_market(market_index);
+    let new_order_idx = user.order_length.checked_add(1).ok_or_else(|| (ContractError::MathError))?;
+    
+    let discount_tier = calculate_order_fee_tier(
+        &state.fee_structure,
+        params.base_asset_amount,
+    );
 
     // Increment open orders for existing position
-    let position_index = get_position_index(user_positions, market_index)
-        .or_else(|_| add_new_position(user_positions, market_index))?;
-    let market_position = &mut user_positions.positions[position_index];
-    market_position.open_orders += 1;
+    market_position.open_orders = market_position.checked_add(1).ok_or_else(|| (ContractError::MathError))?;
+    user.order_length = new_order_idx;
 
     let order_id = order_history_account.next_order_id();
     let new_order = Order {
@@ -197,7 +184,7 @@ pub fn place_order(
         discount_tier,
         trigger_price: params.trigger_price,
         trigger_condition: params.trigger_condition,
-        referrer: match referrer {
+        referrer: match user.referrer {
             Some(referrer) => referrer.key(),
             None => Pubkey::default(),
         },
@@ -206,7 +193,6 @@ pub fn place_order(
 
         // always false until we add support
         immediate_or_cancel: false,
-        padding: [0; 3],
     };
 
     let valid_oracle_price = get_valid_oracle_price(
