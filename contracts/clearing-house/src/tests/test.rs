@@ -71,4 +71,5 @@ fn proper_market_initialize() {
     )
     .unwrap();
     let value: MarketInfoResponse = from_binary(&res).unwrap();
+    
 }

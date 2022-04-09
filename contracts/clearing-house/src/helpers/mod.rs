@@ -13,3 +13,4 @@ pub mod quote_asset;
 pub mod withdrawal;
 pub mod order;
 pub mod slippage;
+pub mod margin_validation;

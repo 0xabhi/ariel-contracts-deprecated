@@ -8,6 +8,7 @@ pub struct InstantiateMsg {
     pub collateral_vault: String,
     pub insurance_vault: String,
     pub admin_controls_prices: bool,
+    pub oracle: String
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -107,14 +108,11 @@ pub enum ExecuteMsg {
         market_index: u64,
         sqrt_k: u128,
     },
-    UpdateMarketMinimumTradeSize {
-        market_index: u64,
-        minimum_trade_size: u128,
-    },
     UpdateMarginRatio {
-        margin_ratio_initial: u128,
-        margin_ratio_partial: u128,
-        margin_ratio_maintenance: u128,
+        market_index: u64,
+        margin_ratio_initial: u32,
+        margin_ratio_partial: u32,
+        margin_ratio_maintenance: u32,
     },
     UpdatePartialLiquidationClosePercentage {
         numerator: u128,
@@ -165,7 +163,9 @@ pub enum ExecuteMsg {
         oracle: String,
         oracle_source: OracleSource,
     },
-
+    UpdateOracleAddress {
+        oracle: String,
+    },
     UpdateMarketMinimumQuoteAssetTradeSize {
         market_index: u64,
         minimum_trade_size: u128,

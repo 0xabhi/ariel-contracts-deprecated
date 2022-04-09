@@ -14,6 +14,7 @@ pub struct State {
     pub admin_controls_prices: bool,
     pub collateral_vault: Addr,
     pub insurance_vault: Addr,
+    pub oracle: Addr,
     pub margin_ratio_initial: u128,
     pub margin_ratio_maintenance: u128,
     pub margin_ratio_partial: u128,
