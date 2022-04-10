@@ -1,7 +1,6 @@
 use crate::controller;
 use crate::helpers;
 use crate::ContractError;
-// use crate::helpers::casting::cast_to_i64;
 use crate::helpers::casting::*;
 use crate::helpers::constants::*;
 use crate::helpers::withdrawal::calculate_withdrawal_amounts;
@@ -10,7 +9,7 @@ use crate::states::curve_history::*;
 use crate::states::deposit_history::*;
 use crate::states::market::{Amm, Market, Markets};
 use crate::states::state::ADMIN;
-use crate::states::state::{State, STATE};
+use crate::states::state::STATE;
 use crate::states::user::{Position, Positions, User, Users};
 
 use ariel::helper::addr_validate_to_lower;
@@ -26,7 +25,7 @@ use ariel::types::{
 use cosmwasm_std::to_binary;
 use cosmwasm_std::CosmosMsg;
 use cosmwasm_std::WasmMsg;
-use cosmwasm_std::{coins, Addr, BankMsg, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{coins, DepsMut, Env, MessageInfo, Response};
 
 pub fn try_initialize_market(
     deps: DepsMut,
@@ -66,8 +65,7 @@ pub fn try_initialize_market(
         .checked_mul(helpers::bn::U192::from(amm_quote_asset_reserve))
         .ok_or_else(|| return ContractError::MathError {})?;
 
-    // Verify oracle is readable
-    //Todo() get the oracle fix here
+    
     let OraclePriceData {
         price: oracle_price,
         ..
@@ -267,7 +265,7 @@ pub fn try_withdraw_collateral(
 
     // TODO: change this to meets initial margin requirement from margin.rs
     // let (_total_collateral, _unrealized_pnl, _base_asset_value, margin_ratio) =
-    //     calculate_margin_ratio(&deps, &user_address)?;
+    // controller::margin::calculate_margin_ratio(&deps, &user_address)?;
 
     // if margin_ratio < state.margin_ratio_initial {
     //     return Err(ContractError::InsufficientCollateral.into());

@@ -45,11 +45,11 @@ pub fn get_user_position(
         last_cumulative_funding_rate: position.last_cumulative_funding_rate,
         last_cumulative_repeg_rebate: position.last_cumulative_repeg_rebate,
         last_funding_rate_ts: position.last_funding_rate_ts,
-        stop_loss_price: position.stop_loss_price,
-        stop_loss_amount: position.stop_loss_amount,
-        stop_profit_price: position.stop_profit_price,
-        stop_profit_amount: position.stop_profit_amount,
         transfer_to: "DefaultAddress".to_string(),
+        stop_loss_price: todo!(),
+        stop_loss_amount: todo!(),
+        stop_profit_price: todo!(),
+        stop_profit_amount: todo!(),
     };
     Ok(upr)
 }
