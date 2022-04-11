@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 
-use ariel::types::{OracleGuardRails, OraclePriceData, OracleSource, OracleStatus};
+use ariel::types::{OracleGuardRails, OraclePriceData, OracleStatus};
 use cosmwasm_std::Addr;
 
 use crate::helpers::amm;

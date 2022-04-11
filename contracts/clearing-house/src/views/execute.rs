@@ -1,10 +1,10 @@
 use crate::controller;
 use crate::helpers;
-use crate::ContractError;
 use crate::helpers::casting::*;
 use crate::helpers::constants::*;
 use crate::helpers::withdrawal::calculate_withdrawal_amounts;
 use crate::states::curve_history::*;
+use crate::ContractError;
 
 use crate::states::deposit_history::*;
 use crate::states::market::{Amm, Market, Markets};
@@ -65,7 +65,6 @@ pub fn try_initialize_market(
         .checked_mul(helpers::bn::U192::from(amm_quote_asset_reserve))
         .ok_or_else(|| return ContractError::MathError {})?;
 
-    
     let OraclePriceData {
         price: oracle_price,
         ..
@@ -263,13 +262,9 @@ pub fn try_withdraw_collateral(
         .checked_sub(cast(insurance_account_withdrawal)?)
         .ok_or_else(|| (ContractError::MathError))?;
 
-    // TODO: change this to meets initial margin requirement from margin.rs
-    // let (_total_collateral, _unrealized_pnl, _base_asset_value, margin_ratio) =
-    // controller::margin::calculate_margin_ratio(&deps, &user_address)?;
-
-    // if margin_ratio < state.margin_ratio_initial {
-    //     return Err(ContractError::InsufficientCollateral.into());
-    // }
+    if !controller::margin::meets_initial_margin_requirement(&mut deps, &info.sender.clone())? {
+        return Err(ContractError::InsufficientCollateral.into());
+    }
 
     let mut messages: Vec<CosmosMsg> = vec![];
 
@@ -756,8 +751,8 @@ pub fn try_reset_amm_oracle_twap(
     let oracle_price_data =
         helpers::oracle::get_oracle_price(&market.amm, &market.amm.oracle, clock_slot)?;
 
-    //todo oracle validity function in oracle
-    let is_oracle_valid = true;
+    let is_oracle_valid =
+        helpers::amm::is_oracle_valid(&market.amm, &oracle_price_data, &state.oracle_guard_rails)?;
 
     if !is_oracle_valid {
         market.amm.last_oracle_price_twap = cast_to_i128(market.amm.last_mark_price_twap)?;

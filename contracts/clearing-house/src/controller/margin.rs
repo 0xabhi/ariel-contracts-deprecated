@@ -18,7 +18,7 @@ use crate::helpers::slippage::calculate_slippage;
 use std::ops::Div;
 
 pub fn meets_initial_margin_requirement(
-    deps: &DepsMut, 
+    deps: &mut DepsMut, 
     user_addr: &Addr,
 ) -> Result<bool, ContractError> {
     let user = Users.load(deps.storage, user_addr)?;
