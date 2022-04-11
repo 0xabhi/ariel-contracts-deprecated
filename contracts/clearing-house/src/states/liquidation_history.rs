@@ -6,7 +6,7 @@ use cw_storage_plus::{Map, Item};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct LiquidationRecord {
-    pub ts: i64,
+    pub ts: u64,
     pub record_id: u128,
     pub user: Addr,
     pub partial: bool,
@@ -24,7 +24,7 @@ pub struct LiquidationRecord {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct LiquidationInfo {
-    pub len: i64,
+    pub len: u64,
 }
 
 pub const LiquidationHistory: Map<(u64,Addr),  LiquidationRecord> = Map::new("liquidation_history");

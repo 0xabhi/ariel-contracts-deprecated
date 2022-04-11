@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::Addr;
 use cw_storage_plus::Map;
 
-use ariel::types::{OracleSource, OracleStatus};
+use ariel::types::{OracleSource, OracleStatus, OraclePriceData};
 
 use crate::error::ContractError;
 
@@ -35,18 +35,18 @@ pub struct Amm {
     pub cumulative_funding_rate_long: i128,
     pub cumulative_funding_rate_short: i128,
     pub last_funding_rate: i128,
-    pub last_funding_rate_ts: i64,
-    pub funding_period: i64,
+    pub last_funding_rate_ts: u64,
+    pub funding_period: u64,
     pub last_oracle_price_twap: i128,
     pub last_mark_price_twap: u128,
-    pub last_mark_price_twap_ts: i64,
+    pub last_mark_price_twap_ts: u64,
     pub sqrt_k: u128,
     pub peg_multiplier: u128,
     pub total_fee: u128,
     pub total_fee_minus_distributions: u128,
     pub total_fee_withdrawn: u128,
     pub minimum_quote_asset_trade_size: u128,
-    pub last_oracle_price_twap_ts: i64,
+    pub last_oracle_price_twap_ts: u64,
     pub last_oracle_price: i128,
     pub minimum_base_asset_trade_size: u128,
 }
@@ -61,6 +61,32 @@ impl Amm {
             self.peg_multiplier,
         )
     }
+
+    pub fn get_oracle_price(
+        &self,
+        price_oracle: &Addr,
+        now: u64,
+    ) -> Result<OraclePriceData, ContractError> {
+        // match self.oracle_source {
+        //     OracleSource::Pyth => self.get_pyth_price(price_oracle, clock_slot),
+        //     OracleSource::Switchboard => self.get_switchboard_price(price_oracle, clock_slot),
+        // }
+        Ok(OraclePriceData {
+            price : 0,
+            confidence : 0,
+            delay : 0,
+            has_sufficient_number_of_data_points : false,
+        })
+    }
+
+    pub fn get_oracle_twap(&self, price_oracle: &Addr) -> Result<Option<i128>, ContractError> {
+        // match self.oracle_source {
+            // OracleSource::Pyth => Ok(Some(self.get_pyth_twap(price_oracle)?)),
+            // OracleSource::Switchboard => Ok(None),
+        // }
+        Ok(Some(0))
+    }
+
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

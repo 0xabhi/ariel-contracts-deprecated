@@ -18,7 +18,7 @@ impl Default for Type {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CurveRecord {
-    pub ts: i64,
+    pub ts: u64,
     pub record_id: u128,
     pub market_index: u64,
     pub peg_multiplier_before: u128,
@@ -42,7 +42,7 @@ pub struct CurveRecord {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CurveInfo {
-    pub len: i64,
+    pub len: u64,
 }
 
 pub const CurveHistory: Map<u64,  CurveRecord> = Map::new("curve_history");

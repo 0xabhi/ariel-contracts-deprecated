@@ -88,6 +88,7 @@ pub fn instantiate(
         max_deposit: 0,
         fee_structure: fs,
         oracle_guard_rails: oracle_gr,
+        markets_length: 0,
     };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     STATE.save(deps.storage, &state)?;

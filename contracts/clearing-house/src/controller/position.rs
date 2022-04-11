@@ -23,7 +23,7 @@ pub fn increase(
     market_index : u64,
     user_addr: &Addr,
     position_index: u64,
-    now: i64,
+    now: u64,
     precomputed_mark_price: Option<u128>,
 ) -> Result<i128, ContractError> {
     let mut market = Markets.load(deps.storage, market_index)?;
@@ -104,7 +104,7 @@ pub fn reduce(
     user_addr: &Addr,
     market_index : u64,
     position_index: u64,
-    now: i64,
+    now: u64,
     precomputed_mark_price: Option<u128>,
 ) -> Result<i128, ContractError> {
     let mut user = Users.load(deps.storage, user_addr)?;
@@ -201,7 +201,7 @@ pub fn close(
     user_addr: &Addr,
     market_index : u64,
     position_index: u64,
-    now: i64,
+    now: u64,
     maker_limit_price: Option<u128>,
     precomputed_mark_price: Option<u128>,
 ) -> Result<(u128, i128, u128), ContractError> {
@@ -314,7 +314,7 @@ pub fn add_new_position(
         last_cumulative_funding_rate: 0,
         last_cumulative_repeg_rebate: 0,
         last_funding_rate_ts: 0,
-        open_orders: 0,
+        order_length: 0,
     };
 
     Positions.update(deps.storage, (user_addr, new_position_index), |p|-> Result<Position, ContractError> {
@@ -336,7 +336,7 @@ pub fn increase_with_base_asset_amount(
     base_asset_amount: u128,
     user_addr: &Addr,
     position_index: u64,
-    now: i64,
+    now: u64,
     maker_limit_price: Option<u128>,
     precomputed_mark_price: Option<u128>,
 ) -> Result<(u128, u128), ContractError> {
@@ -442,7 +442,7 @@ pub fn reduce_with_base_asset_amount(
     base_asset_amount: u128,
     user_addr: &Addr,
     position_index: u64,
-    now: i64,
+    now: u64,
     maker_limit_price: Option<u128>,
     precomputed_mark_price: Option<u128>,
 ) -> Result<(u128, u128), ContractError> {
@@ -562,7 +562,7 @@ pub fn update_position_with_base_asset_amount(
     user_addr: &Addr,
     position_index: u64,
     mark_price_before: u128,
-    now: i64,
+    now: u64,
     maker_limit_price: Option<u128>,
 ) -> Result<(bool, bool, u128, u128, u128), ContractError> {
     
@@ -681,7 +681,7 @@ pub fn update_position_with_quote_asset_amount(
     user_addr: &Addr,
     position_index: u64,
     mark_price_before: u128,
-    now: i64,
+    now: u64,
 ) -> Result<(bool, bool, u128, u128, u128), ContractError> {
  
     let mut user = Users.load(deps.storage, user_addr)?;
@@ -819,22 +819,4 @@ fn calculate_quote_asset_amount_surplus(
     };
 
     Ok((quote_asset_amount, quote_asset_amount_surplus))
-}
-
-
-pub fn get_position_index(
-    deps: &mut DepsMut,
-    user_addr: &Addr,
-    market_index: u64,
-) -> Result<u64, ContractError> {
-    let user = Users.load(deps.storage, user_addr)?;
-    if user.positions_length > 0 {
-        for i in 1..user.position_length {
-            let position = Positions.load(deps.storage, (user_addr, i))?;
-            if position.market_index == market_index {
-                Ok(i)
-            }
-        }
-    }
-    Ok(0)
 }

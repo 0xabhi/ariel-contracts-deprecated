@@ -3,7 +3,7 @@ use cosmwasm_std::{Addr, DepsMut};
 
 use crate::error::ContractError;
 use crate::helpers::collateral::calculate_updated_collateral;
-use crate::helpers::constants::MARGIN_PRECISION;
+use crate::helpers::constants::{MARGIN_PRECISION, MINIMUM_MARGIN_RATIO, MAXIMUM_MARGIN_RATIO};
 use crate::helpers::position::{
     calculate_base_asset_value_and_pnl, calculate_base_asset_value_and_pnl_with_oracle_price,
 };
@@ -205,7 +205,6 @@ pub fn calculate_liquidation_status(
             let oracle_status = get_oracle_status(
                 &market.amm,
                 oracle_account_info,
-                clock_slot,
                 oracle_guard_rails,
                 Some(mark_price_before),
             )?;
@@ -379,4 +378,31 @@ pub fn calculate_liquidation_status(
         market_statuses,
         margin_ratio,
     })
+}
+pub fn validate_margin(
+    margin_ratio_initial: u32,
+    margin_ratio_partial: u32,
+    margin_ratio_maintenance: u32,
+) -> Result<bool, ContractError> {
+    if !(MINIMUM_MARGIN_RATIO..=MAXIMUM_MARGIN_RATIO).contains(&margin_ratio_initial) {
+        return Err(ContractError::InvalidMarginRatio);
+    }
+
+    if margin_ratio_initial < margin_ratio_partial {
+        return Err(ContractError::InvalidMarginRatio);
+    }
+
+    if !(MINIMUM_MARGIN_RATIO..=MAXIMUM_MARGIN_RATIO).contains(&margin_ratio_partial) {
+        return Err(ContractError::InvalidMarginRatio);
+    }
+
+    if margin_ratio_partial < margin_ratio_maintenance {
+        return Err(ContractError::InvalidMarginRatio);
+    }
+
+    if !(MINIMUM_MARGIN_RATIO..=MAXIMUM_MARGIN_RATIO).contains(&margin_ratio_maintenance) {
+        return Err(ContractError::InvalidMarginRatio);
+    }
+
+    Ok(true)
 }

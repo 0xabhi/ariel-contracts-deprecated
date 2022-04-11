@@ -9,7 +9,6 @@ use crate::states::market::Amm;
 pub fn block_operation(
     a: &Amm,
     oracle_account_info: &Addr,
-    clock_slot: u64,
     guard_rails: &OracleGuardRails,
     precomputed_mark_price: Option<u128>,
 ) -> Result<(bool, OraclePriceData), ContractError> {
@@ -21,7 +20,6 @@ pub fn block_operation(
     } = get_oracle_status(
         a,
         oracle_account_info,
-        clock_slot,
         guard_rails,
         precomputed_mark_price,
     )?;
@@ -29,11 +27,10 @@ pub fn block_operation(
     let block = !oracle_is_valid || is_oracle_mark_too_divergent;
     Ok((block, oracle_price_data))
 }
-
+ 
 pub fn get_oracle_data(
     a: &Amm,
     price_oracle: &Addr,
-    clock_slot: u64,
 ) -> Result<(i128, i128, u128, u128, i64), ContractError> {
     // // TODO
     // // Get Oracle data
@@ -92,7 +89,6 @@ pub fn get_oracle_data(
 pub fn get_oracle_price(
     a: &Amm,
     oracle_account_info: &Addr,
-    clock_slot: u64,
 ) -> Result<OraclePriceData, ContractError> {
     Ok(OraclePriceData {
         price: 0,
@@ -105,7 +101,6 @@ pub fn get_oracle_price(
 pub fn get_switchboard_price(
     a: &Amm,
     oracle_account_info: &Addr,
-    clock_slot: u64,
 ) -> Result<OraclePriceData, ContractError> {
     Ok(OraclePriceData {
         price: 0,
@@ -118,11 +113,10 @@ pub fn get_switchboard_price(
 pub fn get_oracle_status(
     a: &Amm,
     oracle_account_info: &Addr,
-    clock_slot: u64,
     guard_rails: &OracleGuardRails,
     precomputed_mark_price: Option<u128>,
 ) -> Result<OracleStatus, ContractError> {
-    let oracle_price_data = get_oracle_price(a, oracle_account_info, clock_slot)?;
+    let oracle_price_data = get_oracle_price(a, oracle_account_info)?;
     let oracle_is_valid = amm::is_oracle_valid(a, &oracle_price_data, &guard_rails)?;
     let oracle_mark_spread_pct =
         amm::calculate_oracle_mark_spread_pct(a, &oracle_price_data, precomputed_mark_price)?;

@@ -16,7 +16,7 @@ use crate::helpers::quote_asset::{asset_to_reserve_amount};
 pub fn update_mark_twap(
     deps: &mut DepsMut,
     market_index: u64,
-    now: i64,
+    now: u64,
     precomputed_mark_price: Option<u128>,
 ) -> Result<u128, ContractError> {
     let mut market = Markets.load(deps.storage, market_index)?;
@@ -32,7 +32,7 @@ pub fn update_mark_twap(
 pub fn update_oracle_price_twap(
     deps: &mut DepsMut,
     market_index: u64,
-    now: i64,
+    now: u64,
     oracle_price: i128,
 ) -> Result<i128, ContractError> {
     let mut market = Markets.load(deps.storage, market_index)?;
@@ -143,7 +143,7 @@ pub fn swap_quote_asset(
     market_index: u64,
     quote_asset_amount: u128,
     direction: SwapDirection,
-    now: i64,
+    now: u64,
     precomputed_mark_price: Option<u128>,
 ) -> Result<i128, ContractError> {
     let mut market = Markets.load(deps.storage, market_index)?;
@@ -183,7 +183,7 @@ pub fn swap_base_asset(
     market_index: u64,
     base_asset_swap_amount: u128,
     direction: SwapDirection,
-    now: i64,
+    now: u64,
     precomputed_mark_price: Option<u128>
 ) -> Result<u128, ContractError> {
     let mut market = Markets.load(deps.storage, market_index)?;

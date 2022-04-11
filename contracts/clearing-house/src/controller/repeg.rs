@@ -39,7 +39,7 @@ pub fn repeg(
 
     market.amm.peg_multiplier = new_peg_candidate;
 
-    let oracle_price_data = get_oracle_price(&market.amm, price_oracle, clock_slot)?;	
+    let oracle_price_data = get_oracle_price(&market.amm, price_oracle)?;	
     let oracle_price = oracle_price_data.price;	
     let oracle_conf = oracle_price_data.confidence;	
     let oracle_is_valid =	
