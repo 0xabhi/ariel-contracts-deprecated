@@ -75,12 +75,10 @@ pub fn try_initialize_market(
         OracleSource::Oracle => helpers::oracle::get_oracle_price(
             &existing_market.amm,
             &existing_market.amm.oracle,
-            clock_slot,
         )?,
         OracleSource::Simulated => helpers::oracle::get_switchboard_price(
             &existing_market.amm,
             &existing_market.amm.oracle,
-            clock_slot,
         )?,
         OracleSource::Zero => todo!(),
     };

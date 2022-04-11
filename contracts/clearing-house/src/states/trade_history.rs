@@ -8,7 +8,7 @@ use ariel::types::PositionDirection;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TradeRecord {
-    pub ts: i64,
+    pub ts: u64,
     pub record_id: u128,
     pub user: Addr,
     pub direction: PositionDirection,
@@ -28,7 +28,7 @@ pub struct TradeRecord {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TradeInfo {
-    pub len: i64,
+    pub len: u64,
 }
 
 pub const TradeHistory: Map<(u64,Addr),  TradeRecord> = Map::new("trade_history");

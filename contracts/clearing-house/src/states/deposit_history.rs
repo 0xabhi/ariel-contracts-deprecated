@@ -8,7 +8,7 @@ use ariel::types::DepositDirection;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DepositRecord {
-    pub ts: i64,
+    pub ts: u64,
     pub record_id: u128,
     pub user: Addr,
     pub direction: DepositDirection,
@@ -20,7 +20,7 @@ pub struct DepositRecord {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DepositInfo {
-    pub len: i64,
+    pub len: u64,
 }
 
 pub const DepositHistory: Map<(u64,Addr),  DepositRecord> = Map::new("deposit_history");

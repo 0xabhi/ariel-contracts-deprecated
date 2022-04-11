@@ -42,10 +42,10 @@ pub struct OrderParams {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OrderInfo {
-    pub len: i64,
+    pub len: u64,
 }
 
-pub const Orders: Map<(&Addr, u64), Order> = Map::new("orders");
+pub const Orders: Map<((&Addr, u64), u64), Order> = Map::new("orders");
 pub const OrdersInfo: Item<OrderInfo> = Item::new("order_info");
 
 pub fn has_oracle_price_offset(oo: &Order) -> bool {

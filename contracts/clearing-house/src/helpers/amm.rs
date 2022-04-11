@@ -53,7 +53,7 @@ pub fn calculate_terminal_price(market: &mut Market) -> Result<u128, ContractErr
 
 pub fn calculate_new_mark_twap(
     a: &Amm,
-    now: i64,
+    now: u64,
     precomputed_mark_price: Option<u128>,
 ) -> Result<u128, ContractError> {
     let since_last = cast_to_i128(max(
@@ -84,7 +84,7 @@ pub fn calculate_new_mark_twap(
 
 pub fn calculate_new_oracle_price_twap(
     a: &Amm,
-    now: i64,
+    now: u64,
     oracle_price: i128,
 ) -> Result<i128, ContractError> {
     let since_last = cast_to_i128(max(

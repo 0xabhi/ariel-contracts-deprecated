@@ -23,8 +23,7 @@ impl Default for OrderAction {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OrderRecord {
-    pub ts: i64,
-    pub record_id: u128,
+    pub ts: u64,
     pub user: Addr,
     pub order: Order,
     pub action: OrderAction,
@@ -35,12 +34,13 @@ pub struct OrderRecord {
     pub fee: u128,
     pub filler_reward: u128,
     pub quote_asset_amount_surplus: u128,
+    pub position_index: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct OrderInfo {
-    pub len: i64,
+pub struct OrderHisInfo {
+    pub len: u64,
 }
 
-pub const OrderHistory: Map<(u64,Addr),  OrderRecord> = Map::new("order_history");
-pub const OrderHistoryInfo: Item<OrderInfo> = Item::new("order_history_info");
+pub const OrderHistory: Map<u64,  OrderRecord> = Map::new("order_history");
+pub const OrderHistoryInfo: Item<OrderHisInfo> = Item::new("order_history_info");

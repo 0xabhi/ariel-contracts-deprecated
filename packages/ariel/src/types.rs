@@ -76,9 +76,9 @@ pub struct OraclePriceData {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Order {
+    pub ts: u64,
     pub status: OrderStatus,
     pub order_type: OrderType,
-    pub ts: i64,
     pub position_index : u64,
     pub market_index: u64,
     pub price: u128,

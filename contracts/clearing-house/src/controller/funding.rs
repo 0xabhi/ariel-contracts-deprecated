@@ -27,7 +27,7 @@ use crate::controller::amm;
 pub fn settle_funding_payment(
     deps: &mut DepsMut, 
     user_addr: &Addr,
-    now: i64,
+    now: u64,
 ) -> Result<(), ContractError> {
     let mut user = Users.load(deps.storage, &user_addr.clone())?;
     let mut funding_payment: i128 = 0;
@@ -97,8 +97,7 @@ pub fn update_funding_rate(
     deps: &mut DepsMut,
     market_index: u64,
     price_oracle: Addr,
-    now: i64,
-    clock_slot: u64,
+    now: u64,
     funding_paused: bool,
     precomputed_mark_price: Option<u128>,
 ) -> Result<(), ContractError> {
@@ -113,7 +112,6 @@ pub fn update_funding_rate(
     let (block_funding_rate_update, oracle_price_data) =
         oracle::block_operation(  &market.amm,	
             &price_oracle,	
-            clock_slot,	
             &guard_rails,	
             precomputed_mark_price
         )?;
@@ -161,7 +159,7 @@ pub fn update_funding_rate(
         let period_adjustment = (24_i64)
             .checked_mul(one_hour_i64)
             .ok_or_else(|| (ContractError::MathError))?
-            .checked_div(max(one_hour_i64, market.amm.funding_period))
+            .checked_div(max(one_hour_i64, market.amm.funding_period as i64))
             .ok_or_else(|| (ContractError::MathError))?;
         
         // funding period = 1 hour, window = 1 day

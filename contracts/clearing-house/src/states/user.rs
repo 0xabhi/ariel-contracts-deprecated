@@ -7,13 +7,12 @@ use cosmwasm_std::{Addr};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct User {
     pub collateral: u128,
-    pub cumulative_deposits: i128,
+    pub cumulative_deposits: u128,
     pub total_fee_paid: u128,
     pub total_token_discount: u128,
     pub total_referral_reward: u128,
     pub total_referee_discount: u128,
     pub positions_length: u64,
-    pub order_length: u64,
     pub referrer: Option<Addr>,
 }
 
@@ -24,8 +23,8 @@ pub struct Position {
     pub quote_asset_amount: u128,
     pub last_cumulative_funding_rate: i128,
     pub last_cumulative_repeg_rebate: u128,
-    pub last_funding_rate_ts: i64,
-    pub open_orders: u128,
+    pub last_funding_rate_ts: u64,
+    pub order_length: u64,
 }
 
 pub const Users : Map<&Addr, User> = Map::new("users");
@@ -45,6 +44,6 @@ impl Position {
     }
 
     pub fn has_open_order(&self) -> bool {
-        self.open_orders != 0
+        self.order_length != 0
     }
 }

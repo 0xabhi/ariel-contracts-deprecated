@@ -27,7 +27,7 @@ pub struct State {
     pub partial_liquidation_liquidator_share_denominator: u64,
     pub full_liquidation_liquidator_share_denominator: u64,
     pub max_deposit: u128,
-
+    pub markets_length: u64,
     pub fee_structure: FeeStructure,
     pub oracle_guard_rails: OracleGuardRails,
 }
