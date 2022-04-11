@@ -28,7 +28,7 @@ pub struct OrderRecord {
     pub order: Order,
     pub action: OrderAction,
     pub filler: Addr,
-    pub trade_record_id: u128,
+    pub trade_record_id: u64,
     pub base_asset_amount_filled: u128,
     pub quote_asset_amount_filled: u128,
     pub fee: u128,

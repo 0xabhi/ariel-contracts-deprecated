@@ -1,30 +1,34 @@
 use crate::error::ContractError;
 use crate::helpers::collateral::calculate_updated_collateral;
-use crate::helpers::fees::calculate_order_fee_tier;
-use crate::helpers::order::{validate_order, validate_order_can_be_canceled, calculate_base_asset_amount_market_can_execute};
-use crate::states::market::{Markets};
-use crate::states::order::{Orders, OrderParams, OrderState};
+use crate::helpers::fees::{calculate_order_fee_tier, calculate_fee_for_order};
+use crate::helpers::order::{validate_order, validate_order_can_be_canceled, calculate_base_asset_amount_market_can_execute, limit_price_satisfied};
+use crate::states::market::{Markets, Market};
+use crate::states::order::{Orders, OrderParams, OrderState, get_limit_price};
 use crate::states::order_history::{OrderRecord, OrderAction, OrderHistoryInfo, OrderHistory, OrderHisInfo};
 use crate::states::state::{STATE};
 
 use crate::helpers::order::get_valid_oracle_price;
+use crate::states::trade_history::{TradeHistoryInfo, TradeInfo, TradeHistory, TradeRecord};
 use std::cmp::min;
 use ariel::types::{Order, OrderType, PositionDirection, SwapDirection, OrderStatus};
 use cosmwasm_std::{DepsMut, Addr};
 
-use crate::helpers::amm::{calculate_swap_output};
+use crate::helpers::amm::{calculate_swap_output, normalise_oracle_price};
 use crate::helpers::casting::{cast, cast_to_i128, cast_to_u128};
 use crate::helpers::constants::{
     MARGIN_PRECISION, QUOTE_PRECISION
 };
 use crate::controller::margin::calculate_free_collateral;
 use crate::helpers::quote_asset::asset_to_reserve_amount;
-use crate::states::user::{Users, Positions, Position};
-use crate::helpers::amm;
+use crate::states::user::{Users, Positions, Position, User};
+use crate::helpers::{amm};
 
 use crate::controller::funding::settle_funding_payment;
 
-use super::position::{update_position_with_base_asset_amount};
+use super::amm::update_oracle_price_twap;
+use super::funding::update_funding_rate;
+use super::margin::{meets_partial_margin_requirement, meets_initial_margin_requirement};
+use super::position::{update_position_with_base_asset_amount, update_position_with_quote_asset_amount};
 
 pub fn calculate_base_asset_amount_user_can_execute(
     deps: &mut DepsMut,
@@ -198,10 +202,11 @@ pub fn place_order(
     Orders.save(deps.storage, ((user_addr, position_index), new_order_idx),&new_order);
 
     let valid_oracle_price = get_valid_oracle_price(
-        *oracle,
+        Some(oracle),
         &market,
         &new_order,
         &state.oracle_guard_rails,
+        now
     )?;
 
     validate_order(
@@ -242,7 +247,7 @@ pub fn cancel_order(
     user_addr: &Addr,
     position_index: u64,
     order_index: u64,
-    oracle: Addr,
+    oracle: &Addr,
     now: u64
 ) -> Result<bool, ContractError> {
 
@@ -264,10 +269,11 @@ pub fn cancel_order(
     }
 
     let valid_oracle_price = get_valid_oracle_price(
-        oracle,
+        Some(oracle),
         &market,
         &order,
         &state.oracle_guard_rails,
+        now
     )?;
 
     validate_order_can_be_canceled(
@@ -346,7 +352,7 @@ pub fn expire_orders(
         for i in 1..state.markets_length {
             let market = Markets.load(deps.storage, i);
             let market_position = Positions.load(deps.storage, (user_addr,i));
-            let something = match market_position {
+            match market_position {
                 Ok(p) => {
                     if p.order_length > 0 {
                         for j in 1..p.order_length {
@@ -356,9 +362,8 @@ pub fn expire_orders(
                             }
                         }
                     };
-                    Ok(true)
                 },
-                Err(_) => Ok(true),
+                Err(_) => (),
             };
         }
     }
@@ -367,8 +372,8 @@ pub fn expire_orders(
     if state.markets_length > 0 {
         for i in 1..state.markets_length {
             let market = Markets.load(deps.storage, i);
-            let market_position = Positions.load(deps.storage, (user_addr,i))?;
-            let something = match market_position {
+            let market_position = Positions.load(deps.storage, (user_addr,i));
+            match market_position {
                 Ok(p) => {
                     if p.order_length > 0 {
                         for j in 1..p.order_length {
@@ -404,27 +409,26 @@ pub fn expire_orders(
                                 position_index : i,
                             })?;
 
-                            if j != market_position.order_length {
-                                let order_to_replace = Orders.load(deps.storage, ((user_addr, i), market_position.order_length))?;
+                            if j != p.order_length {
+                                let order_to_replace = Orders.load(deps.storage, ((user_addr, i), p.order_length))?;
                                 Orders.update(deps.storage, ((user_addr, i), j), |p| -> Result<Order, ContractError> {
                                     Ok(order_to_replace)
                                 })?;
                             }
                             
-                            Orders.remove(deps.storage, ((user_addr, i), market_position.order_length));
+                            Orders.remove(deps.storage, ((user_addr, i), p.order_length));
 
-                            market_position.order_length -= 1;
+                            p.order_length -= 1;
                             // Decrement open orders for existing position
-                            Positions.update(deps.storage, (user_addr, i), |p| -> Result<Position, ContractError> {
-                                Ok(market_position)
+                            Positions.update(deps.storage, (user_addr, i), |position| -> Result<Position, ContractError> {
+                                Ok(p)
                             })?;
                             
                             j -= 1;
                         }
                     };
-                    Ok(true)
                 },
-                Err(_) => Ok(true),
+                Err(e) => (),
             };
         }
     }
@@ -433,9 +437,10 @@ pub fn expire_orders(
 }
  
 pub fn fill_order(
-    deps: &DepsMut,
+    deps: &mut DepsMut,
     user_addr: &Addr,
     filler_addr: &Addr,
+    order_state: &OrderState,
     position_index: u64,
     order_index: u64,
     now: u64,
@@ -443,6 +448,16 @@ pub fn fill_order(
     let state = STATE.load(deps.storage)?;
     let mut user = Users.load(deps.storage, user_addr)?;
     let mut filler = Users.load(deps.storage, filler_addr)?;
+    let mut market_position = Positions.load(deps.storage, (user_addr, position_index))?;
+    let order = Orders.load(deps.storage, ((user_addr, position_index), order_index))?;
+    let market_index = position_index;
+    let market = Markets.load(deps.storage, market_index)?;
+    let mut referrer : Option<User> = None;
+
+    if let Some(s) = user.referrer {
+        referrer = Some(Users.load(deps.storage, &s)?)
+    }
+    
     
     {
         settle_funding_payment(
@@ -452,47 +467,22 @@ pub fn fill_order(
         )?;
     }
 
-    let user_orders = &mut user_orders
-        .load_mut()
-        .or(Err(ContractError::UnableToLoadAccountLoader))?;
-    let order_index = user_orders
-        .orders
-        .iter()
-        .position(|order| order.order_id == order_id)
-        .ok_or_else(print_error!(ContractError::OrderDoesNotExist))?;
-    let order = &mut user_orders.orders[order_index];
+    
 
     if order.status != OrderStatus::Open {
         return Err(ContractError::OrderNotOpen);
     }
 
-    let market_index = order.market_index;
-    {
-        let markets = &markets
-            .load()
-            .or(Err(ContractError::UnableToLoadAccountLoader))?;
-        let market = markets.get_market(market_index);
-
-        if !market.initialized {
-            return Err(ContractError::MarketIndexNotInitialized);
-        }
-
-        if !market.amm.oracle.eq(oracle.key) {
-            return Err(ContractError::InvalidOracle);
-        }
-    }
+    let oracle = market.amm.oracle;
 
     let mark_price_before: u128;
     let oracle_mark_spread_pct_before: i128;
     let is_oracle_valid: bool;
     let oracle_price: i128;
+
     {
-        let markets = &mut markets
-            .load_mut()
-            .or(Err(ContractError::UnableToLoadAccountLoader))?;
-        let market = markets.get_market_mut(market_index);
         mark_price_before = market.amm.mark_price()?;
-        let oracle_price_data = &market.amm.get_oracle_price(oracle, clock_slot)?;
+        let oracle_price_data = &market.amm.get_oracle_price(&oracle, now)?;
         oracle_mark_spread_pct_before = amm::calculate_oracle_mark_spread_pct(
             &market.amm,
             oracle_price_data,
@@ -504,10 +494,14 @@ pub fn fill_order(
         is_oracle_valid = amm::is_oracle_valid(
             &market.amm,
             oracle_price_data,
-            &state.oracle_guard_rails.validity,
+            &state.oracle_guard_rails,
         )?;
         if is_oracle_valid {
-            amm::update_oracle_price_twap(&mut market.amm, now, normalised_price)?;
+            update_oracle_price_twap(
+                deps,
+                market_index,
+                now,
+                normalised_price)?;
         }
     }
 
@@ -523,12 +517,9 @@ pub fn fill_order(
         potentially_risk_increasing,
         quote_asset_amount_surplus,
     ) = execute_order(
-        user,
-        user_positions,
-        order,
-        &mut markets
-            .load_mut()
-            .or(Err(ContractError::UnableToLoadAccountLoader))?,
+        deps,
+        user_addr,
+        order_index,
         market_index,
         mark_price_before,
         now,
@@ -543,12 +534,8 @@ pub fn fill_order(
     let oracle_price_after: i128;
     let oracle_mark_spread_pct_after: i128;
     {
-        let markets = &mut markets
-            .load_mut()
-            .or(Err(ContractError::UnableToLoadAccountLoader))?;
-        let market = markets.get_market_mut(market_index);
         mark_price_after = market.amm.mark_price()?;
-        let oracle_price_data = &market.amm.get_oracle_price(oracle, clock_slot)?;
+        let oracle_price_data = &market.amm.get_oracle_price(&oracle, now)?;
         oracle_mark_spread_pct_after = amm::calculate_oracle_mark_spread_pct(
             &market.amm,
             oracle_price_data,
@@ -559,12 +546,12 @@ pub fn fill_order(
 
     let is_oracle_mark_too_divergent_before = amm::is_oracle_mark_too_divergent(
         oracle_mark_spread_pct_before,
-        &state.oracle_guard_rails.price_divergence,
+        &state.oracle_guard_rails,
     )?;
 
     let is_oracle_mark_too_divergent_after = amm::is_oracle_mark_too_divergent(
         oracle_mark_spread_pct_after,
-        &state.oracle_guard_rails.price_divergence,
+        &state.oracle_guard_rails,
     )?;
 
     // if oracle-mark divergence pushed outside limit, block order
@@ -587,19 +574,13 @@ pub fn fill_order(
     let meets_maintenance_requirement = if order.post_only {
         // for post only orders allow user to fill up to partial margin requirement
         meets_partial_margin_requirement(
-            user,
-            user_positions,
-            &markets
-                .load()
-                .or(Err(ContractError::UnableToLoadAccountLoader))?,
+            deps,
+            user_addr
         )?
     } else {
         meets_initial_margin_requirement(
-            user,
-            user_positions,
-            &markets
-                .load()
-                .or(Err(ContractError::UnableToLoadAccountLoader))?,
+            deps,
+            user_addr    
         )?
     };
     if !meets_maintenance_requirement && potentially_risk_increasing {
@@ -608,24 +589,20 @@ pub fn fill_order(
 
     let discount_tier = order.discount_tier;
     let (user_fee, fee_to_market, token_discount, filler_reward, referrer_reward, referee_discount) =
-        fees::calculate_fee_for_order(
+        calculate_fee_for_order(
             quote_asset_amount,
             &state.fee_structure,
             &order_state.order_filler_reward_structure,
             &discount_tier,
             order.ts,
             now,
-            &referrer,
-            filler.key() == user.key(),
+            &user.referrer,
+            filler_addr == user_addr,
             quote_asset_amount_surplus,
         )?;
 
     // Increment the clearing house's total fee variables
     {
-        let markets = &mut markets
-            .load_mut()
-            .or(Err(ContractError::UnableToLoadAccountLoader))?;
-        let market = markets.get_market_mut(market_index);
         market.amm.total_fee = market
             .amm
             .total_fee
@@ -661,23 +638,19 @@ pub fn fill_order(
         .ok_or_else(|| (ContractError::MathError))?;
 
     // Update the referrer's collateral with their reward
-    if let Some(mut referrer) = referrer {
-        referrer.total_referral_reward = referrer
+    if let Some(mut r) = referrer {
+        r.total_referral_reward = r
             .total_referral_reward
             .checked_add(referrer_reward)
             .ok_or_else(|| (ContractError::MathError))?;
-        referrer
-            .exit(&crate::ID)
-            .or(Err(ContractError::UnableToWriteToRemainingAccount))?;
     }
 
     {
-        let markets = &mut markets
-            .load()
-            .or(Err(ContractError::UnableToLoadAccountLoader))?;
-        let market = markets.get_market(market_index);
         update_order_after_trade(
-            order,
+            deps,
+            user_addr,
+            position_index,
+            order_index,
             market.amm.minimum_base_asset_trade_size,
             base_asset_amount,
             quote_asset_amount,
@@ -685,15 +658,17 @@ pub fn fill_order(
         )?;
     }
 
-    let trade_history_account = &mut trade_history
-        .load_mut()
-        .or(Err(ContractError::UnableToLoadAccountLoader))?;
-    let trade_record_id = trade_history_account.next_record_id();
-    trade_history_account.append(TradeRecord {
+    // Insert trade history
+    let trade_history_info_length = 
+        TradeHistoryInfo.load(deps.storage)?
+        .len.checked_add(1).ok_or_else(|| (ContractError::MathError))?;
+    TradeHistoryInfo.update(deps.storage, |mut k|-> Result<TradeInfo, ContractError> {
+        k.len = trade_history_info_length;
+        Ok(k)
+    })?;
+    TradeHistory.save(deps.storage, trade_history_info_length, &TradeRecord {
         ts: now,
-        record_id: trade_record_id,
-        user_authority: user.authority,
-        user: *user.to_account_info().key,
+        user: *user_addr,
         direction: order.direction,
         base_asset_amount,
         quote_asset_amount,
@@ -706,56 +681,77 @@ pub fn fill_order(
         liquidation: false,
         market_index,
         oracle_price: oracle_price_after,
-    });
+    })?;
+    
 
-    let order_history_account = &mut order_history
-        .load_mut()
-        .or(Err(ContractError::UnableToLoadAccountLoader))?;
-    let record_id = order_history_account.next_record_id();
-    order_history_account.append(OrderRecord {
+    // Insert Order history
+    let order_history_info_length = 
+        OrderHistoryInfo.load(deps.storage)?
+        .len.checked_add(1).ok_or_else(|| (ContractError::MathError))?;
+    OrderHistoryInfo.update(deps.storage, |mut k|-> Result<OrderHisInfo, ContractError> {
+        k.len = order_history_info_length;
+        Ok(k)
+    })?;
+    OrderHistory.save(deps.storage, order_history_info_length, &OrderRecord {
         ts: now,
-        record_id,
-        order: *order,
-        user: user.key(),
-        authority: user.authority,
+        user: *user_addr,
+        order: order,
         action: OrderAction::Fill,
-        filler: filler.key(),
-        trade_record_id,
+        filler: *filler_addr,
+        trade_record_id: trade_history_info_length,
         base_asset_amount_filled: base_asset_amount,
         quote_asset_amount_filled: quote_asset_amount,
-        filler_reward,
         fee: user_fee,
+        filler_reward,
         quote_asset_amount_surplus,
-        padding: [0; 8],
-    });
+        position_index,
+    })?;
 
-    // Cant reset order until after its been logged in order history
-    if order.base_asset_amount == order.base_asset_amount_filled
-        || order.order_type == OrderType::Market
-    {
-        *order = Order::default();
-        let position_index = get_position_index(user_positions, market_index)?;
-        let market_position = &mut user_positions.positions[position_index];
-        market_position.order_length -= 1;
+    // delete order
+    if order_index != market_position.order_length {
+        let order_to_replace = Orders.load(deps.storage, ((user_addr, position_index), market_position.order_length))?;
+        Orders.update(deps.storage, ((user_addr, position_index), order_index), |p| -> Result<Order, ContractError> {
+            Ok(order_to_replace)
+        })?;
     }
+    
+    Orders.remove(deps.storage, ((user_addr, position_index), market_position.order_length));
+
+    // Decrement open orders for existing position
+    market_position.order_length -= 1;
+    Positions.update(deps.storage, (user_addr, position_index), |p| -> Result<Position, ContractError> {
+        Ok(market_position)
+    })?;
+
+
+    // save user, filler, referrer, market
+    Users.update(deps.storage, user_addr, |u|-> Result<User, ContractError> {
+        Ok(user)
+    })?;
+
+    Users.update(deps.storage, filler_addr, |u|-> Result<User, ContractError> {
+        Ok(filler)
+    })?;
+
+    if let Some(s) = user.referrer {
+        if let Some(r) = referrer {
+            Users.update(deps.storage, &s, |u|-> Result<User, ContractError> {
+                Ok(r)
+            })?;    
+        }
+    }
+
+    Markets.update(deps.storage, market_index, |m|-> Result<Market, ContractError> {
+        Ok(market)
+    })?;
 
     // Try to update the funding rate at the end of every trade
     {
-        let markets = &mut markets
-            .load_mut()
-            .or(Err(ContractError::UnableToLoadAccountLoader))?;
-        let market = markets.get_market_mut(market_index);
-        let funding_rate_history = &mut funding_rate_history
-            .load_mut()
-            .or(Err(ContractError::UnableToLoadAccountLoader))?;
         update_funding_rate(
+            deps,
             market_index,
-            market,
             oracle,
             now,
-            clock_slot,
-            funding_rate_history,
-            &state.oracle_guard_rails,
             state.funding_paused,
             Some(mark_price_before),
         )?;
@@ -765,7 +761,7 @@ pub fn fill_order(
 }
 
 pub fn execute_order(
-    deps: &DepsMut,
+    deps: &mut DepsMut,
     user_addr: &Addr,
     order_index: u64,
     market_index: u64,
@@ -773,22 +769,21 @@ pub fn execute_order(
     now: u64,
     value_oracle_price: Option<i128>,
 ) -> Result<(u128, u128, bool, u128), ContractError> {
+    let order = Orders.load(deps.storage, ((user_addr, market_index), order_index))?;
+    
     match order.order_type {
         OrderType::Market => execute_market_order(
             deps,
-            user,
-            user_positions,
-            order,
-            markets,
+            user_addr,
+            order_index,
             market_index,
             mark_price_before,
             now,
         ),
         _ => execute_non_market_order(
-            user,
-            user_positions,
-            order,
-            markets,
+            deps,
+            user_addr,
+            order_index,
             market_index,
             mark_price_before,
             now,
@@ -798,43 +793,45 @@ pub fn execute_order(
 }
 
 pub fn execute_market_order(
-    deps: &DepsMut,
+    deps: &mut DepsMut,
     user_addr: &Addr,
     order_index: u64,
     market_index: u64,
     mark_price_before: u128,
     now: u64,
 ) -> Result<(u128, u128, bool, u128), ContractError> {
-    let position_index = get_position_index(user_positions, market_index)?;
-    let market_position = &mut user_positions.positions[position_index];
-    let market = markets.get_market_mut(market_index);
+    let order = Orders.load(deps.storage, ((user_addr, market_index), order_index))?;
+    let market = Markets.load(deps.storage, market_index)?;
+    let market_position = Positions.load(deps.storage, (user_addr, market_index))?;
+
+    let position_index = market_index;
 
     let (potentially_risk_increasing, reduce_only, base_asset_amount, quote_asset_amount, _) =
         if order.base_asset_amount > 0 {
-            controller::position::update_position_with_base_asset_amount(
+            update_position_with_base_asset_amount(
+                deps,
                 order.base_asset_amount,
                 order.direction,
-                market,
-                user,
-                market_position,
+                user_addr,
+                position_index,
                 mark_price_before,
                 now,
                 None,
             )?
         } else {
-            controller::position::update_position_with_quote_asset_amount(
+            update_position_with_quote_asset_amount(
+                deps,
                 order.quote_asset_amount,
                 order.direction,
-                market,
-                user,
-                market_position,
+                user_addr,
+                position_index,
                 mark_price_before,
                 now,
             )?
         };
 
     if base_asset_amount < market.amm.minimum_base_asset_trade_size {
-        msg!("base asset amount {}", base_asset_amount);
+        // msg!("base asset amount {}", base_asset_amount);
         return Err(ContractError::TradeSizeTooSmall);
     }
 
@@ -862,7 +859,7 @@ pub fn execute_market_order(
 }
 
 pub fn execute_non_market_order(
-    deps: &DepsMut,
+    deps: &mut DepsMut,
     user_addr: &Addr,
     order_index: u64,
     market_index: u64,
@@ -934,7 +931,7 @@ pub fn execute_non_market_order(
     }
 
     let maker_limit_price = if order.post_only {
-        Some(order.get_limit_price(valid_oracle_price)?)
+        Some(get_limit_price(&order, valid_oracle_price)?)
     } else {
         None
     };
@@ -1004,9 +1001,9 @@ pub fn update_order_after_trade(
 
     order.fee = order.fee.checked_add(fee).ok_or_else(|| (ContractError::MathError))?;
 
-    Orders.update(deps.storage, ((user_addr, position_index), order_index), |o: Order| -> Result<Order, ContractError> {
+    Orders.update(deps.storage, ((user_addr, position_index), order_index), |o| -> Result<Order, ContractError> {
         Ok(order)
-    })?;
+    });
 
     Ok(true)
 }

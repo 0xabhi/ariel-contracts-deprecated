@@ -13,7 +13,7 @@ use ariel::types::{FeeStructure, DiscountTokenTier, OrderDiscountTier};
 pub fn calculate_fee_for_trade(
     quote_asset_amount: u128,
     fee_structure: &FeeStructure,
-    discount_token_amt: u64,
+    discount_token_amt: u128,
     referrer: &Option<Addr>,
 ) -> Result<(u128, u128, u128, u128, u128), ContractError> {
     let fee = quote_asset_amount
@@ -49,7 +49,7 @@ pub fn calculate_fee_for_trade(
 fn calculate_token_discount(
     fee: u128,
     fee_structure: &FeeStructure,
-    discount_token_amt: u64,
+    discount_token_amt: u128,
 ) -> u128 {
     if discount_token_amt == 0 {
         return 0;
@@ -85,7 +85,7 @@ fn calculate_token_discount(
 fn calculate_token_discount_for_tier(
     fee: u128,
     tier: &DiscountTokenTier,
-    discount_token_amt: u64,
+    discount_token_amt: u128,
 ) -> Option<u128> {
     if belongs_to_tier(tier, discount_token_amt) {
         return try_calculate_token_discount_for_tier(fee, tier);
@@ -98,8 +98,8 @@ fn try_calculate_token_discount_for_tier(fee: u128, tier: &DiscountTokenTier) ->
         .checked_div(tier.discount_denominator)
 }
 
-fn belongs_to_tier(tier: &DiscountTokenTier, discount_token_amt: u64) -> bool {
-    discount_token_amt >= tier.minimum_balance
+fn belongs_to_tier(tier: &DiscountTokenTier, discount_token_amt: u128) -> bool {
+    discount_token_amt >= tier.minimum_balance as u128
 }
 
 fn calculate_referral_reward_and_referee_discount(
