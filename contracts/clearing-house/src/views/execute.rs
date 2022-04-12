@@ -9,6 +9,10 @@ use crate::states::curve_history::*;
 use crate::ContractError;
 
 use crate::states::deposit_history::*;
+use crate::states::liquidation_history::LiquidationHistory;
+use crate::states::liquidation_history::LiquidationHistoryInfo;
+use crate::states::liquidation_history::LiquidationInfo;
+use crate::states::liquidation_history::LiquidationRecord;
 use crate::states::market::LiquidationStatus;
 use crate::states::market::LiquidationType;
 use crate::states::market::{Amm, Market, Markets};
@@ -571,8 +575,7 @@ pub fn try_close_position(
     controller::funding::settle_funding_payment(&mut deps, &user_address, now)?;
 
     let position_index = market_index.clone();
-    let market_position =
-        Positions.load(deps.storage, (&user_address.clone(), market_index))?;
+    let market_position = Positions.load(deps.storage, (&user_address.clone(), market_index))?;
     let mut market = Markets.load(deps.storage, market_index)?;
     let mark_price_before = market.amm.mark_price()?;
     let oracle_price_data = helpers::oracle::get_oracle_price(&market.amm, &market.amm.oracle)?;
@@ -820,7 +823,7 @@ pub fn try_liquidate(
     let state = STATE.load(deps.storage)?;
     let user_address = addr_validate_to_lower(deps.api, &user)?;
     let now = env.block.time.seconds();
-    let user = Users.load(deps.storage, &user_address)?;
+    let mut user = Users.load(deps.storage, &user_address)?;
     // let user_position = Positions.load(deps.storage, (&user_address, market_index))?;
 
     controller::funding::settle_funding_payment(&mut deps, &user_address, now)?;
@@ -1007,7 +1010,7 @@ pub fn try_liquidate(
             TradeHistoryInfo.update(deps.storage, |mut i| -> Result<TradeInfo, ContractError> {
                 i.len = trade_history_info_length;
                 Ok(i)
-            });
+            })?;
 
             TradeHistory.save(
                 deps.storage,
@@ -1204,7 +1207,7 @@ pub fn try_liquidate(
             TradeHistoryInfo.update(deps.storage, |mut i| -> Result<TradeInfo, ContractError> {
                 i.len = trade_history_info_length;
                 Ok(i)
-            });
+            })?;
 
             TradeHistory.save(
                 deps.storage,
@@ -1257,7 +1260,95 @@ pub fn try_liquidate(
             }
         }
     }
+    if base_asset_value_closed == 0 {
+        return Err(ContractError::NoPositionsLiquidatable);
+    }
 
+    let (withdrawal_amount, _) = calculate_withdrawal_amounts(
+        cast(liquidation_fee)?,
+        cast(query_balance(
+            &deps.querier,
+            state.collateral_vault.clone(),
+        )?)?,
+        cast(query_balance(&deps.querier, state.insurance_vault.clone())?)?,
+    )?;
+
+    user.collateral = user
+        .collateral
+        .checked_sub(liquidation_fee)
+        .ok_or_else(|| (ContractError::MathError))?;
+
+    let fee_to_liquidator = if is_full_liquidation {
+        withdrawal_amount
+            .checked_div(state.full_liquidation_liquidator_share_denominator)
+            .ok_or_else(|| (ContractError::MathError))?
+    } else {
+        withdrawal_amount
+            .checked_div(state.partial_liquidation_liquidator_share_denominator)
+            .ok_or_else(|| (ContractError::MathError))?
+    };
+
+    let fee_to_insurance_fund = withdrawal_amount
+        .checked_sub(fee_to_liquidator)
+        .ok_or_else(|| (ContractError::MathError))?;
+
+    if fee_to_liquidator > 0 {
+        let mut liquidator = Users.load(deps.storage, &info.sender.clone())?;
+        liquidator.collateral = liquidator
+            .collateral
+            .checked_add(cast(fee_to_liquidator)?)
+            .ok_or_else(|| (ContractError::MathError))?;
+        Users.update(
+            deps.storage,
+            &info.sender.clone(),
+            |_m| -> Result<User, ContractError> { Ok(liquidator) },
+        )?;
+    }
+    let message: CosmosMsg;
+    if fee_to_insurance_fund > 0 {
+        message = CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: state.collateral_vault.to_string(),
+            msg: to_binary(&VaultInterface::Withdraw {
+                to_address: state.insurance_vault.clone(),
+                amount: cast(fee_to_insurance_fund)?,
+            })?,
+            funds: vec![],
+        });
+    }
+
+
+    let liquidation_history_info_length = LiquidationHistoryInfo
+        .load(deps.storage)?
+        .len
+        .checked_add(1)
+        .ok_or_else(|| (ContractError::MathError))?;
+    LiquidationHistoryInfo.update(
+        deps.storage,
+        |mut i| -> Result<LiquidationInfo, ContractError> {
+            i.len = liquidation_history_info_length;
+            Ok(i)
+        },
+    )?;
+    LiquidationHistory.save(
+        deps.storage,
+        (liquidation_history_info_length as u64, user_address.clone()),
+        &LiquidationRecord {
+            ts: now,
+            record_id: cast(liquidation_history_info_length)?,
+            user: user_address,
+            partial: !is_full_liquidation,
+            base_asset_value,
+            base_asset_value_closed,
+            liquidation_fee,
+            fee_to_liquidator,
+            fee_to_insurance_fund,
+            liquidator: info.sender.clone(),
+            total_collateral,
+            collateral,
+            unrealized_pnl,
+            margin_ratio,
+        },
+    )?;
     Ok(res)
 }
 
