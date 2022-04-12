@@ -36,7 +36,7 @@ pub fn update_oracle_price_twap(
     oracle_price: i128,
 ) -> Result<i128, ContractError> {
     let mut market = Markets.load(deps.storage, market_index)?;
-    let a = market.amm.clone();
+    let mut a = market.amm.clone();
     let new_oracle_price_spread = oracle_price
         .checked_sub(a.last_oracle_price_twap)
         .ok_or_else(|| (ContractError::MathError))?;

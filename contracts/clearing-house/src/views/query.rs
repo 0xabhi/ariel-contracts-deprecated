@@ -342,11 +342,10 @@ pub fn get_trade_history(
 ) -> StdResult<TradeHistoryResponse> {
     let th = TradeHistory.load(
         deps.storage,
-        (index, addr_validate_to_lower(deps.api, &user_address)?),
+        index,
     )?;
     let trade_history = TradeHistoryResponse {
         ts: th.ts,
-        record_id: th.record_id,
         user: user_address,
         direction: th.direction,
         base_asset_amount: th.base_asset_amount,
@@ -392,7 +391,7 @@ pub fn get_market_info(deps: Deps, market_index: u64) -> StdResult<MarketInfoRes
         total_fee: market.amm.total_fee,
         total_fee_minus_distributions: market.amm.total_fee_minus_distributions,
         total_fee_withdrawn: market.amm.total_fee_withdrawn,
-        minimum_trade_size: todo!(),
+        minimum_trade_size: 100000000,
         last_oracle_price_twap_ts: market.amm.last_oracle_price_twap_ts,
         last_oracle_price: market.amm.last_oracle_price,
     };

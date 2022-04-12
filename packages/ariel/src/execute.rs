@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{DiscountTokenTier, OracleSource, Order, PositionDirection};
+use crate::types::{DiscountTokenTier, OracleSource, Order, PositionDirection, OrderParams};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -20,7 +20,7 @@ pub enum ExecuteMsg {
         market_name: String,
         amm_base_asset_reserve: u128,
         amm_quote_asset_reserve: u128,
-        amm_periodicity: i64,
+        amm_periodicity: u64,
         amm_peg_multiplier: u128,
         oracle_source: OracleSource,
         margin_ratio_initial: u32,
@@ -47,7 +47,7 @@ pub enum ExecuteMsg {
 
     // order related messages
     PlaceOrder {
-        order: Order,
+        order: OrderParams,
     },
     CancelOrder {
         order_id: u128,

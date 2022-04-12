@@ -92,7 +92,7 @@ pub fn instantiate(
     };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     STATE.save(deps.storage, &state)?;
-    ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
+    ADMIN.set(deps, Some(info.sender.clone()))?;
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("owner", info.sender))
@@ -167,7 +167,7 @@ pub fn execute(
             try_close_position(deps, _env, info, market_index)
         }
         ExecuteMsg::Liquidate { user, market_index } => {
-            try_liquidate(deps, info, user, market_index)
+            try_liquidate(deps, _env, info, user, market_index)
         }
         ExecuteMsg::MoveAMMPrice {
             base_asset_reserve,

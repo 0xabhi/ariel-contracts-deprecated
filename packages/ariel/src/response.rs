@@ -7,7 +7,7 @@ use crate::types::{DiscountTokenTier, DepositDirection, PositionDirection, Oracl
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UserResponse {
     pub collateral: u128,
-    pub cumulative_deposits: i128,
+    pub cumulative_deposits: u128,
     pub total_fee_paid: u128,
     pub total_token_discount: u128,
     pub total_referral_reward: u128,
@@ -21,7 +21,7 @@ pub struct UserPositionResponse {
     pub quote_asset_amount: u128,
     pub last_cumulative_funding_rate: i128,
     pub last_cumulative_repeg_rebate: u128,
-    pub last_funding_rate_ts: i64,
+    pub last_funding_rate_ts: u64,
     pub stop_loss_price: u128,
     pub stop_loss_amount: u128,
     pub stop_profit_price: u128,
@@ -117,7 +117,7 @@ pub struct CurveHistoryLengthResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CurveHistoryResponse {
-    pub ts: i64,
+    pub ts: u64,
     pub record_id: u128,
     pub market_index: u64,
     pub peg_multiplier_before: u128,
@@ -146,12 +146,12 @@ pub struct DepositHistoryLengthResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DepositHistoryResponse {
-    pub ts: i64,
+    pub ts: u64,
     pub record_id: u128,
     pub user: String,
     pub direction: DepositDirection,
     pub collateral_before: u128,
-    pub cumulative_deposits_before: i128,
+    pub cumulative_deposits_before: u128,
     pub amount: u64,
 }
 
@@ -162,14 +162,14 @@ pub struct FundingPaymentHistoryLengthResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct FundingPaymentHistoryResponse {
-    pub ts: i64,
+    pub ts: u64,
     pub record_id: u64,
     pub user: String,
     pub market_index: u64,
     pub funding_payment: i128,
     pub base_asset_amount: i128,
     pub user_last_cumulative_funding: i128,
-    pub user_last_funding_rate_ts: i64,
+    pub user_last_funding_rate_ts: u64,
     pub amm_cumulative_funding_long: i128,
     pub amm_cumulative_funding_short: i128,
 }
@@ -181,7 +181,7 @@ pub struct FundingRateHistoryLengthResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct FundingRateHistoryResponse {
-    pub ts: i64,
+    pub ts: u64,
     pub record_id: u64,
     pub market_index: u64,
     pub funding_rate: i128,
@@ -198,7 +198,7 @@ pub struct LiquidationHistoryLengthResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct LiquidationHistoryResponse {
-    pub ts: i64,
+    pub ts: u64,
     pub record_id: u128,
     pub user: String,
     pub partial: bool,
@@ -221,8 +221,7 @@ pub struct TradeHistoryLengthResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TradeHistoryResponse {
-    pub ts: i64,
-    pub record_id: u128,
+    pub ts: u64,
     pub user: String,
     pub direction: PositionDirection,
     pub base_asset_amount: u128,
@@ -255,18 +254,18 @@ pub struct MarketInfoResponse {
     pub cumulative_funding_rate_long: i128,
     pub cumulative_funding_rate_short: i128,
     pub last_funding_rate: i128,
-    pub last_funding_rate_ts: i64,
-    pub funding_period: i64,
+    pub last_funding_rate_ts: u64,
+    pub funding_period: u64,
     pub last_oracle_price_twap: i128,
     pub last_mark_price_twap: u128,
-    pub last_mark_price_twap_ts: i64,
+    pub last_mark_price_twap_ts: u64,
     pub sqrt_k: u128,
     pub peg_multiplier: u128,
     pub total_fee: u128,
     pub total_fee_minus_distributions: u128,
     pub total_fee_withdrawn: u128,
     pub minimum_trade_size: u128,
-    pub last_oracle_price_twap_ts: i64,
+    pub last_oracle_price_twap_ts: u64,
     pub last_oracle_price: i128,
 }
 

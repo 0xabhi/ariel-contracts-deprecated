@@ -18,8 +18,7 @@ pub fn repeg(
     deps: &mut DepsMut,
     market_index: u64,
     price_oracle: &Addr,
-    new_peg_candidate: u128,
-    clock_slot: u64,
+    new_peg_candidate: u128
 ) -> Result<i128, ContractError> {
 
     let mut market = Markets.load(deps.storage, market_index)?;

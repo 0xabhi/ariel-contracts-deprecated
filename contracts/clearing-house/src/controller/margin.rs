@@ -167,8 +167,7 @@ pub fn calculate_liquidation_status(
     deps: &DepsMut, 
     user_addr: &Addr,
     oracle_guard_rails: &OracleGuardRails,
-    oracle_account_info: &Addr,
-    clock_slot: u64,
+    oracle_account_info: &Addr
 ) -> Result<LiquidationStatus, ContractError> {
 
     let user = Users.load(deps.storage, user_addr)?;

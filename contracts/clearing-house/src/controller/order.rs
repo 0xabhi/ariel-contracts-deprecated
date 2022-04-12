@@ -3,14 +3,14 @@ use crate::helpers::collateral::calculate_updated_collateral;
 use crate::helpers::fees::{calculate_order_fee_tier, calculate_fee_for_order};
 use crate::helpers::order::{validate_order, validate_order_can_be_canceled, calculate_base_asset_amount_market_can_execute, limit_price_satisfied};
 use crate::states::market::{Markets, Market};
-use crate::states::order::{Orders, OrderParams, OrderState, get_limit_price};
+use crate::states::order::{Orders, OrderState, get_limit_price};
 use crate::states::order_history::{OrderRecord, OrderAction, OrderHistoryInfo, OrderHistory, OrderHisInfo};
 use crate::states::state::{STATE};
 
 use crate::helpers::order::get_valid_oracle_price;
 use crate::states::trade_history::{TradeHistoryInfo, TradeInfo, TradeHistory, TradeRecord};
 use std::cmp::min;
-use ariel::types::{Order, OrderType, PositionDirection, SwapDirection, OrderStatus};
+use ariel::types::{Order, OrderType, PositionDirection, SwapDirection, OrderStatus, OrderParams};
 use cosmwasm_std::{DepsMut, Addr};
 
 use crate::helpers::amm::{calculate_swap_output, normalise_oracle_price};
@@ -139,7 +139,6 @@ pub fn calculate_available_quote_asset_user_can_execute(
 pub fn place_order(
     deps: &mut DepsMut,
     user_addr: &Addr,
-    order_index: u64,
     now: u64,
     params: OrderParams,
     oracle: &Addr,
@@ -148,16 +147,16 @@ pub fn place_order(
 
     let state = STATE.load(deps.storage)?;
 
-    let mut user = Users.load(deps.storage, user_addr)?;
+    let mut user = Users.load(deps.storage, &user_addr.clone())?;
     let position_index = params.market_index;
-    let mut market_position = Positions.load(deps.storage, (user_addr, position_index))?;
+    let mut market_position = Positions.load(deps.storage, (&user_addr.clone(), position_index))?;
     
     let market_index = market_position.market_index;
     let mut market = Markets.load(deps.storage, market_index)?;
    
     settle_funding_payment(
         deps,
-        user_addr,
+        &user_addr.clone(),
         now,
     )?;
     
@@ -199,7 +198,7 @@ pub fn place_order(
         immediate_or_cancel: false,
     };
 
-    Orders.save(deps.storage, ((user_addr, position_index), new_order_idx),&new_order);
+    Orders.save(deps.storage, ((&user_addr.clone(), position_index), new_order_idx),&new_order);
 
     let valid_oracle_price = get_valid_oracle_price(
         Some(oracle),
@@ -227,7 +226,7 @@ pub fn place_order(
     OrderHistory.save(deps.storage, order_history_info_length, &OrderRecord {
         ts: now,
         order: new_order,
-        user: *user_addr,
+        user: user_addr.clone(),
         action: OrderAction::Place,
         filler: Addr::unchecked(""),
         trade_record_id: 0,
@@ -292,7 +291,7 @@ pub fn cancel_order(
     })?;
     OrderHistory.save(deps.storage, order_history_info_length, &OrderRecord {
         ts: now,
-        user: *user_addr,
+        user: user_addr.clone(),
         order: order,
         action: OrderAction::Cancel,
         filler: Addr::unchecked(""),
@@ -325,7 +324,7 @@ pub fn cancel_order(
 
 
 pub fn expire_orders(
-    deps: &DepsMut,
+    deps: &mut DepsMut,
     user_addr: &Addr,
     now: u64,
     filler_addr: &Addr,
@@ -347,7 +346,7 @@ pub fn expire_orders(
     user.collateral = calculate_updated_collateral(user.collateral, -(filler_reward as i128))?;
     filler.collateral = calculate_updated_collateral(filler.collateral, filler_reward as i128)?;
 
-    let expired_order_len: u64 = 0;
+    let mut expired_order_len: u64 = 0;
     if state.markets_length > 0 {
         for i in 1..state.markets_length {
             let market = Markets.load(deps.storage, i);
@@ -375,9 +374,9 @@ pub fn expire_orders(
             let market_position = Positions.load(deps.storage, (user_addr,i));
             match market_position {
                 Ok(p) => {
-                    if p.order_length > 0 {
-                        for j in 1..p.order_length {
-                            let order = Orders.load(deps.storage, ((user_addr, i), j))?;
+                    if p.clone().order_length > 0 {
+                        for mut j in 1..p.order_length {
+                            let mut order = Orders.load(deps.storage, ((user_addr, i), j))?;
                             if order.status == OrderStatus::Init {
                                 continue;
                             }
@@ -397,9 +396,9 @@ pub fn expire_orders(
                             OrderHistory.save(deps.storage, order_history_info_length, &OrderRecord {
                                 ts: now,
                                 order: order,
-                                user: *user_addr,
+                                user: user_addr.clone(),
                                 action: OrderAction::Expire,
-                                filler: *filler_addr,
+                                filler: filler_addr.clone(),
                                 trade_record_id: 0,
                                 base_asset_amount_filled: 0,
                                 quote_asset_amount_filled: 0,
@@ -409,19 +408,19 @@ pub fn expire_orders(
                                 position_index : i,
                             })?;
 
-                            if j != p.order_length {
-                                let order_to_replace = Orders.load(deps.storage, ((user_addr, i), p.order_length))?;
+                            if j != p.clone().order_length {
+                                let order_to_replace = Orders.load(deps.storage, ((user_addr, i), p.clone().order_length))?;
                                 Orders.update(deps.storage, ((user_addr, i), j), |p| -> Result<Order, ContractError> {
                                     Ok(order_to_replace)
                                 })?;
                             }
                             
-                            Orders.remove(deps.storage, ((user_addr, i), p.order_length));
+                            Orders.remove(deps.storage, ((user_addr, i), p.clone().order_length));
 
-                            p.order_length -= 1;
+                            p.clone().order_length -= 1;
                             // Decrement open orders for existing position
                             Positions.update(deps.storage, (user_addr, i), |position| -> Result<Position, ContractError> {
-                                Ok(p)
+                                Ok(p.clone())
                             })?;
                             
                             j -= 1;
@@ -451,10 +450,10 @@ pub fn fill_order(
     let mut market_position = Positions.load(deps.storage, (user_addr, position_index))?;
     let order = Orders.load(deps.storage, ((user_addr, position_index), order_index))?;
     let market_index = position_index;
-    let market = Markets.load(deps.storage, market_index)?;
+    let mut market = Markets.load(deps.storage, market_index)?;
     let mut referrer : Option<User> = None;
 
-    if let Some(s) = user.referrer {
+    if let Some(s) = user.referrer.clone() {
         referrer = Some(Users.load(deps.storage, &s)?)
     }
     
@@ -473,7 +472,7 @@ pub fn fill_order(
         return Err(ContractError::OrderNotOpen);
     }
 
-    let oracle = market.amm.oracle;
+    let oracle = market.amm.oracle.clone();
 
     let mark_price_before: u128;
     let oracle_mark_spread_pct_before: i128;
@@ -587,7 +586,7 @@ pub fn fill_order(
         return Err(ContractError::InsufficientCollateral);
     }
 
-    let discount_tier = order.discount_tier;
+    let discount_tier = order.discount_tier.clone();
     let (user_fee, fee_to_market, token_discount, filler_reward, referrer_reward, referee_discount) =
         calculate_fee_for_order(
             quote_asset_amount,
@@ -638,7 +637,7 @@ pub fn fill_order(
         .ok_or_else(|| (ContractError::MathError))?;
 
     // Update the referrer's collateral with their reward
-    if let Some(mut r) = referrer {
+    if let Some(mut r) = referrer.clone() {
         r.total_referral_reward = r
             .total_referral_reward
             .checked_add(referrer_reward)
@@ -668,7 +667,7 @@ pub fn fill_order(
     })?;
     TradeHistory.save(deps.storage, trade_history_info_length, &TradeRecord {
         ts: now,
-        user: *user_addr,
+        user: user_addr.clone(),
         direction: order.direction,
         base_asset_amount,
         quote_asset_amount,
@@ -694,10 +693,10 @@ pub fn fill_order(
     })?;
     OrderHistory.save(deps.storage, order_history_info_length, &OrderRecord {
         ts: now,
-        user: *user_addr,
+        user: user_addr.clone(),
         order: order,
         action: OrderAction::Fill,
-        filler: *filler_addr,
+        filler: filler_addr.clone(),
         trade_record_id: trade_history_info_length,
         base_asset_amount_filled: base_asset_amount,
         quote_asset_amount_filled: quote_asset_amount,
@@ -726,7 +725,7 @@ pub fn fill_order(
 
     // save user, filler, referrer, market
     Users.update(deps.storage, user_addr, |u|-> Result<User, ContractError> {
-        Ok(user)
+        Ok(user.clone())
     })?;
 
     Users.update(deps.storage, filler_addr, |u|-> Result<User, ContractError> {
@@ -965,7 +964,7 @@ pub fn execute_non_market_order(
 }
 
 pub fn update_order_after_trade(
-    deps: &DepsMut,
+    deps: &mut DepsMut,
     user_addr: &Addr,
     position_index: u64,
     order_index: u64,
@@ -974,7 +973,7 @@ pub fn update_order_after_trade(
     quote_asset_amount: u128,
     fee: u128,
 ) -> Result<bool, ContractError>{
-    let order = Orders.load(deps.storage, ((user_addr, position_index), order_index))?;
+    let mut order = Orders.load(deps.storage, ((user_addr, position_index), order_index))?;
     order.base_asset_amount_filled = order
         .base_asset_amount_filled
         .checked_add(base_asset_amount)

@@ -13,7 +13,7 @@ pub struct DepositRecord {
     pub user: Addr,
     pub direction: DepositDirection,
     pub collateral_before: u128,
-    pub cumulative_deposits_before: i128,
+    pub cumulative_deposits_before: u128,
     pub amount: u64,
 }
 
