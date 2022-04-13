@@ -142,10 +142,10 @@ pub fn place_order(
     now: u64,
     params: OrderParams,
     oracle: &Addr,
-    order_state: &OrderState,
 ) -> Result<bool, ContractError> {
 
     let state = STATE.load(deps.storage)?;
+    let order_state = state.orderstate;
 
     let mut user = Users.load(deps.storage, &user_addr.clone())?;
     let position_index = params.market_index;
@@ -439,12 +439,12 @@ pub fn fill_order(
     deps: &mut DepsMut,
     user_addr: &Addr,
     filler_addr: &Addr,
-    order_state: &OrderState,
     position_index: u64,
     order_index: u64,
     now: u64,
 ) -> Result<u128, ContractError> {
     let state = STATE.load(deps.storage)?;
+    let order_state = state.orderstate;
     let mut user = Users.load(deps.storage, user_addr)?;
     let mut filler = Users.load(deps.storage, filler_addr)?;
     let mut market_position = Positions.load(deps.storage, (user_addr, position_index))?;
@@ -591,7 +591,7 @@ pub fn fill_order(
         calculate_fee_for_order(
             quote_asset_amount,
             &state.fee_structure,
-            &order_state.order_filler_reward_structure,
+            &order_state,
             &discount_tier,
             order.ts,
             now,

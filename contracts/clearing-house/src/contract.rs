@@ -6,6 +6,7 @@ use cw2::set_contract_version;
 use cw_utils::maybe_addr;
 
 use crate::helpers::constants::*;
+use crate::states::order::OrderState;
 use crate::states::state::{State, ADMIN, STATE};
 
 use ariel::execute::{ExecuteMsg, InstantiateMsg};
@@ -67,6 +68,12 @@ pub fn instantiate(
         confidence_interval_max_size: 4,
         too_volatile_ratio: 5,
     };
+    let orderstate = OrderState { 
+        min_order_quote_asset_amount: 0,
+        reward_numerator: 0,
+        reward_denominator: 0,
+        time_based_reward_lower_bound: 0, // minimum filler reward for time-based reward
+    };
     let state = State {
         exchange_paused: false,
         funding_paused: false,
@@ -89,6 +96,7 @@ pub fn instantiate(
         fee_structure: fs,
         oracle_guard_rails: oracle_gr,
         markets_length: 0,
+        orderstate
     };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     STATE.save(deps.storage, &state)?;

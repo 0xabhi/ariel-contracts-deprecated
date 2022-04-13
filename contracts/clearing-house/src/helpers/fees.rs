@@ -2,7 +2,8 @@ use std::cmp::{max, min};
 
 use cosmwasm_std::Addr;
 
-use crate::{error::ContractError, states::order::OrderFillerRewardStructure};
+use crate::states::order::OrderState;
+use crate::{error::ContractError};
 
 use crate::helpers::casting::cast_to_u128;
 
@@ -169,7 +170,7 @@ pub fn calculate_order_fee_tier(
 pub fn calculate_fee_for_order(
     quote_asset_amount: u128,
     fee_structure: &FeeStructure,
-    filler_reward_structure: &OrderFillerRewardStructure,
+    filler_reward_structure: &OrderState,
     order_fee_tier: &OrderDiscountTier,
     order_ts: u64,
     now: u64,
@@ -260,7 +261,7 @@ fn calculate_filler_reward(
     fee: u128,
     order_ts: u64,
     now: u64,
-    filler_reward_structure: &OrderFillerRewardStructure,
+    filler_reward_structure: &OrderState,
 ) -> Result<u128, ContractError> {
     // incentivize keepers to prioritize filling older orders (rather than just largest orders)
     // for sufficiently small-sized order, reward based on fraction of fee paid

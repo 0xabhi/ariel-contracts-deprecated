@@ -1,4 +1,4 @@
-use ariel::types::{Order, OrderType, PositionDirection, OrderTriggerCondition};
+use ariel::types::{Order};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -10,20 +10,11 @@ use cw_storage_plus::{Item, Map};
 // use ariel::types::OracleSource;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OrderState {
-    pub order_history: Addr,
-    pub order_filler_reward_structure: OrderFillerRewardStructure,
     pub min_order_quote_asset_amount: u128, // minimum est. quote_asset_amount for place_order to succeed
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct OrderFillerRewardStructure {
     pub reward_numerator: u128,
     pub reward_denominator: u128,
     pub time_based_reward_lower_bound: u128, // minimum filler reward for time-based reward
 }
-
-
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OrderInfo {
