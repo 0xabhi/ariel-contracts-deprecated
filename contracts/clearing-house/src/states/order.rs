@@ -1,4 +1,4 @@
-use ariel::types::{Order, OrderType, PositionDirection, OrderTriggerCondition};
+use ariel::types::{Order, OrderTriggerCondition, OrderType, PositionDirection};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -22,9 +22,6 @@ pub struct OrderFillerRewardStructure {
     pub time_based_reward_lower_bound: u128, // minimum filler reward for time-based reward
 }
 
-
-
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OrderInfo {
     pub len: u64,
@@ -37,7 +34,10 @@ pub fn has_oracle_price_offset(oo: &Order) -> bool {
     oo.oracle_price_offset != 0
 }
 
-pub fn get_limit_price(oo: &Order, valid_oracle_price: Option<i128>) -> Result<u128, ContractError> {
+pub fn get_limit_price(
+    oo: &Order,
+    valid_oracle_price: Option<i128>,
+) -> Result<u128, ContractError> {
     // the limit price can be hardcoded on order or derived from oracle_price + oracle_price_offset
     let price = if has_oracle_price_offset(oo) {
         if let Some(oracle_price) = valid_oracle_price {

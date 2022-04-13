@@ -175,7 +175,6 @@ pub fn execute(
             market_index,
         } => try_move_amm_price(
             deps,
-            info,
             base_asset_reserve,
             quote_asset_reserve,
             market_index,

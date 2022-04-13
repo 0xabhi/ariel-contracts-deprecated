@@ -24,6 +24,7 @@ use crate::states::trade_history::TradeHistory;
 use crate::states::trade_history::TradeHistoryInfo;
 use crate::states::trade_history::TradeInfo;
 use crate::states::trade_history::TradeRecord;
+use crate::states::user::Position;
 use crate::states::user::{Positions, User, Users};
 
 use ariel::helper::addr_validate_to_lower;
@@ -889,7 +890,6 @@ pub fn try_liquidate(
                     mark_twap_divergence.unsigned_abs() >= MAX_MARK_TWAP_DIVERGENCE;
 
                 if mark_twap_too_divergent {
-                    let market_index = market_status.market_index;
                     res.clone().add_attribute(
                         "mark_twap_divergence {} for market {}",
                         mark_twap_divergence.to_string(),
@@ -898,8 +898,10 @@ pub fn try_liquidate(
                 }
             }
 
-            let market_position = Positions.load(deps.storage, (&user_address, market_index))?;
-
+            let market_position =
+                Positions.load(deps.storage, (&user_address, market_index))?;
+            // todo initialize position
+            
             let mark_price_before_i128 = cast_to_i128(mark_price_before)?;
             let close_position_slippage = match market_status.close_position_slippage {
                 Some(close_position_slippage) => close_position_slippage,
@@ -1304,9 +1306,9 @@ pub fn try_liquidate(
             |_m| -> Result<User, ContractError> { Ok(liquidator) },
         )?;
     }
-    let message: CosmosMsg;
+    let mut messages: Vec<CosmosMsg> = vec![];
     if fee_to_insurance_fund > 0 {
-        message = CosmosMsg::Wasm(WasmMsg::Execute {
+        let message = CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: state.collateral_vault.to_string(),
             msg: to_binary(&VaultInterface::Withdraw {
                 to_address: state.insurance_vault.clone(),
@@ -1314,8 +1316,8 @@ pub fn try_liquidate(
             })?,
             funds: vec![],
         });
+        messages.push(message);
     }
-
 
     let liquidation_history_info_length = LiquidationHistoryInfo
         .load(deps.storage)?
@@ -1349,12 +1351,11 @@ pub fn try_liquidate(
             margin_ratio,
         },
     )?;
-    Ok(res)
+    Ok(res.add_messages(messages))
 }
 
 pub fn try_move_amm_price(
     mut deps: DepsMut,
-    info: MessageInfo,
     base_asset_reserve: u128,
     quote_asset_reserve: u128,
     market_index: u64,
