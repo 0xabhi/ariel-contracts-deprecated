@@ -7,6 +7,8 @@ use cw_storage_plus::Item;
 
 use ariel::types::{FeeStructure, OracleGuardRails};
 
+use super::order::OrderState;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
     pub exchange_paused: bool,
@@ -30,6 +32,7 @@ pub struct State {
     pub markets_length: u64,
     pub fee_structure: FeeStructure,
     pub oracle_guard_rails: OracleGuardRails,
+    pub orderstate : OrderState,
 }
 
 pub const STATE: Item<State> = Item::new("state");
