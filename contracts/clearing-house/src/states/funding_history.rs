@@ -40,8 +40,8 @@ pub struct FundingRateInfo {
     pub len: u64,
 }
 
-pub const FundingRateHistory: Map<u64,  FundingRateRecord> = Map::new("funding_payment_history");
-pub const FundingRateHistoryInfo: Item<FundingRateInfo> = Item::new("funding_payment_history_info");
+pub const FUNDING_RATE_HISTORY: Map<u64,  FundingRateRecord> = Map::new("funding_payment_history");
+pub const FUNDING_RATE_HISTORY_INFO: Item<FundingRateInfo> = Item::new("funding_payment_history_info");
 
-pub const FundingPaymentHistory: Map<(u64, &Addr),  FundingPaymentRecord> = Map::new("funding_history");
-pub const FundingPaymentHistoryInfo: Item<FundingPaymentInfo> = Item::new("funding_history_info");
+pub const FUNDING_PAYMENT_HISTORY: Map<(u64, &Addr),  FundingPaymentRecord> = Map::new("funding_history");
+pub const FUNDING_PAYMENT_HISTORY_INFO: Item<FundingPaymentInfo> = Item::new("funding_history_info");

@@ -1,14 +1,14 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{DiscountTokenTier, OracleSource, Order, PositionDirection, OrderParams};
+use crate::types::{DiscountTokenTier, OracleSource, Order, OrderParams, PositionDirection};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub collateral_vault: String,
     pub insurance_vault: String,
     pub admin_controls_prices: bool,
-    pub oracle: String
+    pub oracle: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -50,20 +50,17 @@ pub enum ExecuteMsg {
         order: OrderParams,
     },
     CancelOrder {
-        order_id: u128,
+        market_index: u64,
+        order_id: u64,
     },
-    CancelOrderByUserId {
-        user_order_id: u8,
+    ExpireOrders {
+        user_address: String,
     },
-    ExpireOrders {},
     FillOrder {
-        order_id: u128,
+        order_id: u64,
+        user_address: String,
+        market_index: u64,
     },
-    PlaceAndFillOrder {
-        order: Order,
-    },
-
-    // liquidation policy to be discussed
     Liquidate {
         user: String,
         market_index: u64,
@@ -152,8 +149,8 @@ pub enum ExecuteMsg {
         confidence_interval_max_size: u128,
         too_volatile_ratio: i128,
     },
-
-    UpdateOrderFillerRewardSystem {
+    UpdateOrderState {
+        min_order_quote_asset_amount: u128,
         reward_numerator: u128,
         reward_denominator: u128,
         time_based_reward_lower_bound: u128,

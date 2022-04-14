@@ -1,10 +1,10 @@
 // use crate::helpers::casting::cast_to_i64;
 use crate::states::curve_history::*;
-use crate::states::liquidation_history::{LiquidationHistory, LiquidationHistoryInfo};
-use crate::states::market::Markets;
+use crate::states::liquidation_history::{LIQUIDATION_HISTORY, LIQUIDATION_HISTORY_INFO};
+use crate::states::market::MARKETS;
 use crate::states::state::{STATE, ADMIN};
-use crate::states::trade_history::{TradeHistory, TradeHistoryInfo};
-use crate::states::user::{Positions, Users};
+use crate::states::trade_history::{TRADE_HISTORY, TRADE_HISTORY_INFO};
+use crate::states::user::{POSITIONS, USERS};
 use crate::states::{deposit_history::*, funding_history::*};
 
 use ariel::helper::addr_validate_to_lower;
@@ -14,7 +14,7 @@ use ariel::response::*;
 use cosmwasm_std::{Deps, StdResult};
 
 pub fn get_user(deps: Deps, user_address: String) -> StdResult<UserResponse> {
-    let user = Users.load(
+    let user = USERS.load(
         deps.storage,
         &addr_validate_to_lower(deps.api, &user_address)?,
     )?;
@@ -35,7 +35,7 @@ pub fn get_user_position(
     user_address: String,
     index: u64,
 ) -> StdResult<UserPositionResponse> {
-    let position = Positions.load(
+    let position = POSITIONS.load(
         deps.storage,
         (&addr_validate_to_lower(deps.api, &user_address)?, index),
     )?;
@@ -178,14 +178,14 @@ pub fn get_fee_structure(deps: Deps) -> StdResult<FeeStructureResponse> {
 }
 
 pub fn get_curve_history_length(deps: Deps) -> StdResult<CurveHistoryLengthResponse> {
-    let ch_info = CurveHistoryInfo.load(deps.storage)?;
+    let ch_info = CURVE_HISTORY_INFO.load(deps.storage)?;
     let length = CurveHistoryLengthResponse {
         length: ch_info.len as u64,
     };
     Ok(length)
 }
 pub fn get_curve_history(deps: Deps, index: u64) -> StdResult<CurveHistoryResponse> {
-    let ch = CurveHistory.load(deps.storage, index)?;
+    let ch = CURVEHISTORY.load(deps.storage, index)?;
     let curve_history = CurveHistoryResponse {
         ts: ch.ts,
         record_id: ch.record_id,
@@ -212,7 +212,7 @@ pub fn get_curve_history(deps: Deps, index: u64) -> StdResult<CurveHistoryRespon
 }
 
 pub fn get_deposit_history_length(deps: Deps) -> StdResult<DepositHistoryLengthResponse> {
-    let dh_history = DepositHistoryInfo.load(deps.storage)?;
+    let dh_history = DEPOSIT_HISTORY_INFO.load(deps.storage)?;
     let length = DepositHistoryLengthResponse {
         length: dh_history.len as u64,
     };
@@ -223,7 +223,7 @@ pub fn get_deposit_history(
     user_address: String,
     index: u64,
 ) -> StdResult<DepositHistoryResponse> {
-    let dh = DepositHistory.load(
+    let dh = DEPOSIT_HISTORY.load(
         deps.storage,
         (index, addr_validate_to_lower(deps.api, &user_address)?),
     )?;
@@ -241,7 +241,7 @@ pub fn get_deposit_history(
 pub fn get_funding_payment_history_length(
     deps: Deps,
 ) -> StdResult<FundingPaymentHistoryLengthResponse> {
-    let fp_info = FundingPaymentHistoryInfo.load(deps.storage)?;
+    let fp_info = FUNDING_PAYMENT_HISTORY_INFO.load(deps.storage)?;
     let length = FundingPaymentHistoryLengthResponse {
         length: fp_info.len as u64,
     };
@@ -252,7 +252,7 @@ pub fn get_funding_payment_history(
     user_address: String,
     index: u64,
 ) -> StdResult<FundingPaymentHistoryResponse> {
-    let fp = FundingPaymentHistory.load(
+    let fp = FUNDING_PAYMENT_HISTORY.load(
         deps.storage,
         (index, &addr_validate_to_lower(deps.api, &user_address)?),
     )?;
@@ -272,14 +272,14 @@ pub fn get_funding_payment_history(
 }
 
 pub fn get_funding_rate_history_length(deps: Deps) -> StdResult<FundingRateHistoryLengthResponse> {
-    let fr_info = FundingRateHistoryInfo.load(deps.storage)?;
+    let fr_info = FUNDING_RATE_HISTORY_INFO.load(deps.storage)?;
     let length = FundingRateHistoryLengthResponse {
         length: fr_info.len as u64,
     };
     Ok(length)
 }
 pub fn get_funding_rate_history(deps: Deps, index: u64) -> StdResult<FundingRateHistoryResponse> {
-    let fr = FundingRateHistory.load(deps.storage, index)?;
+    let fr = FUNDING_RATE_HISTORY.load(deps.storage, index)?;
     let fr_history = FundingRateHistoryResponse {
         ts: fr.ts,
         record_id: fr.record_id,
@@ -294,7 +294,7 @@ pub fn get_funding_rate_history(deps: Deps, index: u64) -> StdResult<FundingRate
 }
 
 pub fn get_liquidation_history_length(deps: Deps) -> StdResult<LiquidationHistoryLengthResponse> {
-    let lh_info = LiquidationHistoryInfo.load(deps.storage)?;
+    let lh_info = LIQUIDATION_HISTORY_INFO.load(deps.storage)?;
     let length = LiquidationHistoryLengthResponse {
         length: lh_info.len as u64,
     };
@@ -305,7 +305,7 @@ pub fn get_liquidation_history(
     user_address: String,
     index: u64,
 ) -> StdResult<LiquidationHistoryResponse> {
-    let lh = LiquidationHistory.load(
+    let lh = LIQUIDATION_HISTORY.load(
         deps.storage,
         (index, addr_validate_to_lower(deps.api, &user_address)?),
     )?;
@@ -329,7 +329,7 @@ pub fn get_liquidation_history(
 }
 
 pub fn get_trade_history_length(deps: Deps) -> StdResult<TradeHistoryLengthResponse> {
-    let th_info = TradeHistoryInfo.load(deps.storage)?;
+    let th_info = TRADE_HISTORY_INFO.load(deps.storage)?;
     let length = TradeHistoryLengthResponse {
         length: th_info.len as u64,
     };
@@ -340,7 +340,7 @@ pub fn get_trade_history(
     user_address: String,
     index: u64,
 ) -> StdResult<TradeHistoryResponse> {
-    let th = TradeHistory.load(
+    let th = TRADE_HISTORY.load(
         deps.storage,
         index,
     )?;
@@ -364,7 +364,7 @@ pub fn get_trade_history(
 }
 
 pub fn get_market_info(deps: Deps, market_index: u64) -> StdResult<MarketInfoResponse> {
-    let market = Markets.load(deps.storage, market_index)?;
+    let market = MARKETS.load(deps.storage, market_index)?;
     let market_info = MarketInfoResponse {
         market_name: market.market_name,
         initialized: market.initialized,

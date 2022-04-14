@@ -100,28 +100,28 @@ pub fn calculate_new_oracle_price_twap(
     );
 
     // ensure amm.last_oracle_price is proper
-    let capped_last_oracle_price = if a.last_oracle_price > 0 {
-        a.last_oracle_price
-    } else {
-        oracle_price
-    };
+    // let capped_last_oracle_price = if a.last_oracle_price > 0 {
+    //     a.last_oracle_price
+    // } else {
+    //     oracle_price
+    // };
 
     // nudge last_oracle_price up to .1% toward oracle price
-    let capped_last_oracle_price_10bp = capped_last_oracle_price
-    .checked_div(1000)
-    .ok_or_else(|| (ContractError::MathError))?;
+    // let capped_last_oracle_price_10bp = capped_last_oracle_price
+    // .checked_div(1000)
+    // .ok_or_else(|| (ContractError::MathError))?;
 
-    let interpolated_oracle_price = min(
-        capped_last_oracle_price
-            .checked_add(capped_last_oracle_price_10bp)
-            .ok_or_else(|| (ContractError::MathError))?,
-        max(
-            capped_last_oracle_price
-                .checked_sub(capped_last_oracle_price_10bp)
-                .ok_or_else(|| (ContractError::MathError))?,
-            oracle_price,
-        ),
-    );
+    // let interpolated_oracle_price = min(
+    //     capped_last_oracle_price
+    //         .checked_add(capped_last_oracle_price_10bp)
+    //         .ok_or_else(|| (ContractError::MathError))?,
+    //     max(
+    //         capped_last_oracle_price
+    //             .checked_sub(capped_last_oracle_price_10bp)
+    //             .ok_or_else(|| (ContractError::MathError))?,
+    //         oracle_price,
+    //     ),
+    // );
 
     let new_twap = calculate_twap(
         oracle_price,

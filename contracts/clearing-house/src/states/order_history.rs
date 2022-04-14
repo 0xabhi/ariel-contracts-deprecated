@@ -42,5 +42,5 @@ pub struct OrderHisInfo {
     pub len: u64,
 }
 
-pub const OrderHistory: Map<u64,  OrderRecord> = Map::new("order_history");
-pub const OrderHistoryInfo: Item<OrderHisInfo> = Item::new("order_history_info");
+pub const ORDER_HISTORY: Map<u64,  OrderRecord> = Map::new("order_history");
+pub const ORDER_HISTORY_INFO: Item<OrderHisInfo> = Item::new("order_history_info");

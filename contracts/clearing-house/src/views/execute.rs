@@ -9,23 +9,22 @@ use crate::states::curve_history::*;
 use crate::ContractError;
 
 use crate::states::deposit_history::*;
-use crate::states::liquidation_history::LiquidationHistory;
-use crate::states::liquidation_history::LiquidationHistoryInfo;
+use crate::states::liquidation_history::LIQUIDATION_HISTORY;
+use crate::states::liquidation_history::LIQUIDATION_HISTORY_INFO;
 use crate::states::liquidation_history::LiquidationInfo;
 use crate::states::liquidation_history::LiquidationRecord;
 use crate::states::market::LiquidationStatus;
 use crate::states::market::LiquidationType;
-use crate::states::market::{Amm, Market, Markets};
+use crate::states::market::{Amm, Market, MARKETS};
 use crate::states::order::OrderState;
 use crate::states::state::State;
 use crate::states::state::ADMIN;
 use crate::states::state::STATE;
-use crate::states::trade_history::TradeHistory;
-use crate::states::trade_history::TradeHistoryInfo;
+use crate::states::trade_history::TRADE_HISTORY;
+use crate::states::trade_history::TRADE_HISTORY_INFO;
 use crate::states::trade_history::TradeInfo;
 use crate::states::trade_history::TradeRecord;
-use crate::states::user::Position;
-use crate::states::user::{Positions, User, Users};
+use crate::states::user::{POSITIONS, User, USERS};
 
 use ariel::helper::addr_validate_to_lower;
 use ariel::helper::assert_sent_uusd_balance;
@@ -33,6 +32,7 @@ use ariel::helper::query_balance;
 use ariel::helper::VaultInterface;
 use ariel::types::OraclePriceData;
 use ariel::types::Order;
+use ariel::types::OrderType;
 use ariel::types::{
     DepositDirection, DiscountTokenTier, FeeStructure, OracleGuardRails, OracleSource, OrderParams,
     PositionDirection,
@@ -60,7 +60,7 @@ pub fn try_initialize_market(
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let now = env.block.time.seconds();
 
-    let existing_market = Markets.load(deps.storage, market_index)?;
+    let existing_market = MARKETS.load(deps.storage, market_index)?;
     if existing_market.initialized {
         return Err(ContractError::MarketIndexAlreadyInitialized {});
     }
@@ -145,7 +145,7 @@ pub fn try_initialize_market(
             minimum_base_asset_trade_size: 10000000,
         },
     };
-    Markets.save(deps.storage, market_index, &market)?;
+    MARKETS.save(deps.storage, market_index, &market)?;
     Ok(Response::new().add_attribute("method", "try_initialize_market"))
 }
 
@@ -156,7 +156,7 @@ pub fn try_deposit_collateral(
     amount: u64,
 ) -> Result<Response, ContractError> {
     let user_address = info.sender.clone();
-    let mut user = Users.load(deps.storage, &user_address)?;
+    let mut user = USERS.load(deps.storage, &user_address)?;
     let now = env.block.time.seconds();
 
     if amount == 0 {
@@ -185,19 +185,19 @@ pub fn try_deposit_collateral(
         msg: to_binary(&VaultInterface::Deposit {})?,
         funds: coins(amount.into(), "uusd"),
     });
-    let deposit_history_info_length = DepositHistoryInfo
+    let deposit_history_info_length = DEPOSIT_HISTORY_INFO
         .load(deps.storage)?
         .len
         .checked_add(1)
         .ok_or_else(|| (ContractError::MathError))?;
-    DepositHistoryInfo.update(
+    DEPOSIT_HISTORY_INFO.update(
         deps.storage,
         |mut i| -> Result<DepositInfo, ContractError> {
             i.len = deposit_history_info_length;
             Ok(i)
         },
     )?;
-    DepositHistory.save(
+    DEPOSIT_HISTORY.save(
         deps.storage,
         (deposit_history_info_length as u64, user_address.clone()),
         &DepositRecord {
@@ -213,7 +213,7 @@ pub fn try_deposit_collateral(
     if state.max_deposit > 0 && user.cumulative_deposits > cast(state.max_deposit)? {
         return Err(ContractError::UserMaxDeposit.into());
     }
-    Users.update(
+    USERS.update(
         deps.storage,
         &user_address.clone(),
         |_m| -> Result<User, ContractError> { Ok(user) },
@@ -230,7 +230,7 @@ pub fn try_withdraw_collateral(
     amount: u64,
 ) -> Result<Response, ContractError> {
     let user_address = info.sender.clone();
-    let mut user = Users.load(deps.storage, &user_address)?;
+    let mut user = USERS.load(deps.storage, &user_address)?;
     let now = env.block.time.seconds();
 
     let collateral_before = user.collateral;
@@ -295,19 +295,19 @@ pub fn try_withdraw_collateral(
         }));
     }
 
-    let deposit_history_info_length = DepositHistoryInfo
+    let deposit_history_info_length = DEPOSIT_HISTORY_INFO
         .load(deps.storage)?
         .len
         .checked_add(1)
         .ok_or_else(|| (ContractError::MathError))?;
-    DepositHistoryInfo.update(
+    DEPOSIT_HISTORY_INFO.update(
         deps.storage,
         |mut i| -> Result<DepositInfo, ContractError> {
             i.len = deposit_history_info_length;
             Ok(i)
         },
     )?;
-    DepositHistory.save(
+    DEPOSIT_HISTORY.save(
         deps.storage,
         (deposit_history_info_length as u64, user_address.clone()),
         &DepositRecord {
@@ -320,7 +320,7 @@ pub fn try_withdraw_collateral(
             amount: cast(amount_withdraw)?,
         },
     )?;
-    Users.update(
+    USERS.update(
         deps.storage,
         &user_address.clone(),
         |_u| -> Result<User, ContractError> { Ok(user) },
@@ -340,7 +340,7 @@ pub fn try_open_position(
     limit_price: u128,
 ) -> Result<Response, ContractError> {
     let user_address = info.sender.clone();
-    let mut user = Users.load(deps.storage, &user_address)?;
+    let mut user = USERS.load(deps.storage, &user_address)?;
     let now = env.block.time.seconds();
     let state = STATE.load(deps.storage)?;
 
@@ -355,7 +355,7 @@ pub fn try_open_position(
     let is_oracle_valid: bool;
 
     {
-        let market = Markets.load(deps.storage, market_index)?;
+        let market = MARKETS.load(deps.storage, market_index)?;
         mark_price_before = market.amm.mark_price()?;
         let oracle_price_data = &market.amm.get_oracle_price(&state.oracle, now)?;
         oracle_mark_spread_pct_before = helpers::amm::calculate_oracle_mark_spread_pct(
@@ -408,7 +408,7 @@ pub fn try_open_position(
     let oracle_price_after: i128;
     let oracle_mark_spread_pct_after: i128;
     {
-        let market = Markets.load(deps.storage, market_index)?;
+        let market = MARKETS.load(deps.storage, market_index)?;
         mark_price_after = market.amm.mark_price()?;
         let oracle_price_data = helpers::oracle::get_oracle_price(&market.amm, &state.oracle)?;
         oracle_mark_spread_pct_after = helpers::amm::calculate_oracle_mark_spread_pct(
@@ -437,7 +437,7 @@ pub fn try_open_position(
         )?;
 
     {
-        let mut market = Markets.load(deps.storage, market_index)?;
+        let mut market = MARKETS.load(deps.storage, market_index)?;
         market.amm.total_fee = market
             .amm
             .total_fee
@@ -448,10 +448,10 @@ pub fn try_open_position(
             .total_fee_minus_distributions
             .checked_add(fee_to_market)
             .ok_or_else(|| (ContractError::MathError))?;
-        Markets.update(
+        MARKETS.update(
             deps.storage,
             market_index,
-            |m| -> Result<Market, ContractError> { Ok(market) },
+            |_m| -> Result<Market, ContractError> { Ok(market) },
         )?;
     }
 
@@ -473,17 +473,17 @@ pub fn try_open_position(
 
     // Update the referrer's collateral with their reward
     if referrer.is_some() {
-        let mut _referrer = Users.load(deps.storage, &referrer.clone().unwrap())?;
+        let mut _referrer = USERS.load(deps.storage, &referrer.clone().unwrap())?;
         _referrer.total_referral_reward = _referrer
             .total_referral_reward
             .checked_add(referrer_reward)
             .ok_or_else(|| (ContractError::MathError))?;
         // todo what this signifies
         // referrer.exit(ctx.program_id)?;
-        Users.update(
+        USERS.update(
             deps.storage,
             &referrer.unwrap().clone(),
-            |m| -> Result<User, ContractError> { Ok(_referrer) },
+            |_m| -> Result<User, ContractError> { Ok(_referrer) },
         )?;
     }
 
@@ -500,17 +500,17 @@ pub fn try_open_position(
     {
         return Err(ContractError::OracleMarkSpreadLimit.into());
     }
-    let trade_history_info_length = TradeHistoryInfo
+    let trade_history_info_length = TRADE_HISTORY_INFO
         .load(deps.storage)?
         .len
         .checked_add(1)
         .ok_or_else(|| (ContractError::MathError))?;
-    TradeHistoryInfo.update(deps.storage, |mut i| -> Result<TradeInfo, ContractError> {
+    TRADE_HISTORY_INFO.update(deps.storage, |mut i| -> Result<TradeInfo, ContractError> {
         i.len = trade_history_info_length;
         Ok(i)
     })?;
 
-    TradeHistory.save(
+    TRADE_HISTORY.save(
         deps.storage,
         trade_history_info_length,
         &TradeRecord {
@@ -554,7 +554,7 @@ pub fn try_open_position(
         )?;
     }
 
-    Users.update(
+    USERS.update(
         deps.storage,
         &user_address.clone(),
         |_m| -> Result<User, ContractError> { Ok(user) },
@@ -570,14 +570,14 @@ pub fn try_close_position(
     market_index: u64,
 ) -> Result<Response, ContractError> {
     let user_address = info.sender.clone();
-    let mut user = Users.load(deps.storage, &user_address)?;
+    let mut user = USERS.load(deps.storage, &user_address)?;
     let now = env.block.time.seconds();
     let state = STATE.load(deps.storage)?;
     controller::funding::settle_funding_payment(&mut deps, &user_address, now)?;
 
     let position_index = market_index.clone();
-    let market_position = Positions.load(deps.storage, (&user_address.clone(), market_index))?;
-    let mut market = Markets.load(deps.storage, market_index)?;
+    let market_position = POSITIONS.load(deps.storage, (&user_address.clone(), market_index))?;
+    let mut market = MARKETS.load(deps.storage, market_index)?;
     let mark_price_before = market.amm.mark_price()?;
     let oracle_price_data = helpers::oracle::get_oracle_price(&market.amm, &market.amm.oracle)?;
     let oracle_mark_spread_pct_before = helpers::amm::calculate_oracle_mark_spread_pct(
@@ -635,15 +635,15 @@ pub fn try_close_position(
         .ok_or_else(|| (ContractError::MathError))?;
 
     if referrer.is_some() {
-        let mut _referrer = Users.load(deps.storage, &referrer.clone().unwrap())?;
+        let mut _referrer = USERS.load(deps.storage, &referrer.clone().unwrap())?;
         _referrer.total_referral_reward = _referrer
             .total_referral_reward
             .checked_add(referrer_reward)
             .ok_or_else(|| (ContractError::MathError))?;
-        Users.update(
+        USERS.update(
             deps.storage,
             &referrer.unwrap().clone(),
-            |m| -> Result<User, ContractError> { Ok(_referrer) },
+            |_m| -> Result<User, ContractError> { Ok(_referrer) },
         )?;
     }
 
@@ -689,17 +689,17 @@ pub fn try_close_position(
         return Err(ContractError::OracleMarkSpreadLimit.into());
     }
 
-    let trade_history_info_length = TradeHistoryInfo
+    let trade_history_info_length = TRADE_HISTORY_INFO
         .load(deps.storage)?
         .len
         .checked_add(1)
         .ok_or_else(|| (ContractError::MathError))?;
-    TradeHistoryInfo.update(deps.storage, |mut i| -> Result<TradeInfo, ContractError> {
+    TRADE_HISTORY_INFO.update(deps.storage, |mut i| -> Result<TradeInfo, ContractError> {
         i.len = trade_history_info_length;
         Ok(i)
     })?;
 
-    TradeHistory.save(
+    TRADE_HISTORY.save(
         deps.storage,
         trade_history_info_length,
         &TradeRecord {
@@ -728,16 +728,16 @@ pub fn try_close_position(
         state.funding_paused,
         Some(mark_price_before),
     )?;
-    Markets.update(
+    MARKETS.update(
         deps.storage,
         market_index,
-        |m| -> Result<Market, ContractError> { Ok(market) },
+        |_m| -> Result<Market, ContractError> { Ok(market) },
     )?;
 
-    Users.update(
+    USERS.update(
         deps.storage,
         &user_address.clone(),
-        |m| -> Result<User, ContractError> { Ok(user) },
+        |_m| -> Result<User, ContractError> { Ok(user) },
     )?;
 
     Ok(Response::new().add_attribute("method", "try_close_position"))
@@ -754,20 +754,11 @@ pub fn try_place_order(
     let user_address = info.sender.clone();
     let state = STATE.load(deps.storage)?;
     let oracle = state.oracle;
-    // let order_filler_reward_structure =
-    let order_state = OrderState {
-        order_history: todo!(),
-        order_filler_reward_structure: todo!(),
-        min_order_quote_asset_amount: todo!(),
-    };
-    // controller::order::place_order(
-    //     &mut deps,
-    //     &user_address,
-    //     now,
-    //     order,
-    //     &oracle,
-    //     order_state,
-    // )?;
+    if order.order_type == OrderType::Market {
+        return Err(ContractError::MarketOrderMustBeInPlaceAndFill.into());
+    }
+
+    controller::order::place_order(&mut deps, &user_address, now, order, &oracle)?;
     Ok(Response::new().add_attribute("method", "try_place_order"))
 }
 
@@ -775,24 +766,33 @@ pub fn try_cancel_order(
     mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    order_id: u128,
+    market_index: u64,
+    order_id: u64,
 ) -> Result<Response, ContractError> {
+    let now = env.block.time.seconds();
+    let state = STATE.load(deps.storage)?;
+    let oracle = state.oracle;
+    controller::order::cancel_order(
+        &mut deps,
+        &info.sender.clone(),
+        market_index,
+        order_id,
+        &oracle,
+        now,
+    )?;
     Ok(Response::new().add_attribute("method", "try_cancel_order"))
 }
 
-pub fn try_cancel_order_by_user_id(
-    mut deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    user_order_id: u8,
-) -> Result<Response, ContractError> {
-    Ok(Response::new().add_attribute("method", "try_cancel_order_by_user_id"))
-}
+//todo who is filler? is sender is filler and passing the user address?
 pub fn try_expire_orders(
     mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    user_address: String,
 ) -> Result<Response, ContractError> {
+    let now = env.block.time.seconds();
+    let user_address = addr_validate_to_lower(deps.api, &user_address.to_string())?;
+    controller::order::expire_orders(&mut deps, &user_address, now, &info.sender.clone())?;
     Ok(Response::new().add_attribute("method", "try_expire_orders"))
 }
 
@@ -800,19 +800,28 @@ pub fn try_fill_order(
     mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    order_id: u128,
+    order_id: u64,
+    user_address: String,
+    market_index: u64
 ) -> Result<Response, ContractError> {
+    let now = env.block.time.seconds();
+    let user_address = addr_validate_to_lower(deps.api, &user_address.to_string())?;
+    let base_asset_amount = controller::order::fill_order(
+        &mut deps,
+        &user_address,
+        &info.sender.clone(),
+        market_index,
+        order_id,
+        now,
+    )?;
+    if base_asset_amount == 0 {
+        return Err(ContractError::CouldNotFillOrder);
+    }
     Ok(Response::new().add_attribute("method", "try_fill_order"))
 }
 
-pub fn try_place_and_fill_order(
-    mut deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    order: Order,
-) -> Result<Response, ContractError> {
-    Ok(Response::new().add_attribute("method", "try_place_and_fill_order"))
-}
+//todo later
+
 
 pub fn try_liquidate(
     mut deps: DepsMut,
@@ -824,7 +833,7 @@ pub fn try_liquidate(
     let state = STATE.load(deps.storage)?;
     let user_address = addr_validate_to_lower(deps.api, &user)?;
     let now = env.block.time.seconds();
-    let mut user = Users.load(deps.storage, &user_address)?;
+    let mut user = USERS.load(deps.storage, &user_address)?;
     // let user_position = Positions.load(deps.storage, (&user_address, market_index))?;
 
     controller::funding::settle_funding_payment(&mut deps, &user_address, now)?;
@@ -877,7 +886,7 @@ pub fn try_liquidate(
                 continue;
             }
 
-            let market = Markets.load(deps.storage, market_status.market_index)?;
+            let market = MARKETS.load(deps.storage, market_status.market_index)?;
             let mark_price_before = market_status.mark_price_before;
             let oracle_status = &market_status.oracle_status;
 
@@ -898,10 +907,9 @@ pub fn try_liquidate(
                 }
             }
 
-            let market_position =
-                Positions.load(deps.storage, (&user_address, market_index))?;
+            let market_position = POSITIONS.load(deps.storage, (&user_address, market_index))?;
             // todo initialize position
-            
+
             let mark_price_before_i128 = cast_to_i128(mark_price_before)?;
             let close_position_slippage = match market_status.close_position_slippage {
                 Some(close_position_slippage) => close_position_slippage,
@@ -1004,17 +1012,17 @@ pub fn try_liquidate(
                 .ok_or_else(|| (ContractError::MathError))?;
             let mark_price_after = market.amm.mark_price()?;
 
-            let trade_history_info_length = TradeHistoryInfo
+            let trade_history_info_length = TRADE_HISTORY_INFO
                 .load(deps.storage)?
                 .len
                 .checked_add(1)
                 .ok_or_else(|| (ContractError::MathError))?;
-            TradeHistoryInfo.update(deps.storage, |mut i| -> Result<TradeInfo, ContractError> {
+            TRADE_HISTORY_INFO.update(deps.storage, |mut i| -> Result<TradeInfo, ContractError> {
                 i.len = trade_history_info_length;
                 Ok(i)
             })?;
 
-            TradeHistory.save(
+            TRADE_HISTORY.save(
                 deps.storage,
                 trade_history_info_length,
                 &TradeRecord {
@@ -1081,7 +1089,7 @@ pub fn try_liquidate(
             }
 
             let oracle_status = &market_status.oracle_status;
-            let market = Markets.load(deps.storage, market_index)?;
+            let market = MARKETS.load(deps.storage, market_index)?;
             let mark_price_before = market_status.mark_price_before;
 
             let oracle_is_valid = oracle_status.is_valid;
@@ -1099,7 +1107,7 @@ pub fn try_liquidate(
                 }
             }
 
-            let market_position = Positions.load(deps.storage, (&user_address, market_index))?;
+            let market_position = POSITIONS.load(deps.storage, (&user_address, market_index))?;
 
             let mut quote_asset_amount = market_status
                 .base_asset_value
@@ -1201,17 +1209,17 @@ pub fn try_liquidate(
 
             let mark_price_after = market.amm.mark_price()?;
 
-            let trade_history_info_length = TradeHistoryInfo
+            let trade_history_info_length = TRADE_HISTORY_INFO
                 .load(deps.storage)?
                 .len
                 .checked_add(1)
                 .ok_or_else(|| (ContractError::MathError))?;
-            TradeHistoryInfo.update(deps.storage, |mut i| -> Result<TradeInfo, ContractError> {
+            TRADE_HISTORY_INFO.update(deps.storage, |mut i| -> Result<TradeInfo, ContractError> {
                 i.len = trade_history_info_length;
                 Ok(i)
             })?;
 
-            TradeHistory.save(
+            TRADE_HISTORY.save(
                 deps.storage,
                 trade_history_info_length,
                 &TradeRecord {
@@ -1295,12 +1303,12 @@ pub fn try_liquidate(
         .ok_or_else(|| (ContractError::MathError))?;
 
     if fee_to_liquidator > 0 {
-        let mut liquidator = Users.load(deps.storage, &info.sender.clone())?;
+        let mut liquidator = USERS.load(deps.storage, &info.sender.clone())?;
         liquidator.collateral = liquidator
             .collateral
             .checked_add(cast(fee_to_liquidator)?)
             .ok_or_else(|| (ContractError::MathError))?;
-        Users.update(
+        USERS.update(
             deps.storage,
             &info.sender.clone(),
             |_m| -> Result<User, ContractError> { Ok(liquidator) },
@@ -1319,19 +1327,19 @@ pub fn try_liquidate(
         messages.push(message);
     }
 
-    let liquidation_history_info_length = LiquidationHistoryInfo
+    let liquidation_history_info_length = LIQUIDATION_HISTORY_INFO
         .load(deps.storage)?
         .len
         .checked_add(1)
         .ok_or_else(|| (ContractError::MathError))?;
-    LiquidationHistoryInfo.update(
+    LIQUIDATION_HISTORY_INFO.update(
         deps.storage,
         |mut i| -> Result<LiquidationInfo, ContractError> {
             i.len = liquidation_history_info_length;
             Ok(i)
         },
     )?;
-    LiquidationHistory.save(
+    LIQUIDATION_HISTORY.save(
         deps.storage,
         (liquidation_history_info_length as u64, user_address.clone()),
         &LiquidationRecord {
@@ -1377,7 +1385,7 @@ pub fn try_withdraw_fees(
 ) -> Result<Response, ContractError> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let state = STATE.load(deps.storage)?;
-    let mut market = Markets.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index)?;
 
     // A portion of fees must always remain in protocol to be used to keep markets optimal
     let max_withdraw = market
@@ -1410,10 +1418,10 @@ pub fn try_withdraw_fees(
         .checked_add(cast(amount)?)
         .ok_or_else(|| (ContractError::MathError))?;
 
-    Markets.update(
+    MARKETS.update(
         deps.storage,
         market_index,
-        |m| -> Result<Market, ContractError> { Ok(market) },
+        |_m| -> Result<Market, ContractError> { Ok(market) },
     )?;
 
     Ok(Response::new()
@@ -1430,7 +1438,7 @@ pub fn try_withdraw_from_insurance_vault_to_market(
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let state = STATE.load(deps.storage)?;
 
-    let mut market = Markets.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index)?;
     market.amm.total_fee_minus_distributions = market
         .amm
         .total_fee_minus_distributions
@@ -1445,11 +1453,11 @@ pub fn try_withdraw_from_insurance_vault_to_market(
         })?,
         funds: vec![],
     });
-    Markets.update(
+    MARKETS.update(
         deps.storage,
         market_index,
-        |m| -> Result<Market, ContractError> { Ok(market) },
-    );
+        |_m| -> Result<Market, ContractError> { Ok(market) },
+    )?;
     Ok(Response::new()
         .add_message(message)
         .add_attribute("method", "try_withdraw_from_insurance_vault_to_market"))
@@ -1458,12 +1466,11 @@ pub fn try_withdraw_from_insurance_vault_to_market(
 pub fn try_repeg_amm_curve(
     mut deps: DepsMut,
     env: Env,
-    info: MessageInfo,
     new_peg_candidate: u128,
     market_index: u64,
 ) -> Result<Response, ContractError> {
     let now = env.block.time.seconds();
-    let market = Markets.load(deps.storage, market_index)?;
+    let market = MARKETS.load(deps.storage, market_index)?;
     let OraclePriceData {
         price: oracle_price,
         ..
@@ -1484,12 +1491,12 @@ pub fn try_repeg_amm_curve(
     let quote_asset_reserve_after = market.amm.quote_asset_reserve;
     let sqrt_k_after = market.amm.sqrt_k;
 
-    let curve_history_info_length = CurveHistoryInfo
+    let curve_history_info_length = CURVE_HISTORY_INFO
         .load(deps.storage)?
         .len
         .checked_add(1)
         .ok_or_else(|| (ContractError::MathError))?;
-    CurveHistoryInfo.update(
+    CURVE_HISTORY_INFO.update(
         deps.storage,
         |mut i: CurveInfo| -> Result<CurveInfo, ContractError> {
             i.len = curve_history_info_length;
@@ -1497,7 +1504,7 @@ pub fn try_repeg_amm_curve(
         },
     )?;
 
-    CurveHistory.save(
+    CURVEHISTORY.save(
         deps.storage,
         curve_history_info_length as u64,
         &CurveRecord {
@@ -1527,13 +1534,12 @@ pub fn try_repeg_amm_curve(
 }
 
 pub fn try_update_amm_oracle_twap(
-    mut deps: DepsMut,
+    deps: DepsMut,
     env: Env,
-    info: MessageInfo,
     market_index: u64,
 ) -> Result<Response, ContractError> {
     let now = env.block.time.seconds();
-    let mut market = Markets.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index)?;
     let state = STATE.load(deps.storage)?;
     let price_oracle = state.oracle;
     // todo get_oracle_twap is not defined yet
@@ -1563,25 +1569,23 @@ pub fn try_update_amm_oracle_twap(
         return Err(ContractError::InvalidOracle.into());
     }
 
-    Markets.update(
+    MARKETS.update(
         deps.storage,
         market_index,
-        |m| -> Result<Market, ContractError> { Ok(market) },
-    );
+        |_m| -> Result<Market, ContractError> { Ok(market) },
+    )?;
 
     Ok(Response::new().add_attribute("method", "try_update_amm_oracle_twap"))
 }
 
 pub fn try_reset_amm_oracle_twap(
-    mut deps: DepsMut,
+    deps: DepsMut,
     env: Env,
-    info: MessageInfo,
     market_index: u64,
 ) -> Result<Response, ContractError> {
     let now = env.block.time.seconds();
-    let mut market = Markets.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index)?;
     let state = STATE.load(deps.storage)?;
-    let price_oracle = state.oracle;
     let oracle_price_data = helpers::oracle::get_oracle_price(&market.amm, &market.amm.oracle)?;
 
     let is_oracle_valid =
@@ -1591,11 +1595,11 @@ pub fn try_reset_amm_oracle_twap(
         market.amm.last_oracle_price_twap = cast_to_i128(market.amm.last_mark_price_twap)?;
         market.amm.last_oracle_price_twap_ts = now;
     }
-    Markets.update(
+    MARKETS.update(
         deps.storage,
         market_index,
-        |m| -> Result<Market, ContractError> { Ok(market) },
-    );
+        |_m| -> Result<Market, ContractError> { Ok(market) },
+    )?;
     Ok(Response::new().add_attribute("method", "try_reset_amm_oracle_twap"))
 }
 
@@ -1613,10 +1617,8 @@ pub fn try_settle_funding_payment(
 pub fn try_update_funding_rate(
     mut deps: DepsMut,
     env: Env,
-    info: MessageInfo,
     market_index: u64,
 ) -> Result<Response, ContractError> {
-    let market = Markets.load(deps.storage, market_index)?;
     let now = env.block.time.seconds();
     let price_oracle = STATE.load(deps.storage).unwrap().oracle;
     let funding_paused = STATE.load(deps.storage).unwrap().funding_paused;
@@ -1634,12 +1636,11 @@ pub fn try_update_funding_rate(
 pub fn try_update_k(
     mut deps: DepsMut,
     env: Env,
-    info: MessageInfo,
     market_index: u64,
     sqrt_k: u128,
 ) -> Result<Response, ContractError> {
     let now = env.block.time.seconds();
-    let mut market = Markets.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index)?;
 
     let base_asset_amount_long = market.base_asset_amount_long.unsigned_abs();
     let base_asset_amount_short = market.base_asset_amount_short.unsigned_abs();
@@ -1707,12 +1708,12 @@ pub fn try_update_k(
 
     let total_fee = amm.total_fee;
     let total_fee_minus_distributions = amm.total_fee_minus_distributions;
-    let curve_history_info_length = CurveHistoryInfo
+    let curve_history_info_length = CURVE_HISTORY_INFO
         .load(deps.storage)?
         .len
         .checked_add(1)
         .ok_or_else(|| (ContractError::MathError))?;
-    CurveHistoryInfo.update(
+    CURVE_HISTORY_INFO.update(
         deps.storage,
         |mut i: CurveInfo| -> Result<CurveInfo, ContractError> {
             i.len = curve_history_info_length;
@@ -1725,7 +1726,7 @@ pub fn try_update_k(
         ..
     } = helpers::oracle::get_oracle_price(&market.amm, &market.amm.oracle)?;
 
-    CurveHistory.save(
+    CURVEHISTORY.save(
         deps.storage,
         curve_history_info_length as u64,
         &CurveRecord {
@@ -1751,10 +1752,10 @@ pub fn try_update_k(
             trade_record: 0,
         },
     )?;
-    Markets.update(
+    MARKETS.update(
         deps.storage,
         market_index,
-        |m| -> Result<Market, ContractError> { Ok(market) },
+        |_m| -> Result<Market, ContractError> { Ok(market) },
     )?;
     Ok(Response::new().add_attribute("method", "try_update_k"))
 }
@@ -1773,17 +1774,17 @@ pub fn try_update_margin_ratio(
         margin_ratio_partial,
         margin_ratio_maintenance,
     )?;
-    let mut market = Markets.load(deps.storage, market_index)?;
-    Markets.update(
+    let mut market = MARKETS.load(deps.storage, market_index)?;
+    MARKETS.update(
         deps.storage,
         market_index,
-        |m| -> Result<Market, ContractError> {
+        |_m| -> Result<Market, ContractError> {
             market.margin_ratio_initial = margin_ratio_initial;
             market.margin_ratio_partial = margin_ratio_partial;
             market.margin_ratio_maintenance = margin_ratio_maintenance;
             Ok(market)
         },
-    );
+    )?;
     Ok(Response::new().add_attribute("method", "try_update_margin_ratio"))
 }
 
@@ -1904,15 +1905,25 @@ pub fn try_update_fee(
     Ok(Response::new().add_attribute("method", "try_update_fee"))
 }
 
-pub fn try_update_order_filler_reward_structure(
+pub fn try_update_order_state_structure(
     deps: DepsMut,
     info: MessageInfo,
+    min_order_quote_asset_amount: u128,
     reward_numerator: u128,
     reward_denominator: u128,
     time_based_reward_lower_bound: u128,
 ) -> Result<Response, ContractError> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
-
+    let order_state = OrderState {
+        min_order_quote_asset_amount,
+        reward_numerator,
+        reward_denominator,
+        time_based_reward_lower_bound,
+    };
+    STATE.update(deps.storage, |mut s| -> Result<State, ContractError> {
+        s.orderstate = order_state;
+        Ok(s)
+    })?;
     Ok(Response::new().add_attribute("method", "try_update_order_filler_reward_structure"))
 }
 pub fn try_update_market_oracle(
@@ -1923,14 +1934,14 @@ pub fn try_update_market_oracle(
     oracle_source: OracleSource,
 ) -> Result<Response, ContractError> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
-    let mut market = Markets.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index)?;
     market.amm.oracle = addr_validate_to_lower(deps.api, &oracle)?;
     market.amm.oracle_source = oracle_source;
-    Markets.update(
+    MARKETS.update(
         deps.storage,
         market_index,
-        |m| -> Result<Market, ContractError> { Ok(market) },
-    );
+        |_m| -> Result<Market, ContractError> { Ok(market) },
+    )?;
     Ok(Response::new().add_attribute("method", "try_update_market_oracle"))
 }
 
@@ -2018,11 +2029,11 @@ pub fn try_update_market_minimum_quote_asset_trade_size(
     minimum_trade_size: u128,
 ) -> Result<Response, ContractError> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
-    let mut market = Markets.load(deps.storage, market_index)?;
-    Markets.update(
+    let mut market = MARKETS.load(deps.storage, market_index)?;
+    MARKETS.update(
         deps.storage,
         market_index,
-        |m| -> Result<Market, ContractError> {
+        |_m| -> Result<Market, ContractError> {
             market.amm.minimum_quote_asset_trade_size = minimum_trade_size;
             Ok(market)
         },
@@ -2037,11 +2048,11 @@ pub fn try_update_market_minimum_base_asset_trade_size(
     minimum_trade_size: u128,
 ) -> Result<Response, ContractError> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
-    let mut market = Markets.load(deps.storage, market_index)?;
-    Markets.update(
+    let mut market = MARKETS.load(deps.storage, market_index)?;
+    MARKETS.update(
         deps.storage,
         market_index,
-        |m| -> Result<Market, ContractError> {
+        |_m| -> Result<Market, ContractError> {
             market.amm.minimum_base_asset_trade_size = minimum_trade_size;
             Ok(market)
         },

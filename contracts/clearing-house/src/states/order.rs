@@ -21,8 +21,8 @@ pub struct OrderInfo {
     pub len: u64,
 }
 
-pub const Orders: Map<((&Addr, u64), u64), Order> = Map::new("orders");
-pub const OrdersInfo: Item<OrderInfo> = Item::new("order_info");
+pub const ORDERS: Map<((&Addr, u64), u64), Order> = Map::new("orders");
+pub const ORDERS_INFO: Item<OrderInfo> = Item::new("order_info");
 
 pub fn has_oracle_price_offset(oo: &Order) -> bool {
     oo.oracle_price_offset != 0

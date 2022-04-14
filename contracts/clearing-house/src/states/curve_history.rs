@@ -45,5 +45,5 @@ pub struct CurveInfo {
     pub len: u64,
 }
 
-pub const CurveHistory: Map<u64,  CurveRecord> = Map::new("curve_history");
-pub const CurveHistoryInfo: Item<CurveInfo> = Item::new("curve_history_info");
+pub const CURVEHISTORY: Map<u64,  CurveRecord> = Map::new("curve_history");
+pub const CURVE_HISTORY_INFO: Item<CurveInfo> = Item::new("curve_history_info");

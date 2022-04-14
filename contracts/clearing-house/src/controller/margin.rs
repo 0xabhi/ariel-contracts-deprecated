@@ -1,38 +1,38 @@
-use ariel::types::{OracleGuardRails, OracleStatus, OraclePriceData};
+use ariel::types::OracleGuardRails;
 use cosmwasm_std::{Addr, DepsMut};
 
 use crate::error::ContractError;
 use crate::helpers::collateral::calculate_updated_collateral;
-use crate::helpers::constants::{MARGIN_PRECISION, MINIMUM_MARGIN_RATIO, MAXIMUM_MARGIN_RATIO};
+use crate::helpers::constants::{MARGIN_PRECISION, MAXIMUM_MARGIN_RATIO, MINIMUM_MARGIN_RATIO};
 use crate::helpers::position::{
     calculate_base_asset_value_and_pnl, calculate_base_asset_value_and_pnl_with_oracle_price,
 };
-use crate::states::market::{Markets, LiquidationStatus, MarketStatus, LiquidationType};
-use crate::states::user::{Users, Positions};
+use crate::states::market::{LiquidationStatus, LiquidationType, MarketStatus, MARKETS};
+use crate::states::user::{POSITIONS, USERS};
 
 use crate::helpers::amm::use_oracle_price_for_margin_calculation;
 use crate::helpers::casting::cast_to_i128;
-use crate::helpers::oracle::{get_oracle_status};
+use crate::helpers::oracle::get_oracle_status;
 use crate::helpers::slippage::calculate_slippage;
 
 use std::ops::Div;
 
 pub fn meets_initial_margin_requirement(
-    deps: &mut DepsMut, 
+    deps: &mut DepsMut,
     user_addr: &Addr,
 ) -> Result<bool, ContractError> {
-    let user = Users.load(deps.storage, user_addr)?;
+    let user = USERS.load(deps.storage, user_addr)?;
 
     let mut initial_margin_requirement: u128 = 0;
     let mut unrealized_pnl: i128 = 0;
 
     if user.positions_length > 0 {
         for n in 1..user.positions_length {
-            let market_position = Positions.load(deps.storage, (user_addr, n))?;
+            let market_position = POSITIONS.load(deps.storage, (user_addr, n))?;
             if market_position.base_asset_amount == 0 {
                 continue;
             }
-            let market = Markets.load(deps.storage, market_position.market_index)?;
+            let market = MARKETS.load(deps.storage, market_position.market_index)?;
             let a = &market.amm;
             let (position_base_asset_value, position_unrealized_pnl) =
                 calculate_base_asset_value_and_pnl(&market_position, a)?;
@@ -60,25 +60,25 @@ pub fn meets_initial_margin_requirement(
 }
 
 pub fn meets_partial_margin_requirement(
-    deps: &DepsMut, 
+    deps: &DepsMut,
     user_addr: &Addr,
 ) -> Result<bool, ContractError> {
-    let user = Users.load(deps.storage, user_addr)?;
+    let user = USERS.load(deps.storage, user_addr)?;
 
     let mut partial_margin_requirement: u128 = 0;
     let mut unrealized_pnl: i128 = 0;
 
     if user.positions_length > 0 {
         for n in 1..user.positions_length {
-            let market_position = Positions.load(deps.storage, (user_addr, n))?;
+            let market_position = POSITIONS.load(deps.storage, (user_addr, n))?;
             if market_position.base_asset_amount == 0 {
                 continue;
             }
-            let market = Markets.load(deps.storage, market_position.market_index)?;
+            let market = MARKETS.load(deps.storage, market_position.market_index)?;
             let a = &market.amm;
-         
+
             let (position_base_asset_value, position_unrealized_pnl) =
-            calculate_base_asset_value_and_pnl(&market_position, a)?;
+                calculate_base_asset_value_and_pnl(&market_position, a)?;
             partial_margin_requirement = partial_margin_requirement
                 .checked_add(
                     position_base_asset_value
@@ -90,7 +90,6 @@ pub fn meets_partial_margin_requirement(
             unrealized_pnl = unrealized_pnl
                 .checked_add(position_unrealized_pnl)
                 .ok_or_else(|| (ContractError::HelpersError))?;
-            
         }
     }
 
@@ -104,7 +103,7 @@ pub fn meets_partial_margin_requirement(
 }
 
 pub fn calculate_free_collateral(
-    deps: &DepsMut, 
+    deps: &DepsMut,
     user_addr: &Addr,
     market_to_close: Option<u64>,
 ) -> Result<(u128, u128), ContractError> {
@@ -112,21 +111,22 @@ pub fn calculate_free_collateral(
     let mut initial_margin_requirement: u128 = 0;
     let mut unrealized_pnl: i128 = 0;
 
-    let user = Users.load(deps.storage, user_addr)?;
+    let user = USERS.load(deps.storage, user_addr)?;
 
     if user.positions_length > 0 {
         for n in 1..user.positions_length {
-            let market_position = Positions.load(deps.storage, (user_addr, n))?;
+            let market_position = POSITIONS.load(deps.storage, (user_addr, n))?;
             if market_position.base_asset_amount == 0 {
                 continue;
             }
 
-            let market = Markets.load(deps.storage, market_position.market_index)?;
+            let market = MARKETS.load(deps.storage, market_position.market_index)?;
             let a = &market.amm;
             let (position_base_asset_value, position_unrealized_pnl) =
                 calculate_base_asset_value_and_pnl(&market_position, a)?;
 
-            if market_to_close.is_some() && market_to_close.unwrap() == market_position.market_index {
+            if market_to_close.is_some() && market_to_close.unwrap() == market_position.market_index
+            {
                 closed_position_base_asset_value = position_base_asset_value;
             } else {
                 initial_margin_requirement = initial_margin_requirement
@@ -141,7 +141,6 @@ pub fn calculate_free_collateral(
             unrealized_pnl = unrealized_pnl
                 .checked_add(position_unrealized_pnl)
                 .ok_or_else(|| (ContractError::HelpersError))?;
-
         }
     }
 
@@ -162,15 +161,13 @@ pub fn calculate_free_collateral(
     Ok((free_collateral, closed_position_base_asset_value))
 }
 
-
 pub fn calculate_liquidation_status(
-    deps: &DepsMut, 
+    deps: &DepsMut,
     user_addr: &Addr,
     oracle_guard_rails: &OracleGuardRails,
-    oracle_account_info: &Addr
+    oracle_account_info: &Addr,
 ) -> Result<LiquidationStatus, ContractError> {
-
-    let user = Users.load(deps.storage, user_addr)?;
+    let user = USERS.load(deps.storage, user_addr)?;
 
     let mut partial_margin_requirement: u128 = 0;
     let mut maintenance_margin_requirement: u128 = 0;
@@ -181,12 +178,12 @@ pub fn calculate_liquidation_status(
 
     if user.positions_length > 0 {
         for n in 1..user.positions_length {
-            let market_position = Positions.load(deps.storage, (user_addr, n))?;
+            let market_position = POSITIONS.load(deps.storage, (user_addr, n))?;
             if market_position.base_asset_amount == 0 {
                 continue;
             }
 
-            let market = Markets.load(deps.storage, market_position.market_index)?;
+            let market = MARKETS.load(deps.storage, market_position.market_index)?;
             let a = &market.amm;
             let (amm_position_base_asset_value, amm_position_unrealized_pnl) =
                 calculate_base_asset_value_and_pnl(&market_position, a)?;
@@ -217,7 +214,6 @@ pub fn calculate_liquidation_status(
                     &oracle_guard_rails,
                 )?
             {
-                let market_index = market_position.market_index;
                 let exit_slippage = calculate_slippage(
                     amm_position_base_asset_value,
                     market_position.base_asset_amount.unsigned_abs(),
@@ -314,7 +310,7 @@ pub fn calculate_liquidation_status(
             });
         }
     }
-    
+
     partial_margin_requirement = partial_margin_requirement
         .checked_div(MARGIN_PRECISION)
         .ok_or_else(|| (ContractError::HelpersError))?;

@@ -27,8 +27,8 @@ pub struct Position {
     pub order_length: u64,
 }
 
-pub const Users : Map<&Addr, User> = Map::new("users");
-pub const Positions: Map<(&Addr, u64),  Position> = Map::new("market_positions");
+pub const USERS : Map<&Addr, User> = Map::new("users");
+pub const POSITIONS: Map<(&Addr, u64),  Position> = Map::new("market_positions");
 
 impl Position {
     pub fn is_for(&self, market_index: u64) -> bool {

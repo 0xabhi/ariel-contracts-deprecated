@@ -68,7 +68,7 @@ pub fn instantiate(
         confidence_interval_max_size: 4,
         too_volatile_ratio: 5,
     };
-    let orderstate = OrderState { 
+    let orderstate = OrderState {
         min_order_quote_asset_amount: 0,
         reward_numerator: 0,
         reward_denominator: 0,
@@ -96,7 +96,7 @@ pub fn instantiate(
         fee_structure: fs,
         oracle_guard_rails: oracle_gr,
         markets_length: 0,
-        orderstate
+        orderstate,
     };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     STATE.save(deps.storage, &state)?;
@@ -143,10 +143,10 @@ pub fn execute(
         ),
         ExecuteMsg::DepositCollateral { amount } => {
             try_deposit_collateral(deps, _env, info, amount)
-        }
+        },
         ExecuteMsg::WithdrawCollateral { amount } => {
             try_withdraw_collateral(deps, _env, info, amount)
-        }
+        },
         ExecuteMsg::OpenPosition {
             direction,
             quote_asset_amount,
@@ -162,31 +162,23 @@ pub fn execute(
             limit_price,
         ),
         ExecuteMsg::PlaceOrder { order } => try_place_order(deps, _env, info, order),
-        ExecuteMsg::CancelOrder { order_id } => try_cancel_order(deps, _env, info, order_id),
-        ExecuteMsg::CancelOrderByUserId { user_order_id } => {
-            try_cancel_order_by_user_id(deps, _env, info, user_order_id)
-        }
-        ExecuteMsg::ExpireOrders {} => try_expire_orders(deps, _env, info),
-        ExecuteMsg::FillOrder { order_id } => try_fill_order(deps, _env, info, order_id),
-        ExecuteMsg::PlaceAndFillOrder { order } => {
-            try_place_and_fill_order(deps, _env, info, order)
-        }
+        ExecuteMsg::CancelOrder {
+            market_index,
+            order_id,
+        } => try_cancel_order(deps, _env, info, market_index, order_id),
+        ExecuteMsg::ExpireOrders {user_address} => try_expire_orders(deps, _env, info, user_address),
+        ExecuteMsg::FillOrder { order_id, user_address, market_index } => try_fill_order(deps, _env, info, order_id, user_address, market_index),
         ExecuteMsg::ClosePosition { market_index } => {
             try_close_position(deps, _env, info, market_index)
-        }
+        },
         ExecuteMsg::Liquidate { user, market_index } => {
             try_liquidate(deps, _env, info, user, market_index)
-        }
+        },
         ExecuteMsg::MoveAMMPrice {
             base_asset_reserve,
             quote_asset_reserve,
             market_index,
-        } => try_move_amm_price(
-            deps,
-            base_asset_reserve,
-            quote_asset_reserve,
-            market_index,
-        ),
+        } => try_move_amm_price(deps, base_asset_reserve, quote_asset_reserve, market_index),
         ExecuteMsg::WithdrawFees {
             market_index,
             amount,
@@ -198,21 +190,21 @@ pub fn execute(
         ExecuteMsg::RepegAMMCurve {
             new_peg_candidate,
             market_index,
-        } => try_repeg_amm_curve(deps, _env, info, new_peg_candidate, market_index),
+        } => try_repeg_amm_curve(deps, _env, new_peg_candidate, market_index),
         ExecuteMsg::UpdateAMMOracleTwap { market_index } => {
-            try_update_amm_oracle_twap(deps, _env, info, market_index)
-        }
+            try_update_amm_oracle_twap(deps, _env, market_index)
+        },
         ExecuteMsg::ResetAMMOracleTwap { market_index } => {
-            try_reset_amm_oracle_twap(deps, _env, info, market_index)
-        }
+            try_reset_amm_oracle_twap(deps, _env, market_index)
+        },
         ExecuteMsg::SettleFundingPayment {} => try_settle_funding_payment(deps, _env, info),
         ExecuteMsg::UpdateFundingRate { market_index } => {
-            try_update_funding_rate(deps, _env, info, market_index)
-        }
+            try_update_funding_rate(deps, _env, market_index)
+        },
         ExecuteMsg::UpdateK {
             market_index,
             sqrt_k,
-        } => try_update_k(deps, _env, info, market_index, sqrt_k),
+        } => try_update_k(deps, _env, market_index, sqrt_k),
         ExecuteMsg::UpdateMarginRatio {
             market_index,
             margin_ratio_initial,
@@ -240,10 +232,10 @@ pub fn execute(
         } => try_update_full_liquidation_penalty_percentage(deps, info, numerator, denominator),
         ExecuteMsg::UpdatePartialLiquidationLiquidatorShareDenominator { denominator } => {
             try_update_partial_liquidation_liquidator_share_denominator(deps, info, denominator)
-        }
+        },
         ExecuteMsg::UpdateFullLiquidationLiquidatorShareDenominator { denominator } => {
             try_update_full_liquidation_liquidator_share_denominator(deps, info, denominator)
-        }
+        },
         ExecuteMsg::UpdateFee {
             fee_numerator,
             fee_denominator,
@@ -288,17 +280,17 @@ pub fn execute(
         ),
         ExecuteMsg::UpdateAdmin { admin } => {
             Ok(ADMIN.execute_update_admin(deps, info, maybe_addr(api, admin.into())?)?)
-        }
+        },
         ExecuteMsg::UpdateMaxDeposit { max_deposit } => {
             try_update_max_deposit(deps, info, max_deposit)
-        }
+        },
         ExecuteMsg::UpdateExchangePaused { exchange_paused } => {
             try_update_exchange_paused(deps, info, exchange_paused)
-        }
+        },
         ExecuteMsg::DisableAdminControlsPrices {} => try_disable_admin_control_prices(deps, info),
         ExecuteMsg::UpdateFundingPaused { funding_paused } => {
             try_update_funding_paused(deps, info, funding_paused)
-        }
+        },
         ExecuteMsg::UpdateMarketMinimumQuoteAssetTradeSize {
             market_index,
             minimum_trade_size,
@@ -317,13 +309,15 @@ pub fn execute(
             market_index,
             minimum_trade_size,
         ),
-        ExecuteMsg::UpdateOrderFillerRewardSystem {
+        ExecuteMsg::UpdateOrderState {
+            min_order_quote_asset_amount,
             reward_numerator,
             reward_denominator,
             time_based_reward_lower_bound,
-        } => try_update_order_filler_reward_structure(
+        } => try_update_order_state_structure(
             deps,
             info,
+            min_order_quote_asset_amount,
             reward_numerator,
             reward_denominator,
             time_based_reward_lower_bound,

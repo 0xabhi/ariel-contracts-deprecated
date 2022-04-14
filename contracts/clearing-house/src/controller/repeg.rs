@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, DepsMut};
 
 use crate::error::ContractError;
 
-use crate::states::market::{Markets, Market};
+use crate::states::market::{MARKETS, Market};
 use crate::states::state::{STATE};
 
 use crate::helpers::{amm};
@@ -21,7 +21,7 @@ pub fn repeg(
     new_peg_candidate: u128
 ) -> Result<i128, ContractError> {
 
-    let mut market = Markets.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index)?;
 
     let state = STATE.load(deps.storage)?;
     let oracle_guard_rails = state.oracle_guard_rails;
@@ -33,9 +33,7 @@ pub fn repeg(
     let terminal_price_before = amm::calculate_terminal_price(&mut market)?;
     let adjustment_cost = adjust_peg_cost(&mut market, new_peg_candidate)?;
 
-    let (current_net_market_value, _) =
-        _calculate_base_asset_value_and_pnl(market.base_asset_amount, 0, &market.amm)?;
-
+    
     market.amm.peg_multiplier = new_peg_candidate;
 
     let oracle_price_data = get_oracle_price(&market.amm, price_oracle)?;	
@@ -127,9 +125,9 @@ pub fn repeg(
             .ok_or_else(|| (ContractError::MathError))?;
     }
 
-    Markets.update(deps.storage, market_index, |m| ->  Result<Market, ContractError>{
+    MARKETS.update(deps.storage, market_index, |_m| ->  Result<Market, ContractError>{
         Ok(market)
-    });
+    })?;
 
     Ok(adjustment_cost)
 

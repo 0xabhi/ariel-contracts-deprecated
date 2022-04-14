@@ -23,5 +23,5 @@ pub struct DepositInfo {
     pub len: u64,
 }
 
-pub const DepositHistory: Map<(u64,Addr),  DepositRecord> = Map::new("deposit_history");
-pub const DepositHistoryInfo: Item<DepositInfo> = Item::new("deposit_history_info");
+pub const DEPOSIT_HISTORY: Map<(u64,Addr),  DepositRecord> = Map::new("deposit_history");
+pub const DEPOSIT_HISTORY_INFO: Item<DepositInfo> = Item::new("deposit_history_info");
