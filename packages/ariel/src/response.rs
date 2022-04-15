@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{DiscountTokenTier, DepositDirection, PositionDirection, OracleSource};
+use crate::types::{DepositDirection, DiscountTokenTier, OracleSource, PositionDirection};
 
 // We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -13,21 +13,33 @@ pub struct UserResponse {
     pub total_referral_reward: u128,
     pub total_referee_discount: u128,
     pub positions_length: u64,
+    pub referrer: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UserPositionResponse {
+    pub market_index: u64,
     pub base_asset_amount: i128,
     pub quote_asset_amount: u128,
     pub last_cumulative_funding_rate: i128,
     pub last_cumulative_repeg_rebate: u128,
-    pub last_funding_rate_ts: u64,
-    pub stop_loss_price: u128,
-    pub stop_loss_amount: u128,
-    pub stop_profit_price: u128,
-    pub stop_profit_amount: u128,
-    pub transfer_to: String,
+    pub last_funding_rate_ts: u64
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct PositionResponse {
+    pub market_index: u64,
+    pub direction: PositionDirection,
+    pub initial_size: u128,
+    pub entry_notional: i128,
+    pub current_notional: u128,
+    pub entry_price: u128,
+    pub exit_price: u128,
+    pub liquidation_price: u128,
+    pub pnl: i128
+}
+
+
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AdminResponse {
@@ -55,6 +67,10 @@ pub struct VaultsResponse {
     pub collateral_vault: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct OracleResponse {
+    pub oracle: String,
+}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MarginRatioResponse {
     pub margin_ratio_initial: u128,
@@ -96,6 +112,11 @@ pub struct MaxDepositLimitResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct MarketLengthResponse {
+    pub length: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct FeeStructureResponse {
     pub fee_numerator: u128,
     pub fee_denominator: u128,
@@ -110,6 +131,25 @@ pub struct FeeStructureResponse {
     pub referee_discount_denominator: u128,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct OracleGuardRailsResponse {
+    pub use_for_liquidations: bool,
+    // oracle price divergence rails
+    pub mark_oracle_divergence_numerator: u128,
+    pub mark_oracle_divergence_denominator: u128,
+    // validity guard rails
+    pub slots_before_stale: i64,
+    pub confidence_interval_max_size: u128,
+    pub too_volatile_ratio: i128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct OrderStateResponse {
+    pub min_order_quote_asset_amount: u128, // minimum est. quote_asset_amount for place_order to succeed
+    pub reward_numerator: u128,
+    pub reward_denominator: u128,
+    pub time_based_reward_lower_bound: u128, // minimum filler reward for time-based reward
+}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CurveHistoryLengthResponse {
     pub length: u64,
@@ -244,7 +284,7 @@ pub struct MarketInfoResponse {
     pub base_asset_amount_long: i128,
     pub base_asset_amount_short: i128,
     pub base_asset_amount: i128, // net market bias
-    pub open_interest: u128,  
+    pub open_interest: u128,
     pub oracle: String,
     pub oracle_source: OracleSource,
     pub base_asset_reserve: u128,
