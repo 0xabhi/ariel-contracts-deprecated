@@ -32,10 +32,7 @@ pub struct PositionResponse {
     pub direction: PositionDirection,
     pub initial_size: u128,
     pub entry_notional: i128,
-    pub current_notional: u128,
     pub entry_price: u128,
-    pub exit_price: u128,
-    pub liquidation_price: u128,
     pub pnl: i128
 }
 

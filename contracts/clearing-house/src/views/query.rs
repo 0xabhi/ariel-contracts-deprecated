@@ -450,10 +450,8 @@ pub fn get_market_info(deps: Deps, market_index: u64) -> StdResult<MarketInfoRes
 
 // get list in response
 pub fn get_active_positions(
-    deps: DepsMut,
-    user_address: String,
-    // start_after: Option<String>,
-    // limit: Option<u32>,
+    deps: Deps,
+    user_address: String
 ) -> Result<Vec<PositionResponse>, ContractError> {
     let user_addr = addr_validate_to_lower(deps.api, user_address.as_str())?;
     let mut active_positions: Vec<UserPositionResponse> = vec![];
@@ -482,33 +480,30 @@ pub fn get_active_positions(
             .collect();
     }
 
-    let positions: Vec<PositionResponse> = vec![];
+    let mut positions: Vec<PositionResponse> = vec![];
     for position in active_positions.clone() {
         let market_index = position.market_index;
         let direction = direction_to_close_position(cast(position.base_asset_amount)?);
-        // let entry_price = position
-        //     .quote_asset_amount
-        //     .checked_mul(MARK_PRICE_PRECISION * AMM_TO_QUOTE_PRECISION_RATIO)
-        //     .ok_or_else(|| (ContractError::MathError))?
-        //     .div(cast(position.base_asset_amount)?);
+        let entry_price: u128 = (position
+            .quote_asset_amount
+            .checked_mul(MARK_PRICE_PRECISION * AMM_TO_QUOTE_PRECISION_RATIO)).unwrap()
+            .checked_div(position.base_asset_amount.unsigned_abs())
+            .ok_or_else(|| (ContractError::MathError))?;
+            
         let entry_notional = position.quote_asset_amount;
         let state = STATE.load(deps.storage)?;
         let liq_status = calculate_liquidation_status(
-            &deps,
+            &deps.,
             &user_addr,
             &state.oracle_guard_rails,
             &state.oracle,
-        )?;
-
+        ).unwrap();
         let pr = PositionResponse {
             market_index,
             direction,
-            initial_size: cast(position.base_asset_amount)?,
-            entry_notional: cast(entry_notional)?,
-            current_notional: todo!(),
-            entry_price: todo!(),
-            exit_price: todo!(),
-            liquidation_price: todo!(),
+            initial_size: cast(position.base_asset_amount).unwrap(),
+            entry_notional: cast(entry_notional).unwrap(),
+            entry_price,
             pnl: liq_status.unrealized_pnl,
         };
         positions.push(pr);

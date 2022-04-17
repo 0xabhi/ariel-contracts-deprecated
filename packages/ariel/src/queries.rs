@@ -12,6 +12,9 @@ pub enum QueryMsg {
         user_address: String,
         index: u64
     },
+    GetUserPositions{
+        user_address: String
+    },
     GetAdmin {},
     IsExchangePaused {},
     IsFundingPaused {},

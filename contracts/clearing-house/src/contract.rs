@@ -332,74 +332,75 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::GetUser { user_address } => to_binary(&get_user(deps, user_address)?),
+        QueryMsg::GetUser { user_address } => Ok(to_binary(&get_user(deps, user_address)?)?),
         QueryMsg::GetUserMarketPosition {
             user_address,
             index,
-        } => to_binary(&get_user_position(deps, user_address, index)?),
-        QueryMsg::GetAdmin {} => to_binary(&get_admin(deps)?),
-        QueryMsg::IsExchangePaused {} => to_binary(&is_exchange_paused(deps)?),
-        QueryMsg::IsFundingPaused {} => to_binary(&is_funding_paused(deps)?),
-        QueryMsg::AdminControlsPrices {} => to_binary(&admin_controls_prices(deps)?),
-        QueryMsg::GetVaults {} => to_binary(&get_vaults_address(deps)?),
-        QueryMsg::GetMarginRatio {} => to_binary(&get_margin_ratios(deps)?),
+        } => Ok(to_binary(&get_user_position(deps, user_address, index)?)?),
+        QueryMsg::GetUserPositions{ user_address } => Ok(to_binary(&get_active_positions(deps, user_address)?)?),
+        QueryMsg::GetAdmin {} => Ok(to_binary(&get_admin(deps)?)?),
+        QueryMsg::IsExchangePaused {} => Ok(to_binary(&is_exchange_paused(deps)?)?),
+        QueryMsg::IsFundingPaused {} => Ok(to_binary(&is_funding_paused(deps)?)?),
+        QueryMsg::AdminControlsPrices {} => Ok(to_binary(&admin_controls_prices(deps)?)?),
+        QueryMsg::GetVaults {} => Ok(to_binary(&get_vaults_address(deps)?)?),
+        QueryMsg::GetMarginRatio {} => Ok(to_binary(&get_margin_ratios(deps)?)?),
         QueryMsg::GetPartialLiquidationClosePercentage {} => {
-            to_binary(&get_partial_liquidation_close_percentage(deps)?)
+            Ok(to_binary(&get_partial_liquidation_close_percentage(deps)?)?)
         }
         QueryMsg::GetPartialLiquidationPenaltyPercentage {} => {
-            to_binary(&get_partial_liquidation_penalty_percentage(deps)?)
+            Ok(to_binary(&get_partial_liquidation_penalty_percentage(deps)?)?)
         }
         QueryMsg::GetFullLiquidationPenaltyPercentage {} => {
-            to_binary(&get_full_liquidation_penalty_percentage(deps)?)
+            Ok(to_binary(&get_full_liquidation_penalty_percentage(deps)?)?)
         }
         QueryMsg::GetPartialLiquidatorSharePercentage {} => {
-            to_binary(&get_partial_liquidator_share_percentage(deps)?)
+            Ok(to_binary(&get_partial_liquidator_share_percentage(deps)?)?)
         }
         QueryMsg::GetFullLiquidatorSharePercentage {} => {
-            to_binary(&get_full_liquidator_share_percentage(deps)?)
+            Ok(to_binary(&get_full_liquidator_share_percentage(deps)?)?)
         }
-        QueryMsg::GetMaxDepositLimit {} => to_binary(&get_max_deposit_limit(deps)?),
-        QueryMsg::GetOracle{} => to_binary(&get_oracle_address(deps)?),
-        QueryMsg::GetMarketLength{} => to_binary(&get_market_length(deps)?),
-        QueryMsg::GetOracleGuardRails{} => to_binary(&get_oracle_guard_rails(deps)?),
-        QueryMsg::GetOrderState{} => to_binary(&get_order_state(deps)?),
-        QueryMsg::GetFeeStructure {} => to_binary(&get_fee_structure(deps)?),
-        QueryMsg::GetCurveHistoryLength {} => to_binary(&get_curve_history_length(deps)?),
-        QueryMsg::GetCurveHistory { index } => to_binary(&get_curve_history(deps, index)?),
-        QueryMsg::GetDepositHistoryLength {} => to_binary(&get_deposit_history_length(deps)?),
+        QueryMsg::GetMaxDepositLimit {} => Ok(to_binary(&get_max_deposit_limit(deps)?)?),
+        QueryMsg::GetOracle{} => Ok(to_binary(&get_oracle_address(deps)?)?),
+        QueryMsg::GetMarketLength{} => Ok(to_binary(&get_market_length(deps)?)?),
+        QueryMsg::GetOracleGuardRails{} => Ok(to_binary(&get_oracle_guard_rails(deps)?)?),
+        QueryMsg::GetOrderState{} => Ok(to_binary(&get_order_state(deps)?)?),
+        QueryMsg::GetFeeStructure {} => Ok(to_binary(&get_fee_structure(deps)?)?),
+        QueryMsg::GetCurveHistoryLength {} => Ok(to_binary(&get_curve_history_length(deps)?)?),
+        QueryMsg::GetCurveHistory { index } => Ok(to_binary(&get_curve_history(deps, index)?)?),
+        QueryMsg::GetDepositHistoryLength {} => Ok(to_binary(&get_deposit_history_length(deps)?)?),
         QueryMsg::GetDepositHistory {
             user_address,
             index,
-        } => to_binary(&get_deposit_history(deps, user_address, index)?),
+        } => Ok(to_binary(&get_deposit_history(deps, user_address, index)?)?),
         QueryMsg::GetFundingPaymentHistoryLength {} => {
-            to_binary(&get_funding_payment_history_length(deps)?)
+            Ok(to_binary(&get_funding_payment_history_length(deps)?)?)
         }
         QueryMsg::GetFundingPaymentHistory {
             user_address,
             index,
-        } => to_binary(&get_funding_payment_history(deps, user_address, index)?),
+        } => Ok(to_binary(&get_funding_payment_history(deps, user_address, index)?)?),
         QueryMsg::GetFundingRateHistoryLength {} => {
-            to_binary(&get_funding_rate_history_length(deps)?)
+            Ok(to_binary(&get_funding_rate_history_length(deps)?)?)
         }
         QueryMsg::GetFundingRateHistory { index } => {
-            to_binary(&get_funding_rate_history(deps, index)?)
+            Ok(to_binary(&get_funding_rate_history(deps, index)?)?)
         }
         QueryMsg::GetLiquidationHistoryLength {} => {
-            to_binary(&get_liquidation_history_length(deps)?)
+            Ok(to_binary(&get_liquidation_history_length(deps)?)?)
         }
         QueryMsg::GetLiquidationHistory {
             user_address,
             index,
-        } => to_binary(&get_liquidation_history(deps, user_address, index)?),
-        QueryMsg::GetTradeHistoryLength {} => to_binary(&get_trade_history_length(deps)?),
+        } => Ok(to_binary(&get_liquidation_history(deps, user_address, index)?)?),
+        QueryMsg::GetTradeHistoryLength {} => Ok(to_binary(&get_trade_history_length(deps)?)?),
         QueryMsg::GetTradeHistory {
             user_address,
             index,
-        } => to_binary(&get_trade_history(deps, user_address, index)?),
+        } => Ok(to_binary(&get_trade_history(deps, user_address, index)?)?),
         QueryMsg::GetMarketInfo { market_index } => {
-            to_binary(&get_market_info(deps, market_index)?)
+            Ok(to_binary(&get_market_info(deps, market_index)?)?)
         }
     }
 }
