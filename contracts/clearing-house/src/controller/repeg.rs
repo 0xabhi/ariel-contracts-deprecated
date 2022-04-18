@@ -12,7 +12,6 @@ use crate::helpers::constants::{
 };
 use crate::helpers::position::_calculate_base_asset_value_and_pnl;
 use crate::helpers::casting::cast_to_u128;
-use crate::helpers::oracle::get_oracle_price;
 
 pub fn repeg(
     deps: &mut DepsMut,
@@ -36,7 +35,7 @@ pub fn repeg(
     
     market.amm.peg_multiplier = new_peg_candidate;
 
-    let oracle_price_data = get_oracle_price(&market.amm, price_oracle)?;	
+    let oracle_price_data = market.amm.get_oracle_price(price_oracle, now)?;	
     let oracle_price = oracle_price_data.price;	
     let oracle_conf = oracle_price_data.confidence;	
     let oracle_is_valid =	

@@ -1,7 +1,8 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Decimal, DepsMut, QueryRequest, WasmQuery, to_binary};
+
 use cw_storage_plus::Map;
 
 use ariel::types::{OracleSource, OracleStatus, OraclePriceData};
@@ -22,6 +23,7 @@ pub struct Market {
     pub margin_ratio_initial: u32,
     pub margin_ratio_partial: u32,
     pub margin_ratio_maintenance: u32,
+    pub test: Decimal
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -63,30 +65,41 @@ impl Amm {
     }
 
     pub fn get_oracle_price(
-        &self,
-        price_oracle: &Addr,
-        now: u64,
+        &self, 
+        deps: &mut DepsMut
     ) -> Result<OraclePriceData, ContractError> {
-        // match self.oracle_source {
-        //     OracleSource::Pyth => self.get_pyth_price(price_oracle, clock_slot),
-        //     OracleSource::Switchboard => self.get_switchboard_price(price_oracle, clock_slot),
-        // }
+        match self.oracle_source {
+            OracleSource::Oracle => self.fetch_oracle_price(),
+            // OracleSource::Bank => self.fetch_bank_price(deps),
+        }
+    }
+
+    pub fn get_oracle_twap(&self) -> Result<Option<i128>, ContractError> {
+        match self.oracle_source {
+            OracleSource::Oracle => Ok(Some(self.fetch_oracle_twap()?)),
+            // OracleSource::Bank => Ok(Some(self.fetch_bank_twap()?)),
+        }
+    }
+
+    pub fn fetch_oracle_price(&self, deps : DepsMut) -> Result<OraclePriceData, ContractError> {
+        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: self.oracle.to_string(),
+            msg: to_binary(&OracleQueryMsg::Price {
+                asset_token: base_asset,
+                timeframe,
+            })?,
+        }))?;
         Ok(OraclePriceData {
-            price : 0,
-            confidence : 0,
-            delay : 0,
-            has_sufficient_number_of_data_points : false,
+            price: 0,
+            confidence: 0,
+            // delay: oracle_delay,
+            // has_sufficient_number_of_data_points: true,
         })
     }
 
-    pub fn get_oracle_twap(&self, price_oracle: &Addr) -> Result<Option<i128>, ContractError> {
-        // match self.oracle_source {
-            // OracleSource::Pyth => Ok(Some(self.get_pyth_twap(price_oracle)?)),
-            // OracleSource::Switchboard => Ok(None),
-        // }
-        Ok(Some(0))
+    pub fn fetch_oracle_twap(&self) -> Result<i128, ContractError> {
+        Ok(0)
     }
-
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -118,4 +131,3 @@ pub struct MarketStatus {
     pub close_position_slippage: Option<i128>,
     pub oracle_status: OracleStatus,
 }
-

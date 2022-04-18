@@ -367,11 +367,13 @@ pub fn expire_orders(
         for i in 1..state.markets_length {
             let market_position = POSITIONS.load(deps.storage, (user_addr,i));
             match market_position {
-                Ok(p) => {
+                Ok(mut p) => {
                     if p.clone().order_length > 0 {
-                        for mut j in 1..p.order_length {
+                        let mut j = 1;
+                        while j <= p.order_length {
                             let mut order = ORDERS.load(deps.storage, ((user_addr, i), j))?;
                             if order.status == OrderStatus::Init {
+                                j += 1;
                                 continue;
                             }
                             order.fee = order
@@ -411,13 +413,11 @@ pub fn expire_orders(
                             
                             ORDERS.remove(deps.storage, ((user_addr, i), p.clone().order_length));
 
-                            p.clone().order_length -= 1;
+                            p.order_length -= 1;
                             // Decrement open orders for existing position
                             POSITIONS.update(deps.storage, (user_addr, i), |_position| -> Result<Position, ContractError> {
                                 Ok(p.clone())
                             })?;
-                            
-                            j -= 1;
                         }
                     };
                 },

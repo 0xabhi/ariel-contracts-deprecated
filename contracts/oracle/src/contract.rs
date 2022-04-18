@@ -1,11 +1,13 @@
+use std::env;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Addr};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
-use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{Config, CONFIG};
+use crate::msg::{ ExecuteMsg, InstantiateMsg, QueryMsg, ConfigResponse, PriceResponse, InfoResponse};
+use crate::state::{Config, CONFIG, ASSETS, Price, FEEDERS};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:oracle";
@@ -16,132 +18,117 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    msg: InstantiateMsg,
+    _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let state = Config {
-        count: msg.admi,
-        owner: info.sender.clone(),
+        admin: info.sender.clone(),
+        base_denom: "uusd".to_string(),
     };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    STATE.save(deps.storage, &state)?;
+    CONFIG.save(deps.storage, &state)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", info.sender)
-        .add_attribute("count", msg.count.to_string()))
+        .add_attribute("owner", info.sender))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Increment {} => try_increment(deps),
-        ExecuteMsg::Reset { count } => try_reset(deps, info, count),
+        ExecuteMsg::RegisterAsset { asset, price_feeder } => try_register_asset(deps, info,env, asset, price_feeder),
+        ExecuteMsg::RevokeAsset { asset } => try_revoke_asset(deps, info, asset),
+        ExecuteMsg::FeedPrice { asset, price } => try_feed_price(deps, info, env, asset, price),
     }
 }
 
-pub fn try_increment(deps: DepsMut) -> Result<Response, ContractError> {
-    STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        state.count += 1;
-        Ok(state)
+pub fn try_register_asset(deps: DepsMut, info: MessageInfo, env: Env, asset: String, price_feeder: Addr) -> Result<Response, ContractError> {
+
+    let config = CONFIG.load(deps.storage)?;
+    if info.sender != config.admin {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    ASSETS.save(deps.storage, asset.clone().into(), &Price{
+        price: 0,
+        last_updated : env.block.time.seconds(),
     })?;
+
+    FEEDERS.save(deps.storage, asset.clone().into(), &price_feeder)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "register_asset")
+        .add_attribute("asset", asset.clone())
+        .add_attribute("feeder", price_feeder))
+    
+}
+
+pub fn try_revoke_asset(deps: DepsMut, info: MessageInfo, asset: String) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if info.sender != config.admin {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    ASSETS.remove(deps.storage, asset.clone().into());
+    FEEDERS.remove(deps.storage, asset);
 
     Ok(Response::new().add_attribute("method", "try_increment"))
 }
-pub fn try_reset(deps: DepsMut, info: MessageInfo, count: i32) -> Result<Response, ContractError> {
-    STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        if info.sender != state.owner {
-            return Err(ContractError::Unauthorized {});
-        }
-        state.count = count;
-        Ok(state)
+
+pub fn try_feed_price(deps: DepsMut, info: MessageInfo, env: Env, asset: String, price : u128) -> Result<Response, ContractError> {
+    let feeder = FEEDERS.load(deps.storage, asset.clone())?;
+    if info.sender != feeder {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    ASSETS.update(deps.storage, asset, |_a| -> Result<Price, ContractError>{
+        Ok(Price {
+            price: price,
+            last_updated: env.block.time.seconds(),
+        })
     })?;
-    Ok(Response::new().add_attribute("method", "reset"))
+
+    Ok(Response::new().add_attribute("method", "feed_price"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetCount {} => to_binary(&query_count(deps)?),
+        QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::Price {asset} => to_binary(&query_price(deps, asset)?),
+        QueryMsg::AssetInfo {asset} => to_binary(&query_asset(deps, asset)?),
+        
     }
 }
 
-fn query_count(deps: Deps) -> StdResult<CountResponse> {
-    let state = STATE.load(deps.storage)?;
-    Ok(CountResponse { count: state.count })
+fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+    let state = CONFIG.load(deps.storage)?;
+    Ok(ConfigResponse{
+        owner: state.admin,
+        base_denom: state.base_denom,
+    })
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
-    use cosmwasm_std::{coins, from_binary};
+fn query_price(deps: Deps, asset:String) -> StdResult<PriceResponse> {
+    let price = ASSETS.load(deps.storage, asset.clone())?;
+    Ok(PriceResponse{
+        asset: asset,
+        price: price.price,
+        last_updated: price.last_updated,
+    })
+}
 
-    #[test]
-    fn proper_initialization() {
-        let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
-
-        let msg = InstantiateMsg { count: 17 };
-        let info = mock_info("creator", &coins(1000, "earth"));
-
-        // we can just call .unwrap() to assert this was a success
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        // it worked, let's query the state
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(17, value.count);
-    }
-
-    #[test]
-    fn increment() {
-        let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
-
-        let msg = InstantiateMsg { count: 17 };
-        let info = mock_info("creator", &coins(2, "token"));
-        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-        // beneficiary can release it
-        let info = mock_info("anyone", &coins(2, "token"));
-        let msg = ExecuteMsg::Increment {};
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-        // should increase counter by 1
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(18, value.count);
-    }
-
-    #[test]
-    fn reset() {
-        let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
-
-        let msg = InstantiateMsg { count: 17 };
-        let info = mock_info("creator", &coins(2, "token"));
-        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-        // beneficiary can release it
-        let unauth_info = mock_info("anyone", &coins(2, "token"));
-        let msg = ExecuteMsg::Reset { count: 5 };
-        let res = execute(deps.as_mut(), mock_env(), unauth_info, msg);
-        match res {
-            Err(ContractError::Unauthorized {}) => {}
-            _ => panic!("Must return unauthorized error"),
-        }
-
-        // only the original creator can reset the counter
-        let auth_info = mock_info("creator", &coins(2, "token"));
-        let msg = ExecuteMsg::Reset { count: 5 };
-        let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
-
-        // should now be 5
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(5, value.count);
-    }
+fn query_asset(deps: Deps, asset:String) -> StdResult<InfoResponse> {
+    let price = ASSETS.load(deps.storage, asset.clone())?;
+    let feeder = FEEDERS.load(deps.storage, asset.clone())?;
+    Ok(InfoResponse{
+        asset: asset,
+        feeder: feeder,
+        price: price.price,
+        last_updated: price.last_updated,
+    })
 }

@@ -55,7 +55,6 @@ pub fn get_user_position(
 }
 
 pub fn get_admin(deps: Deps) -> StdResult<AdminResponse> {
-    let state = STATE.load(deps.storage)?;
     let admin = AdminResponse {
         admin: ADMIN.query_admin(deps).unwrap().admin.unwrap(),
     };

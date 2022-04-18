@@ -31,7 +31,6 @@ use ariel::helper::assert_sent_uusd_balance;
 use ariel::helper::query_balance;
 use ariel::helper::VaultInterface;
 use ariel::types::OraclePriceData;
-use ariel::types::Order;
 use ariel::types::OrderType;
 use ariel::types::{
     DepositDirection, DiscountTokenTier, FeeStructure, OracleGuardRails, OracleSource, OrderParams,
@@ -91,6 +90,7 @@ pub fn try_initialize_market(
             &existing_market.amm.oracle,
         )?,
         OracleSource::Zero => todo!(),
+        OracleSource::Bank => todo!(),
     };
 
     let last_oracle_price_twap = match oracle_source {

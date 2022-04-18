@@ -44,10 +44,10 @@ impl Default for DepositDirection {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum OracleSource {
     Oracle,
-    Simulated,
-    Zero
+    // Simulated,
+    // Zero, 
+    // Bank
 }
-
 
 impl Default for OracleSource {
     // UpOnly
@@ -60,16 +60,16 @@ impl Default for OracleSource {
 pub struct OracleStatus {
     pub price_data: OraclePriceData,
     pub oracle_mark_spread_pct: i128,
-    pub is_valid: bool,
-    pub mark_too_divergent: bool,
+    // pub is_valid: bool,
+    // pub mark_too_divergent: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OraclePriceData {
     pub price: i128,
     pub confidence: u128,
-    pub delay: i64,
-    pub has_sufficient_number_of_data_points: bool,
+    // pub delay: i64,
+    // pub has_sufficient_number_of_data_points: bool,
 }
 
 

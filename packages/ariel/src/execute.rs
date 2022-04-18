@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{DiscountTokenTier, OracleSource, Order, OrderParams, PositionDirection};
+use crate::types::{DiscountTokenTier, OracleSource, OrderParams, PositionDirection};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
