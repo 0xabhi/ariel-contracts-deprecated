@@ -361,6 +361,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_binary(&get_full_liquidator_share_percentage(deps)?)
         }
         QueryMsg::GetMaxDepositLimit {} => to_binary(&get_max_deposit_limit(deps)?),
+        QueryMsg::GetOracle{} => to_binary(&get_oracle_address(deps)?),
+        QueryMsg::GetMarketLength{} => to_binary(&get_market_length(deps)?),
+        QueryMsg::GetOracleGuardRails{} => to_binary(&get_oracle_guard_rails(deps)?),
+        QueryMsg::GetOrderState{} => to_binary(&get_order_state(deps)?),
         QueryMsg::GetFeeStructure {} => to_binary(&get_fee_structure(deps)?),
         QueryMsg::GetCurveHistoryLength {} => to_binary(&get_curve_history_length(deps)?),
         QueryMsg::GetCurveHistory { index } => to_binary(&get_curve_history(deps, index)?),

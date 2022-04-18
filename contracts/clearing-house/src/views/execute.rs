@@ -1100,7 +1100,6 @@ pub fn try_liquidate(
                     mark_twap_divergence.unsigned_abs() >= MAX_MARK_TWAP_DIVERGENCE;
 
                 if mark_twap_too_divergent {
-                    let market_index = market_status.market_index;
                     res.clone()
                         .add_attribute("mark_twap_divergence", mark_twap_divergence.to_string());
                     continue;

@@ -1,8 +1,15 @@
+use std::ops::Div;
+
+use crate::controller::margin::calculate_liquidation_status;
+use crate::helpers::casting::cast;
+use crate::helpers::constants::{AMM_TO_QUOTE_PRECISION_RATIO, MARK_PRICE_PRECISION};
+use crate::helpers::position::direction_to_close_position;
+use crate::ContractError;
 // use crate::helpers::casting::cast_to_i64;
 use crate::states::curve_history::*;
 use crate::states::liquidation_history::{LIQUIDATION_HISTORY, LIQUIDATION_HISTORY_INFO};
-use crate::states::market::MARKETS;
-use crate::states::state::{STATE, ADMIN};
+use crate::states::market::{LiquidationStatus, MARKETS};
+use crate::states::state::{ADMIN, STATE};
 use crate::states::trade_history::{TRADE_HISTORY, TRADE_HISTORY_INFO};
 use crate::states::user::{POSITIONS, USERS};
 use crate::states::{deposit_history::*, funding_history::*};
@@ -11,13 +18,20 @@ use ariel::helper::addr_validate_to_lower;
 
 use ariel::response::*;
 
-use cosmwasm_std::{Deps, StdResult};
+use cosmwasm_std::{Deps, DepsMut, Order, StdResult};
+use cw_storage_plus::{Bound, PrimaryKey};
 
 pub fn get_user(deps: Deps, user_address: String) -> StdResult<UserResponse> {
     let user = USERS.load(
         deps.storage,
         &addr_validate_to_lower(deps.api, &user_address)?,
     )?;
+    let referrer: String;
+    if user.referrer.is_none() {
+        referrer = "".to_string();
+    } else {
+        referrer = user.referrer.unwrap().into();
+    }
     let ur = UserResponse {
         collateral: user.collateral,
         cumulative_deposits: user.cumulative_deposits,
@@ -26,6 +40,7 @@ pub fn get_user(deps: Deps, user_address: String) -> StdResult<UserResponse> {
         total_referral_reward: user.total_referral_reward,
         total_referee_discount: user.total_token_discount,
         positions_length: user.positions_length,
+        referrer,
     };
     Ok(ur)
 }
@@ -40,16 +55,12 @@ pub fn get_user_position(
         (&addr_validate_to_lower(deps.api, &user_address)?, index),
     )?;
     let upr = UserPositionResponse {
+        market_index: position.market_index,
         base_asset_amount: position.base_asset_amount,
         quote_asset_amount: position.quote_asset_amount,
         last_cumulative_funding_rate: position.last_cumulative_funding_rate,
         last_cumulative_repeg_rebate: position.last_cumulative_repeg_rebate,
         last_funding_rate_ts: position.last_funding_rate_ts,
-        transfer_to: "DefaultAddress".to_string(),
-        stop_loss_price: todo!(),
-        stop_loss_amount: todo!(),
-        stop_profit_price: todo!(),
-        stop_profit_amount: todo!(),
     };
     Ok(upr)
 }
@@ -91,6 +102,14 @@ pub fn get_vaults_address(deps: Deps) -> StdResult<VaultsResponse> {
         insurance_vault: state.insurance_vault.into(),
     };
     Ok(vaults)
+}
+
+pub fn get_oracle_address(deps: Deps) -> StdResult<OracleResponse> {
+    let state = STATE.load(deps.storage)?;
+    let oracle = OracleResponse {
+        oracle: state.oracle.to_string(),
+    };
+    Ok(oracle)
 }
 pub fn get_margin_ratios(deps: Deps) -> StdResult<MarginRatioResponse> {
     let state = STATE.load(deps.storage)?;
@@ -159,6 +178,41 @@ pub fn get_max_deposit_limit(deps: Deps) -> StdResult<MaxDepositLimitResponse> {
     };
     Ok(max_deposit)
 }
+
+pub fn get_market_length(deps: Deps) -> StdResult<MarketLengthResponse> {
+    let state = STATE.load(deps.storage)?;
+    let length = MarketLengthResponse {
+        length: state.markets_length,
+    };
+    Ok(length)
+}
+
+pub fn get_oracle_guard_rails(deps: Deps) -> StdResult<OracleGuardRailsResponse> {
+    let state = STATE.load(deps.storage)?;
+    let ogr = OracleGuardRailsResponse {
+        use_for_liquidations: state.oracle_guard_rails.use_for_liquidations,
+        mark_oracle_divergence_numerator: state.oracle_guard_rails.mark_oracle_divergence_numerator,
+        mark_oracle_divergence_denominator: state
+            .oracle_guard_rails
+            .mark_oracle_divergence_denominator,
+        slots_before_stale: state.oracle_guard_rails.slots_before_stale,
+        confidence_interval_max_size: state.oracle_guard_rails.confidence_interval_max_size,
+        too_volatile_ratio: state.oracle_guard_rails.too_volatile_ratio,
+    };
+    Ok(ogr)
+}
+
+pub fn get_order_state(deps: Deps) -> StdResult<OrderStateResponse> {
+    let state = STATE.load(deps.storage)?;
+    let os = OrderStateResponse {
+        min_order_quote_asset_amount: state.orderstate.min_order_quote_asset_amount,
+        reward_numerator: state.orderstate.reward_numerator,
+        reward_denominator: state.orderstate.reward_denominator,
+        time_based_reward_lower_bound: state.orderstate.time_based_reward_lower_bound,
+    };
+    Ok(os)
+}
+
 pub fn get_fee_structure(deps: Deps) -> StdResult<FeeStructureResponse> {
     let fs = STATE.load(deps.storage)?;
     let fee_structure = FeeStructureResponse {
@@ -339,10 +393,7 @@ pub fn get_trade_history(
     user_address: String,
     index: u64,
 ) -> StdResult<TradeHistoryResponse> {
-    let th = TRADE_HISTORY.load(
-        deps.storage,
-        index,
-    )?;
+    let th = TRADE_HISTORY.load(deps.storage, index)?;
     let trade_history = TradeHistoryResponse {
         ts: th.ts,
         user: user_address,
@@ -395,4 +446,73 @@ pub fn get_market_info(deps: Deps, market_index: u64) -> StdResult<MarketInfoRes
         last_oracle_price: market.amm.last_oracle_price,
     };
     Ok(market_info)
+}
+
+// get list in response
+pub fn get_active_positions(
+    deps: DepsMut,
+    user_address: String,
+    // start_after: Option<String>,
+    // limit: Option<u32>,
+) -> Result<Vec<PositionResponse>, ContractError> {
+    let user_addr = addr_validate_to_lower(deps.api, user_address.as_str())?;
+    let mut active_positions: Vec<UserPositionResponse> = vec![];
+    let start_after: Option<String> = None;
+    let limit: Option<u32> = None;
+    if USERS.has(deps.storage, &user_addr) {
+        let limit = limit.unwrap_or(10).min(10) as usize;
+        let start = start_after
+            .map(|start| start.joined_key())
+            .map(Bound::Exclusive);
+
+        active_positions = POSITIONS
+            .prefix(&user_addr)
+            .range(deps.storage, start, None, Order::Ascending)
+            .filter_map(|positions| {
+                positions.ok().map(|position| UserPositionResponse {
+                    market_index: position.1.market_index,
+                    base_asset_amount: position.1.base_asset_amount,
+                    quote_asset_amount: position.1.quote_asset_amount,
+                    last_cumulative_funding_rate: position.1.last_cumulative_funding_rate,
+                    last_cumulative_repeg_rebate: position.1.last_cumulative_repeg_rebate,
+                    last_funding_rate_ts: position.1.last_funding_rate_ts,
+                })
+            })
+            .take(limit)
+            .collect();
+    }
+
+    let positions: Vec<PositionResponse> = vec![];
+    for position in active_positions.clone() {
+        let market_index = position.market_index;
+        let direction = direction_to_close_position(cast(position.base_asset_amount)?);
+        // let entry_price = position
+        //     .quote_asset_amount
+        //     .checked_mul(MARK_PRICE_PRECISION * AMM_TO_QUOTE_PRECISION_RATIO)
+        //     .ok_or_else(|| (ContractError::MathError))?
+        //     .div(cast(position.base_asset_amount)?);
+        let entry_notional = position.quote_asset_amount;
+        let state = STATE.load(deps.storage)?;
+        let liq_status = calculate_liquidation_status(
+            &deps,
+            &user_addr,
+            &state.oracle_guard_rails,
+            &state.oracle,
+        )?;
+
+        let pr = PositionResponse {
+            market_index,
+            direction,
+            initial_size: cast(position.base_asset_amount)?,
+            entry_notional: cast(entry_notional)?,
+            current_notional: todo!(),
+            entry_price: todo!(),
+            exit_price: todo!(),
+            liquidation_price: todo!(),
+            pnl: liq_status.unrealized_pnl,
+        };
+        positions.push(pr);
+    }
+
+    Ok(positions)
 }
