@@ -1,5 +1,3 @@
-use std::ops::Div;
-
 use crate::controller::margin::calculate_liquidation_status;
 use crate::helpers::casting::cast;
 use crate::helpers::constants::{AMM_TO_QUOTE_PRECISION_RATIO, MARK_PRICE_PRECISION};
@@ -8,7 +6,7 @@ use crate::ContractError;
 // use crate::helpers::casting::cast_to_i64;
 use crate::states::curve_history::*;
 use crate::states::liquidation_history::{LIQUIDATION_HISTORY, LIQUIDATION_HISTORY_INFO};
-use crate::states::market::{LiquidationStatus, MARKETS};
+use crate::states::market::{MARKETS};
 use crate::states::state::{ADMIN, STATE};
 use crate::states::trade_history::{TRADE_HISTORY, TRADE_HISTORY_INFO};
 use crate::states::user::{POSITIONS, USERS};
@@ -18,7 +16,7 @@ use ariel::helper::addr_validate_to_lower;
 
 use ariel::response::*;
 
-use cosmwasm_std::{Deps, DepsMut, Order, StdResult};
+use cosmwasm_std::{Deps, Order, StdResult, DepsMut};
 use cw_storage_plus::{Bound, PrimaryKey};
 
 pub fn get_user(deps: Deps, user_address: String) -> StdResult<UserResponse> {
@@ -493,7 +491,7 @@ pub fn get_active_positions(
         let entry_notional = position.quote_asset_amount;
         let state = STATE.load(deps.storage)?;
         let liq_status = calculate_liquidation_status(
-            &deps.,
+            &deps,
             &user_addr,
             &state.oracle_guard_rails,
             &state.oracle,

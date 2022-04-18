@@ -193,7 +193,7 @@ pub fn get_valid_oracle_price(
     now: u64,
 ) -> Result<Option<i128>, ContractError> {
     let price = if let Some(oracle) = oracle {
-        let oracle_data = market.amm.get_oracle_price(oracle, now)?;
+        let oracle_data = market.amm.get_oracle_price()?;
         let is_oracle_valid = is_oracle_valid(&market.amm, &oracle_data, validity_guardrails)?;
         if is_oracle_valid {
             Some(oracle_data.price)

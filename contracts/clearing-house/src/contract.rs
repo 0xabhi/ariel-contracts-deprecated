@@ -328,6 +328,7 @@ pub fn execute(
             oracle_source,
         } => try_update_market_oracle(deps, info, market_index, oracle, oracle_source),
         ExecuteMsg::UpdateOracleAddress { oracle } => try_update_oracle_address(deps, info, oracle),
+        ExecuteMsg::OracleFeeder { market_index, price } => try_feeding_price(deps, info, market_index, price),
     }
 }
 

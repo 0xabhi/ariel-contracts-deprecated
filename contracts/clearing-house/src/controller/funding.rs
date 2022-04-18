@@ -119,6 +119,7 @@ pub fn update_funding_rate(
 ) -> Result<(), ContractError> {
     let mut market = MARKETS.load(deps.storage, market_index)?;
     let guard_rails = STATE.load(deps.storage)?.oracle_guard_rails;
+    let price_oracle = market.amm.oracle;
 
     let time_since_last_update = now
         .checked_sub(market.amm.last_funding_rate_ts)
@@ -127,7 +128,6 @@ pub fn update_funding_rate(
     // Pause funding if oracle is invalid or if mark/oracle spread is too divergent
     let (block_funding_rate_update, oracle_price_data) = oracle::block_operation(
         &market.amm,
-        &price_oracle,
         &guard_rails,
         precomputed_mark_price,
     )?;
