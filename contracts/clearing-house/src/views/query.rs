@@ -362,6 +362,7 @@ pub fn get_liquidation_history(
         deps.storage,
         (index, addr_validate_to_lower(deps.api, &user_address)?),
     )?;
+    // LIQUIDATION_HISTORY.prefix(&user_address);
     let liq_history = LiquidationHistoryResponse {
         ts: lh.ts,
         record_id: lh.record_id,
@@ -492,21 +493,21 @@ pub fn get_active_positions(
             
         let entry_notional = position.quote_asset_amount;
         let state = STATE.load(deps.storage)?;
-        let liq_status = calculate_liquidation_status(
-            &deps.,
-            &user_addr,
-            &state.oracle_guard_rails,
-            &state.oracle,
-        ).unwrap();
-        let pr = PositionResponse {
-            market_index,
-            direction,
-            initial_size: cast(position.base_asset_amount).unwrap(),
-            entry_notional: cast(entry_notional).unwrap(),
-            entry_price,
-            pnl: liq_status.unrealized_pnl,
-        };
-        positions.push(pr);
+        // let liq_status = calculate_liquidation_status(
+        //     deps,
+        //     &user_addr,
+        //     &state.oracle_guard_rails,
+        //     &state.oracle,
+        // ).unwrap();
+        // let pr = PositionResponse {
+        //     market_index,
+        //     direction,
+        //     initial_size: cast(position.base_asset_amount).unwrap(),
+        //     entry_notional: cast(entry_notional).unwrap(),
+        //     entry_price,
+        //     pnl: liq_status.unrealized_pnl,
+        // };
+        // positions.push(pr);
     }
 
     Ok(positions)
