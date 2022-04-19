@@ -466,8 +466,6 @@ pub fn fill_order(
         return Err(ContractError::OrderNotOpen);
     }
 
-    let oracle = market.amm.oracle.clone();
-
     let mark_price_before: u128;
     let oracle_mark_spread_pct_before: i128;
     let is_oracle_valid: bool;
@@ -475,7 +473,7 @@ pub fn fill_order(
 
     {
         mark_price_before = market.amm.mark_price()?;
-        let oracle_price_data = &market.amm.get_oracle_price(&oracle, now)?;
+        let oracle_price_data = &market.amm.get_oracle_price()?;
         oracle_mark_spread_pct_before = amm::calculate_oracle_mark_spread_pct(
             &market.amm,
             oracle_price_data,
@@ -528,7 +526,7 @@ pub fn fill_order(
     let oracle_mark_spread_pct_after: i128;
     {
         mark_price_after = market.amm.mark_price()?;
-        let oracle_price_data = &market.amm.get_oracle_price(&oracle, now)?;
+        let oracle_price_data = &market.amm.get_oracle_price()?;
         oracle_mark_spread_pct_after = amm::calculate_oracle_mark_spread_pct(
             &market.amm,
             oracle_price_data,
@@ -743,7 +741,7 @@ pub fn fill_order(
         update_funding_rate(
             deps,
             market_index,
-            oracle,
+            market.amm.oracle,
             now,
             state.funding_paused,
             Some(mark_price_before),

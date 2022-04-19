@@ -59,6 +59,8 @@ pub fn try_initialize_market(
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let now = env.block.time.seconds();
 
+    let state = STATE.load(deps.storage)?;
+
     let existing_market = MARKETS.load(deps.storage, market_index)?;
     if existing_market.initialized {
         return Err(ContractError::MarketIndexAlreadyInitialized {});
@@ -73,6 +75,33 @@ pub fn try_initialize_market(
         amm_peg_multiplier,
     )?;
 
+    let mut a = Amm {
+        oracle: state.oracle,
+        oracle_source,
+        base_asset_reserve: amm_base_asset_reserve,
+        quote_asset_reserve: amm_quote_asset_reserve,
+        cumulative_repeg_rebate_long: 0,
+        cumulative_repeg_rebate_short: 0,
+        cumulative_funding_rate_long: 0,
+        cumulative_funding_rate_short: 0,
+        last_funding_rate: 0,
+        last_funding_rate_ts: now,
+        funding_period: amm_periodicity,
+        last_oracle_price_twap: 0,
+        last_mark_price_twap: init_mark_price,
+        last_mark_price_twap_ts: now,
+        sqrt_k: amm_base_asset_reserve,
+        peg_multiplier: amm_peg_multiplier,
+        total_fee: 0,
+        total_fee_minus_distributions: 0,
+        total_fee_withdrawn: 0,
+        minimum_quote_asset_trade_size: 10000000,
+        last_oracle_price_twap_ts: now,
+        last_oracle_price: 0,
+        minimum_base_asset_trade_size: 10000000,
+    };
+
+
     // Verify there's no overflow
     let _k = helpers::bn::U192::from(amm_base_asset_reserve)
         .checked_mul(helpers::bn::U192::from(amm_quote_asset_reserve))
@@ -81,34 +110,16 @@ pub fn try_initialize_market(
     let OraclePriceData {
         price: oracle_price,
         ..
-    } = match oracle_source {
-        OracleSource::Oracle => {
-            helpers::oracle::get_oracle_price(&existing_market.amm, &existing_market.amm.oracle)?
-        }
-        OracleSource::Simulated => helpers::oracle::get_switchboard_price(
-            &existing_market.amm,
-            &existing_market.amm.oracle,
-        )?,
-        OracleSource::Zero => todo!(),
-        OracleSource::Bank => todo!(),
-    };
+    } = a.get_oracle_price()?;
 
-    let last_oracle_price_twap = match oracle_source {
-        OracleSource::Oracle => {
-            helpers::oracle::get_oracle_price(&existing_market.amm, &existing_market.amm.oracle)?
-        }
-        OracleSource::Simulated => {
-            helpers::oracle::get_oracle_price(&existing_market.amm, &existing_market.amm.oracle)?
-        }
-        OracleSource::Zero => todo!(),
-    };
+    let last_oracle_price_twap = a.get_oracle_twap()?;
+
 
     helpers::margin_validation::validate_margin(
         margin_ratio_initial,
         margin_ratio_partial,
         margin_ratio_maintenance,
     )?;
-    let state = STATE.load(deps.storage)?;
     let market = Market {
         market_name: market_name,
         initialized: true,
@@ -119,31 +130,7 @@ pub fn try_initialize_market(
         margin_ratio_initial, // unit is 20% (+2 decimal places)
         margin_ratio_partial,
         margin_ratio_maintenance,
-        amm: Amm {
-            oracle: state.oracle,
-            oracle_source,
-            base_asset_reserve: amm_base_asset_reserve,
-            quote_asset_reserve: amm_quote_asset_reserve,
-            cumulative_repeg_rebate_long: 0,
-            cumulative_repeg_rebate_short: 0,
-            cumulative_funding_rate_long: 0,
-            cumulative_funding_rate_short: 0,
-            last_funding_rate: 0,
-            last_funding_rate_ts: now,
-            funding_period: amm_periodicity,
-            last_oracle_price_twap: last_oracle_price_twap.price,
-            last_mark_price_twap: init_mark_price,
-            last_mark_price_twap_ts: now,
-            sqrt_k: amm_base_asset_reserve,
-            peg_multiplier: amm_peg_multiplier,
-            total_fee: 0,
-            total_fee_minus_distributions: 0,
-            total_fee_withdrawn: 0,
-            minimum_quote_asset_trade_size: 10000000,
-            last_oracle_price_twap_ts: now,
-            last_oracle_price: oracle_price,
-            minimum_base_asset_trade_size: 10000000,
-        },
+        amm: a,
     };
     MARKETS.save(deps.storage, market_index, &market)?;
     Ok(Response::new().add_attribute("method", "try_initialize_market"))
@@ -357,7 +344,7 @@ pub fn try_open_position(
     {
         let market = MARKETS.load(deps.storage, market_index)?;
         mark_price_before = market.amm.mark_price()?;
-        let oracle_price_data = &market.amm.get_oracle_price(&state.oracle, now)?;
+        let oracle_price_data = &market.amm.get_oracle_price()?;
         oracle_mark_spread_pct_before = helpers::amm::calculate_oracle_mark_spread_pct(
             &market.amm,
             oracle_price_data,
@@ -410,7 +397,7 @@ pub fn try_open_position(
     {
         let market = MARKETS.load(deps.storage, market_index)?;
         mark_price_after = market.amm.mark_price()?;
-        let oracle_price_data = helpers::oracle::get_oracle_price(&market.amm, &state.oracle)?;
+        let oracle_price_data = market.amm.get_oracle_price()?;
         oracle_mark_spread_pct_after = helpers::amm::calculate_oracle_mark_spread_pct(
             &market.amm,
             &oracle_price_data,
@@ -579,7 +566,7 @@ pub fn try_close_position(
     let market_position = POSITIONS.load(deps.storage, (&user_address.clone(), market_index))?;
     let mut market = MARKETS.load(deps.storage, market_index)?;
     let mark_price_before = market.amm.mark_price()?;
-    let oracle_price_data = helpers::oracle::get_oracle_price(&market.amm, &market.amm.oracle)?;
+    let oracle_price_data = market.amm.get_oracle_price()?;
     let oracle_mark_spread_pct_before = helpers::amm::calculate_oracle_mark_spread_pct(
         &market.amm,
         &oracle_price_data,
@@ -1473,7 +1460,7 @@ pub fn try_repeg_amm_curve(
     let OraclePriceData {
         price: oracle_price,
         ..
-    } = helpers::oracle::get_oracle_price(&market.amm, &market.amm.oracle)?;
+    } = market.amm.get_oracle_price()?;
     let peg_multiplier_before = market.amm.peg_multiplier;
     let base_asset_reserve_before = market.amm.base_asset_reserve;
     let quote_asset_reserve_before = market.amm.quote_asset_reserve;
@@ -1483,7 +1470,7 @@ pub fn try_repeg_amm_curve(
     let price_oracle = state.oracle;
 
     let adjustment_cost =
-        controller::repeg::repeg(&mut deps, market_index, &price_oracle, new_peg_candidate)
+        controller::repeg::repeg(&mut deps, market_index, new_peg_candidate)
             .unwrap();
     let peg_multiplier_after = market.amm.peg_multiplier;
     let base_asset_reserve_after = market.amm.base_asset_reserve;
@@ -1542,7 +1529,7 @@ pub fn try_update_amm_oracle_twap(
     let state = STATE.load(deps.storage)?;
     let price_oracle = state.oracle;
     // todo get_oracle_twap is not defined yet
-    let oracle_twap = helpers::oracle::get_oracle_twap(&price_oracle)?;
+    let oracle_twap = market.amm.get_oracle_twap()?;
 
     if let Some(oracle_twap) = oracle_twap {
         let oracle_mark_gap_before = cast_to_i128(market.amm.last_mark_price_twap)?
@@ -1585,7 +1572,7 @@ pub fn try_reset_amm_oracle_twap(
     let now = env.block.time.seconds();
     let mut market = MARKETS.load(deps.storage, market_index)?;
     let state = STATE.load(deps.storage)?;
-    let oracle_price_data = helpers::oracle::get_oracle_price(&market.amm, &market.amm.oracle)?;
+    let oracle_price_data = market.amm.get_oracle_price()?;
 
     let is_oracle_valid =
         helpers::amm::is_oracle_valid(&market.amm, &oracle_price_data, &state.oracle_guard_rails)?;
@@ -1723,7 +1710,7 @@ pub fn try_update_k(
     let OraclePriceData {
         price: oracle_price,
         ..
-    } = helpers::oracle::get_oracle_price(&market.amm, &market.amm.oracle)?;
+    } = market.amm.get_oracle_price()?;
 
     CURVEHISTORY.save(
         deps.storage,
@@ -2070,5 +2057,19 @@ pub fn try_update_oracle_address(
     STATE.update(deps.storage, |_state| -> Result<State, ContractError> {
         Ok(state)
     })?;
+    Ok(Response::new().add_attribute("method", "try_update_oracle_address"))
+}
+
+
+pub fn try_feeding_price(
+    deps: DepsMut,
+    info: MessageInfo,
+    market_index: u64,
+    price: i128,
+) -> Result<Response, ContractError> {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
+    let mut market = MARKETS.load(deps.storage, market_index)?;
+    market.amm.last_oracle_price = price;
+    market.amm.last_oracle_price_twap = price;
     Ok(Response::new().add_attribute("method", "try_update_oracle_address"))
 }

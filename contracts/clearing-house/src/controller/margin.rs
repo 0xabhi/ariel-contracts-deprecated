@@ -200,7 +200,6 @@ pub fn calculate_liquidation_status(
 
             let oracle_status = get_oracle_status(
                 &market.amm,
-                oracle_account_info,
                 oracle_guard_rails,
                 Some(mark_price_before),
             )?;

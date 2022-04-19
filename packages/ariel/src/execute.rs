@@ -186,4 +186,8 @@ pub enum ExecuteMsg {
     UpdateFundingPaused {
         funding_paused: bool,
     },
+    OracleFeeder {
+        market_index: u64,
+        price: i128,
+    },
 }

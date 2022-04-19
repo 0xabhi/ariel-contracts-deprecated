@@ -16,7 +16,6 @@ use crate::helpers::casting::cast_to_u128;
 pub fn repeg(
     deps: &mut DepsMut,
     market_index: u64,
-    price_oracle: &Addr,
     new_peg_candidate: u128
 ) -> Result<i128, ContractError> {
 
@@ -35,9 +34,9 @@ pub fn repeg(
     
     market.amm.peg_multiplier = new_peg_candidate;
 
-    let oracle_price_data = market.amm.get_oracle_price(price_oracle, now)?;	
+    let oracle_price_data = market.amm.get_oracle_price()?;	
     let oracle_price = oracle_price_data.price;	
-    let oracle_conf = oracle_price_data.confidence;	
+    let oracle_conf = oracle_price_data.confidence;
     let oracle_is_valid =	
         amm::is_oracle_valid(&market.amm, &oracle_price_data, &oracle_guard_rails)?;	
     
