@@ -75,7 +75,7 @@ pub fn try_initialize_market(
         amm_peg_multiplier,
     )?;
 
-    let mut a = Amm {
+    let a = Amm {
         oracle: state.oracle,
         oracle_source,
         base_asset_reserve: amm_base_asset_reserve,
@@ -186,7 +186,7 @@ pub fn try_deposit_collateral(
     )?;
     DEPOSIT_HISTORY.save(
         deps.storage,
-        (deposit_history_info_length as u64, user_address.clone()),
+        (user_address.clone(), deposit_history_info_length as u64),
         &DepositRecord {
             ts: now,
             record_id: cast(deposit_history_info_length)?,
@@ -296,7 +296,7 @@ pub fn try_withdraw_collateral(
     )?;
     DEPOSIT_HISTORY.save(
         deps.storage,
-        (deposit_history_info_length as u64, user_address.clone()),
+        (user_address.clone(), deposit_history_info_length as u64),
         &DepositRecord {
             ts: now,
             record_id: cast(deposit_history_info_length)?,
@@ -1327,7 +1327,7 @@ pub fn try_liquidate(
     )?;
     LIQUIDATION_HISTORY.save(
         deps.storage,
-        (liquidation_history_info_length as u64, user_address.clone()),
+        (user_address.clone(), liquidation_history_info_length as u64),
         &LiquidationRecord {
             ts: now,
             record_id: cast(liquidation_history_info_length)?,

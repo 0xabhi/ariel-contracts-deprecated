@@ -1,70 +1,75 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     GetUser {
-        user_address: String
+        user_address: String,
     },
     GetUserMarketPosition {
         user_address: String,
-        index: u64
+        index: u64,
     },
-    GetUserPositions{
-        user_address: String
+    GetUserPositions {
+        user_address: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
     },
     GetAdmin {},
     IsExchangePaused {},
     IsFundingPaused {},
-    AdminControlsPrices{},
-    GetVaults{},
-    GetMarginRatio{},
-    GetOracle{},
-    GetMarketLength{},
-    GetOracleGuardRails{},
-    GetOrderState{},
-    GetPartialLiquidationClosePercentage{},
-    GetPartialLiquidationPenaltyPercentage{},
-    GetFullLiquidationPenaltyPercentage{},
-    GetPartialLiquidatorSharePercentage{},
-    GetFullLiquidatorSharePercentage{},
-    GetMaxDepositLimit{},
-    GetFeeStructure{},
+    AdminControlsPrices {},
+    GetVaults {},
+    GetMarginRatio {},
+    GetOracle {},
+    GetMarketLength {},
+    GetOracleGuardRails {},
+    GetOrderState {},
+    GetPartialLiquidationClosePercentage {},
+    GetPartialLiquidationPenaltyPercentage {},
+    GetFullLiquidationPenaltyPercentage {},
+    GetPartialLiquidatorSharePercentage {},
+    GetFullLiquidatorSharePercentage {},
+    GetMaxDepositLimit {},
+    GetFeeStructure {},
     //TODO::get user market positions which returns array
     // TODO:: get all the history with bound length like 1-100, 101-200 etc.String
-    GetCurveHistoryLength{},
-    GetCurveHistory{
-        index: u64
+    GetCurveHistoryLength {},
+    GetCurveHistory {
+        start_after: Option<String>,
+        limit: Option<u32>,
     },
-    GetDepositHistoryLength{},
-    GetDepositHistory{
+    GetDepositHistoryLength {},
+    GetDepositHistory {
         user_address: String,
-        index: u64
+        start_after: Option<String>,
+        limit: Option<u32>,
     },
-    GetFundingPaymentHistoryLength{},
-    GetFundingPaymentHistory{
+    GetFundingPaymentHistoryLength {},
+    GetFundingPaymentHistory {
         user_address: String,
-        index: u64
+        start_after: Option<String>,
+        limit: Option<u32>,
     },
-    GetFundingRateHistoryLength{},
-    GetFundingRateHistory{
-        index: u64
+    GetFundingRateHistoryLength {},
+    GetFundingRateHistory {
+        start_after: Option<String>,
+        limit: Option<u32>,
     },
 
-    GetLiquidationHistoryLength{},
-    GetLiquidationHistory{
+    GetLiquidationHistoryLength {},
+    GetLiquidationHistory {
         user_address: String,
-        index: u64
+        start_after: Option<String>,
+        limit: Option<u32>,
     },
-    GetTradeHistoryLength{},
-    GetTradeHistory{
-        user_address: String,
-        index: u64
+    GetTradeHistoryLength {},
+    GetTradeHistory {
+        start_after: Option<String>,
+        limit: Option<u32>,
     },
-    GetMarketInfo{
-        market_index: u64
-    }
+    GetMarketInfo {
+        market_index: u64,
+    },
 }
-

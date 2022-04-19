@@ -733,7 +733,7 @@ pub fn fill_order(
     }
 
     MARKETS.update(deps.storage, market_index, |_m|-> Result<Market, ContractError> {
-        Ok(market)
+        Ok(market.clone())
     })?;
 
     // Try to update the funding rate at the end of every trade

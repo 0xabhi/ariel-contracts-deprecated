@@ -57,3 +57,7 @@ pub const MAX_LIQUIDATION_SLIPPAGE_U128: u128 = 100; // expo = -2
 pub const MAX_MARK_TWAP_DIVERGENCE: u128 = 5_000; // expo = -3
 pub const MAXIMUM_MARGIN_RATIO: u32 = MARGIN_PRECISION as u32;
 pub const MINIMUM_MARGIN_RATIO: u32 = MARGIN_PRECISION as u32 / 50;
+
+// iterator limits
+pub const MAX_LIMIT: u32 = 20;
+pub const DEFAULT_LIMIT: u32 = 1;

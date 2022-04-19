@@ -27,5 +27,5 @@ pub struct LiquidationInfo {
     pub len: u64,
 }
 
-pub const LIQUIDATION_HISTORY: Map<(u64,Addr),  LiquidationRecord> = Map::new("liquidation_history");
+pub const LIQUIDATION_HISTORY: Map<(Addr, u64),  LiquidationRecord> = Map::new("liquidation_history");
 pub const LIQUIDATION_HISTORY_INFO: Item<LiquidationInfo> = Item::new("liquidation_history_info");

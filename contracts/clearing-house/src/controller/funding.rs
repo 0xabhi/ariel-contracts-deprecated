@@ -64,7 +64,7 @@ pub fn settle_funding_payment(
                 )?;
                 FUNDING_PAYMENT_HISTORY.save(
                     deps.storage,
-                    (funding_payment_history_info_length, user_addr),
+                    (user_addr, funding_payment_history_info_length),
                     &FundingPaymentRecord {
                         ts: now,
                         record_id: funding_payment_history_info_length,
@@ -119,7 +119,7 @@ pub fn update_funding_rate(
 ) -> Result<(), ContractError> {
     let mut market = MARKETS.load(deps.storage, market_index)?;
     let guard_rails = STATE.load(deps.storage)?.oracle_guard_rails;
-    let price_oracle = market.amm.oracle;
+    let price_oracle = market.amm.oracle.clone();
 
     let time_since_last_update = now
         .checked_sub(market.amm.last_funding_rate_ts)

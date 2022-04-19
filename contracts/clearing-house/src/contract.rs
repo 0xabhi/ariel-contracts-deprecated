@@ -143,10 +143,10 @@ pub fn execute(
         ),
         ExecuteMsg::DepositCollateral { amount } => {
             try_deposit_collateral(deps, _env, info, amount)
-        },
+        }
         ExecuteMsg::WithdrawCollateral { amount } => {
             try_withdraw_collateral(deps, _env, info, amount)
-        },
+        }
         ExecuteMsg::OpenPosition {
             direction,
             quote_asset_amount,
@@ -166,14 +166,20 @@ pub fn execute(
             market_index,
             order_id,
         } => try_cancel_order(deps, _env, info, market_index, order_id),
-        ExecuteMsg::ExpireOrders {user_address} => try_expire_orders(deps, _env, info, user_address),
-        ExecuteMsg::FillOrder { order_id, user_address, market_index } => try_fill_order(deps, _env, info, order_id, user_address, market_index),
+        ExecuteMsg::ExpireOrders { user_address } => {
+            try_expire_orders(deps, _env, info, user_address)
+        }
+        ExecuteMsg::FillOrder {
+            order_id,
+            user_address,
+            market_index,
+        } => try_fill_order(deps, _env, info, order_id, user_address, market_index),
         ExecuteMsg::ClosePosition { market_index } => {
             try_close_position(deps, _env, info, market_index)
-        },
+        }
         ExecuteMsg::Liquidate { user, market_index } => {
             try_liquidate(deps, _env, info, user, market_index)
-        },
+        }
         ExecuteMsg::MoveAMMPrice {
             base_asset_reserve,
             quote_asset_reserve,
@@ -193,14 +199,14 @@ pub fn execute(
         } => try_repeg_amm_curve(deps, _env, new_peg_candidate, market_index),
         ExecuteMsg::UpdateAMMOracleTwap { market_index } => {
             try_update_amm_oracle_twap(deps, _env, market_index)
-        },
+        }
         ExecuteMsg::ResetAMMOracleTwap { market_index } => {
             try_reset_amm_oracle_twap(deps, _env, market_index)
-        },
+        }
         ExecuteMsg::SettleFundingPayment {} => try_settle_funding_payment(deps, _env, info),
         ExecuteMsg::UpdateFundingRate { market_index } => {
             try_update_funding_rate(deps, _env, market_index)
-        },
+        }
         ExecuteMsg::UpdateK {
             market_index,
             sqrt_k,
@@ -232,10 +238,10 @@ pub fn execute(
         } => try_update_full_liquidation_penalty_percentage(deps, info, numerator, denominator),
         ExecuteMsg::UpdatePartialLiquidationLiquidatorShareDenominator { denominator } => {
             try_update_partial_liquidation_liquidator_share_denominator(deps, info, denominator)
-        },
+        }
         ExecuteMsg::UpdateFullLiquidationLiquidatorShareDenominator { denominator } => {
             try_update_full_liquidation_liquidator_share_denominator(deps, info, denominator)
-        },
+        }
         ExecuteMsg::UpdateFee {
             fee_numerator,
             fee_denominator,
@@ -280,17 +286,17 @@ pub fn execute(
         ),
         ExecuteMsg::UpdateAdmin { admin } => {
             Ok(ADMIN.execute_update_admin(deps, info, maybe_addr(api, admin.into())?)?)
-        },
+        }
         ExecuteMsg::UpdateMaxDeposit { max_deposit } => {
             try_update_max_deposit(deps, info, max_deposit)
-        },
+        }
         ExecuteMsg::UpdateExchangePaused { exchange_paused } => {
             try_update_exchange_paused(deps, info, exchange_paused)
-        },
+        }
         ExecuteMsg::DisableAdminControlsPrices {} => try_disable_admin_control_prices(deps, info),
         ExecuteMsg::UpdateFundingPaused { funding_paused } => {
             try_update_funding_paused(deps, info, funding_paused)
-        },
+        }
         ExecuteMsg::UpdateMarketMinimumQuoteAssetTradeSize {
             market_index,
             minimum_trade_size,
@@ -328,7 +334,10 @@ pub fn execute(
             oracle_source,
         } => try_update_market_oracle(deps, info, market_index, oracle, oracle_source),
         ExecuteMsg::UpdateOracleAddress { oracle } => try_update_oracle_address(deps, info, oracle),
-        ExecuteMsg::OracleFeeder { market_index, price } => try_feeding_price(deps, info, market_index, price),
+        ExecuteMsg::OracleFeeder {
+            market_index,
+            price,
+        } => try_feeding_price(deps, info, market_index, price),
     }
 }
 
@@ -340,7 +349,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
             user_address,
             index,
         } => Ok(to_binary(&get_user_position(deps, user_address, index)?)?),
-        QueryMsg::GetUserPositions{ user_address } => Ok(to_binary(&get_active_positions(deps, user_address)?)?),
+        QueryMsg::GetUserPositions {
+            user_address,
+            start_after,
+            limit,
+        } => Ok(to_binary(&get_active_positions(
+            deps,
+            user_address,
+            start_after,
+            limit,
+        )?)?),
         QueryMsg::GetAdmin {} => Ok(to_binary(&get_admin(deps)?)?),
         QueryMsg::IsExchangePaused {} => Ok(to_binary(&is_exchange_paused(deps)?)?),
         QueryMsg::IsFundingPaused {} => Ok(to_binary(&is_funding_paused(deps)?)?),
@@ -350,9 +368,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         QueryMsg::GetPartialLiquidationClosePercentage {} => {
             Ok(to_binary(&get_partial_liquidation_close_percentage(deps)?)?)
         }
-        QueryMsg::GetPartialLiquidationPenaltyPercentage {} => {
-            Ok(to_binary(&get_partial_liquidation_penalty_percentage(deps)?)?)
-        }
+        QueryMsg::GetPartialLiquidationPenaltyPercentage {} => Ok(to_binary(
+            &get_partial_liquidation_penalty_percentage(deps)?,
+        )?),
         QueryMsg::GetFullLiquidationPenaltyPercentage {} => {
             Ok(to_binary(&get_full_liquidation_penalty_percentage(deps)?)?)
         }
@@ -363,43 +381,63 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
             Ok(to_binary(&get_full_liquidator_share_percentage(deps)?)?)
         }
         QueryMsg::GetMaxDepositLimit {} => Ok(to_binary(&get_max_deposit_limit(deps)?)?),
-        QueryMsg::GetOracle{} => Ok(to_binary(&get_oracle_address(deps)?)?),
-        QueryMsg::GetMarketLength{} => Ok(to_binary(&get_market_length(deps)?)?),
-        QueryMsg::GetOracleGuardRails{} => Ok(to_binary(&get_oracle_guard_rails(deps)?)?),
-        QueryMsg::GetOrderState{} => Ok(to_binary(&get_order_state(deps)?)?),
+        QueryMsg::GetOracle {} => Ok(to_binary(&get_oracle_address(deps)?)?),
+        QueryMsg::GetMarketLength {} => Ok(to_binary(&get_market_length(deps)?)?),
+        QueryMsg::GetOracleGuardRails {} => Ok(to_binary(&get_oracle_guard_rails(deps)?)?),
+        QueryMsg::GetOrderState {} => Ok(to_binary(&get_order_state(deps)?)?),
         QueryMsg::GetFeeStructure {} => Ok(to_binary(&get_fee_structure(deps)?)?),
         QueryMsg::GetCurveHistoryLength {} => Ok(to_binary(&get_curve_history_length(deps)?)?),
-        QueryMsg::GetCurveHistory { index } => Ok(to_binary(&get_curve_history(deps, index)?)?),
+        QueryMsg::GetCurveHistory { start_after, limit } => {
+            Ok(to_binary(&get_curve_history(deps, start_after, limit)?)?)
+        }
         QueryMsg::GetDepositHistoryLength {} => Ok(to_binary(&get_deposit_history_length(deps)?)?),
         QueryMsg::GetDepositHistory {
             user_address,
-            index,
-        } => Ok(to_binary(&get_deposit_history(deps, user_address, index)?)?),
+            start_after,
+            limit,
+        } => Ok(to_binary(&get_deposit_history(
+            deps,
+            user_address,
+            start_after,
+            limit,
+        )?)?),
         QueryMsg::GetFundingPaymentHistoryLength {} => {
             Ok(to_binary(&get_funding_payment_history_length(deps)?)?)
         }
         QueryMsg::GetFundingPaymentHistory {
             user_address,
-            index,
-        } => Ok(to_binary(&get_funding_payment_history(deps, user_address, index)?)?),
+            start_after,
+            limit,
+        } => Ok(to_binary(&get_funding_payment_history(
+            deps,
+            user_address,
+            start_after,
+            limit,
+        )?)?),
         QueryMsg::GetFundingRateHistoryLength {} => {
             Ok(to_binary(&get_funding_rate_history_length(deps)?)?)
         }
-        QueryMsg::GetFundingRateHistory { index } => {
-            Ok(to_binary(&get_funding_rate_history(deps, index)?)?)
+        QueryMsg::GetFundingRateHistory { start_after, limit } => {
+            Ok(to_binary(&get_funding_rate_history(deps, start_after, limit)?)?)
         }
         QueryMsg::GetLiquidationHistoryLength {} => {
             Ok(to_binary(&get_liquidation_history_length(deps)?)?)
         }
         QueryMsg::GetLiquidationHistory {
             user_address,
-            index,
-        } => Ok(to_binary(&get_liquidation_history(deps, user_address, index)?)?),
+            start_after,
+            limit
+        } => Ok(to_binary(&get_liquidation_history(
+            deps,
+            user_address,
+            start_after,
+            limit
+        )?)?),
         QueryMsg::GetTradeHistoryLength {} => Ok(to_binary(&get_trade_history_length(deps)?)?),
         QueryMsg::GetTradeHistory {
-            user_address,
-            index,
-        } => Ok(to_binary(&get_trade_history(deps, user_address, index)?)?),
+            start_after,
+            limit
+        } => Ok(to_binary(&get_trade_history(deps, start_after, limit)?)?),
         QueryMsg::GetMarketInfo { market_index } => {
             Ok(to_binary(&get_market_info(deps, market_index)?)?)
         }
