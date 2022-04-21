@@ -5,7 +5,7 @@ use crate::helpers::order::{validate_order, validate_order_can_be_canceled, calc
 use crate::states::market::{MARKETS, Market};
 use crate::states::order::{ORDERS, get_limit_price};
 use crate::states::order_history::{OrderRecord, OrderAction, ORDER_HISTORY_INFO, ORDER_HISTORY, OrderHisInfo};
-use crate::states::state::{STATE};
+use crate::states::state::{STATE, ORDERSTATE, FEESTRUCTURE, ORACLEGUARDRAILS};
 
 use crate::helpers::order::get_valid_oracle_price;
 use crate::states::trade_history::{TRADE_HISTORY_INFO, TradeInfo, TRADE_HISTORY, TradeRecord};
@@ -142,7 +142,9 @@ pub fn place_order(
 ) -> Result<bool, ContractError> {
 
     let state = STATE.load(deps.storage)?;
-    let order_state = state.orderstate;
+    let order_state = ORDERSTATE.load(deps.storage)?;
+    let fee_structure = FEESTRUCTURE.load(deps.storage)?;
+    let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
 
     let user = USERS.load(deps.storage, &user_addr.clone())?;
     let position_index = params.market_index;
@@ -158,7 +160,7 @@ pub fn place_order(
     )?;
     
     let discount_tier = calculate_order_fee_tier(
-        &state.fee_structure,
+        &fee_structure,
         params.base_asset_amount,
     )?;
 
@@ -201,7 +203,7 @@ pub fn place_order(
         Some(oracle),
         &market,
         &new_order,
-        &state.oracle_guard_rails,
+        &oracle_guard_rails,
         now
     )?;
 
@@ -249,7 +251,8 @@ pub fn cancel_order(
 
     let state = STATE.load(deps.storage)?;
     let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
-    
+    let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
+
     let order = ORDERS.load(deps.storage, ((user_addr, position_index), order_index))?;
     let market = MARKETS.load(deps.storage, position_index)?;
 
@@ -267,7 +270,7 @@ pub fn cancel_order(
         Some(oracle),
         &market,
         &order,
-        &state.oracle_guard_rails,
+        &oracle_guard_rails,
         now
     )?;
 
@@ -438,12 +441,14 @@ pub fn fill_order(
     now: u64,
 ) -> Result<u128, ContractError> {
     let state = STATE.load(deps.storage)?;
-    let order_state = state.orderstate;
+    let order_state = ORDERSTATE.load(deps.storage)?;
     let mut user = USERS.load(deps.storage, user_addr)?;
     let mut filler = USERS.load(deps.storage, filler_addr)?;
     let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
     let order = ORDERS.load(deps.storage, ((user_addr, position_index), order_index))?;
     let market_index = position_index;
+    let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
+    let fee_structure = FEESTRUCTURE.load(deps.storage)?;
     let mut market = MARKETS.load(deps.storage, market_index)?;
     let mut referrer : Option<User> = None;
 
@@ -485,7 +490,7 @@ pub fn fill_order(
         is_oracle_valid = amm::is_oracle_valid(
             &market.amm,
             oracle_price_data,
-            &state.oracle_guard_rails,
+            &oracle_guard_rails,
         )?;
         if is_oracle_valid {
             update_oracle_price_twap(
@@ -537,12 +542,12 @@ pub fn fill_order(
 
     let is_oracle_mark_too_divergent_before = amm::is_oracle_mark_too_divergent(
         oracle_mark_spread_pct_before,
-        &state.oracle_guard_rails,
+        &oracle_guard_rails,
     )?;
 
     let is_oracle_mark_too_divergent_after = amm::is_oracle_mark_too_divergent(
         oracle_mark_spread_pct_after,
-        &state.oracle_guard_rails,
+        &oracle_guard_rails,
     )?;
 
     // if oracle-mark divergence pushed outside limit, block order
@@ -582,7 +587,7 @@ pub fn fill_order(
     let (user_fee, fee_to_market, token_discount, filler_reward, referrer_reward, referee_discount) =
         calculate_fee_for_order(
             quote_asset_amount,
-            &state.fee_structure,
+            &fee_structure,
             &order_state,
             &discount_tier,
             order.ts,

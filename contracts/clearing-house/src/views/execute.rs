@@ -17,6 +17,9 @@ use crate::states::market::LiquidationStatus;
 use crate::states::market::LiquidationType;
 use crate::states::market::{Amm, Market, MARKETS};
 use crate::states::order::OrderState;
+use crate::states::state::FEESTRUCTURE;
+use crate::states::state::ORACLEGUARDRAILS;
+use crate::states::state::ORDERSTATE;
 use crate::states::state::State;
 use crate::states::state::ADMIN;
 use crate::states::state::STATE;
@@ -33,7 +36,7 @@ use ariel::helper::VaultInterface;
 use ariel::types::OraclePriceData;
 use ariel::types::OrderType;
 use ariel::types::{
-    DepositDirection, DiscountTokenTier, FeeStructure, OracleGuardRails, OracleSource, OrderParams,
+    DepositDirection, FeeStructure, OracleGuardRails, OracleSource, OrderParams,
     PositionDirection,
 };
 use cosmwasm_std::to_binary;
@@ -337,6 +340,8 @@ pub fn try_open_position(
     let mut user = USERS.load(deps.storage, &user_address)?;
     let now = env.block.time.seconds();
     let state = STATE.load(deps.storage)?;
+    let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
+    let fee_structure = FEESTRUCTURE.load(deps.storage)?;
 
     if quote_asset_amount == 0 {
         return Err(ContractError::TradeSizeTooSmall.into());
@@ -360,7 +365,7 @@ pub fn try_open_position(
         is_oracle_valid = helpers::amm::is_oracle_valid(
             &market.amm,
             oracle_price_data,
-            &state.oracle_guard_rails,
+            &oracle_guard_rails,
         )?;
         if is_oracle_valid {
             let normalised_oracle_price = helpers::amm::normalise_oracle_price(
@@ -425,7 +430,7 @@ pub fn try_open_position(
     let (user_fee, fee_to_market, token_discount, referrer_reward, referee_discount) =
         helpers::fees::calculate_fee_for_trade(
             quote_asset_amount,
-            &state.fee_structure,
+            &fee_structure,
             discount_token,
             &referrer,
         )?;
@@ -483,11 +488,11 @@ pub fn try_open_position(
 
     let is_oracle_mark_too_divergent_before = helpers::amm::is_oracle_mark_too_divergent(
         oracle_mark_spread_pct_before,
-        &state.oracle_guard_rails,
+        &oracle_guard_rails,
     )?;
     let is_oracle_mark_too_divergent_after = helpers::amm::is_oracle_mark_too_divergent(
         oracle_mark_spread_pct_after,
-        &state.oracle_guard_rails,
+        &oracle_guard_rails,
     )?;
 
     if is_oracle_mark_too_divergent_after && !is_oracle_mark_too_divergent_before && is_oracle_valid
@@ -567,6 +572,8 @@ pub fn try_close_position(
     let mut user = USERS.load(deps.storage, &user_address)?;
     let now = env.block.time.seconds();
     let state = STATE.load(deps.storage)?;
+    let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
+    let fee_structure = FEESTRUCTURE.load(deps.storage)?;
     controller::funding::settle_funding_payment(&mut deps, &user_address, now)?;
 
     let position_index = market_index.clone();
@@ -598,7 +605,7 @@ pub fn try_close_position(
     let (user_fee, fee_to_market, token_discount, referrer_reward, referee_discount) =
         helpers::fees::calculate_fee_for_trade(
             quote_asset_amount,
-            &state.fee_structure,
+            &fee_structure,
             discount_token,
             &referrer,
         )?;
@@ -653,7 +660,7 @@ pub fn try_close_position(
     let oracle_price_after = oracle_price_data.price;
 
     let is_oracle_valid =
-        helpers::amm::is_oracle_valid(&market.amm, &oracle_price_data, &state.oracle_guard_rails)?;
+        helpers::amm::is_oracle_valid(&market.amm, &oracle_price_data, &oracle_guard_rails)?;
     if is_oracle_valid {
         let normalised_oracle_price = helpers::amm::normalise_oracle_price(
             &market.amm,
@@ -670,11 +677,11 @@ pub fn try_close_position(
 
     let is_oracle_mark_too_divergent_before = helpers::amm::is_oracle_mark_too_divergent(
         oracle_mark_spread_pct_before,
-        &state.oracle_guard_rails,
+        &oracle_guard_rails,
     )?;
     let is_oracle_mark_too_divergent_after = helpers::amm::is_oracle_mark_too_divergent(
         oracle_mark_spread_pct_after,
-        &state.oracle_guard_rails,
+        &oracle_guard_rails,
     )?;
 
     if (is_oracle_mark_too_divergent_after && !is_oracle_mark_too_divergent_before)
@@ -825,6 +832,7 @@ pub fn try_liquidate(
     market_index: u64,
 ) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
+    let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
     let user_address = addr_validate_to_lower(deps.api, &user)?;
     let now = env.block.time.seconds();
     let mut user = USERS.load(deps.storage, &user_address)?;
@@ -844,7 +852,7 @@ pub fn try_liquidate(
     } = controller::margin::calculate_liquidation_status(
         &mut deps,
         &user_address,
-        &state.oracle_guard_rails,
+        &oracle_guard_rails,
         &state.oracle,
     )?;
 
@@ -941,7 +949,6 @@ pub fn try_liquidate(
                     .ok_or_else(|| (ContractError::MathError))?
             };
 
-            let oracle_guard_rails = state.oracle_guard_rails.clone();
             let oracle_mark_too_divergent_after_close = helpers::amm::is_oracle_mark_too_divergent(
                 oracle_mark_divergence_after_close,
                 &oracle_guard_rails,
@@ -1156,7 +1163,7 @@ pub fn try_liquidate(
             let oracle_mark_too_divergent_after_reduce =
                 helpers::amm::is_oracle_mark_too_divergent(
                     oracle_mark_divergence_after_reduce,
-                    &state.oracle_guard_rails,
+                    &oracle_guard_rails,
                 )?;
 
             // if reducing pushes outside the oracle mark threshold, don't liquidate
@@ -1579,10 +1586,11 @@ pub fn try_reset_amm_oracle_twap(
     let now = env.block.time.seconds();
     let mut market = MARKETS.load(deps.storage, market_index)?;
     let state = STATE.load(deps.storage)?;
+    let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
     let oracle_price_data = market.amm.get_oracle_price()?;
 
     let is_oracle_valid =
-        helpers::amm::is_oracle_valid(&market.amm, &oracle_price_data, &state.oracle_guard_rails)?;
+        helpers::amm::is_oracle_valid(&market.amm, &oracle_price_data, &oracle_guard_rails)?;
 
     if !is_oracle_valid {
         market.amm.last_oracle_price_twap = cast_to_i128(market.amm.last_mark_price_twap)?;
@@ -1868,10 +1876,18 @@ pub fn try_update_fee(
     fee_numerator: u128,
     fee_denominator: u128,
 
-    first_tier: DiscountTokenTier,
-    second_tier: DiscountTokenTier,
-    third_tier: DiscountTokenTier,
-    fourth_tier: DiscountTokenTier,
+    first_tier_minimum_balance: u64,
+    first_tier_discount_numerator: u128,
+    first_tier_discount_denominator: u128,
+    second_tier_minimum_balance: u64,
+    second_tier_discount_numerator: u128,
+    second_tier_discount_denominator: u128,
+    third_tier_minimum_balance: u64,
+    third_tier_discount_numerator: u128,
+    third_tier_discount_denominator: u128,
+    fourth_tier_minimum_balance: u64,
+    fourth_tier_discount_numerator: u128,
+    fourth_tier_discount_denominator: u128,
 
     referrer_reward_numerator: u128,
     referrer_reward_denominator: u128,
@@ -1882,18 +1898,25 @@ pub fn try_update_fee(
     let fee_structure = FeeStructure {
         fee_numerator,
         fee_denominator,
-        first_tier,
-        second_tier,
-        third_tier,
-        fourth_tier,
+        first_tier_minimum_balance,
+        first_tier_discount_numerator,
+        first_tier_discount_denominator,
+        second_tier_minimum_balance,
+        second_tier_discount_numerator,
+        second_tier_discount_denominator,
+        third_tier_minimum_balance,
+        third_tier_discount_numerator,
+        third_tier_discount_denominator,
+        fourth_tier_minimum_balance,
+        fourth_tier_discount_numerator,
+        fourth_tier_discount_denominator,
         referrer_reward_numerator,
         referrer_reward_denominator,
         referee_discount_numerator,
         referee_discount_denominator,
     };
-    STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        state.fee_structure = fee_structure;
-        Ok(state)
+    FEESTRUCTURE.update(deps.storage, |mut f| -> Result<FeeStructure, ContractError> {
+        Ok(fee_structure)
     })?;
     Ok(Response::new().add_attribute("method", "try_update_fee"))
 }
@@ -1913,12 +1936,12 @@ pub fn try_update_order_state_structure(
         reward_denominator,
         time_based_reward_lower_bound,
     };
-    STATE.update(deps.storage, |mut s| -> Result<State, ContractError> {
-        s.orderstate = order_state;
-        Ok(s)
+    ORDERSTATE.update(deps.storage, |mut s| -> Result<OrderState, ContractError> {
+        Ok(order_state)
     })?;
     Ok(Response::new().add_attribute("method", "try_update_order_filler_reward_structure"))
 }
+
 pub fn try_update_market_oracle(
     deps: DepsMut,
     info: MessageInfo,
@@ -1957,9 +1980,8 @@ pub fn try_update_oracle_guard_rails(
         confidence_interval_max_size,
         too_volatile_ratio,
     };
-    STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        state.oracle_guard_rails = oracle_gr;
-        Ok(state)
+    ORACLEGUARDRAILS.update(deps.storage, |mut o| -> Result<OracleGuardRails, ContractError> {
+        Ok(oracle_gr)
     })?;
 
     Ok(Response::new().add_attribute("method", "try_update_oracle_guard_rails"))

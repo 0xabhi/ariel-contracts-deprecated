@@ -30,10 +30,10 @@ pub struct State {
     pub full_liquidation_liquidator_share_denominator: u64,
     pub max_deposit: u128,
     pub markets_length: u64,
-    pub fee_structure: FeeStructure,
-    pub oracle_guard_rails: OracleGuardRails,
-    pub orderstate : OrderState,
 }
 
 pub const STATE: Item<State> = Item::new("state");
 pub const ADMIN: Admin = Admin::new("admin");
+pub const FEESTRUCTURE: Item<FeeStructure> = Item::new("fee_structure");
+pub const ORACLEGUARDRAILS: Item<OracleGuardRails> = Item::new("oracle_guard_rails");
+pub const ORDERSTATE: Item<OrderState> = Item::new("order_state");

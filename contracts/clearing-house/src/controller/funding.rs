@@ -11,7 +11,7 @@ use crate::states::funding_history::{
     FUNDING_RATE_HISTORY, FUNDING_RATE_HISTORY_INFO, FundingRateInfo, FundingRateRecord,
 };
 use crate::states::market::{Market, MARKETS};
-use crate::states::state::STATE;
+use crate::states::state::ORACLEGUARDRAILS;
 use crate::states::user::{Position, POSITIONS, User, USERS};
 
 use crate::helpers::casting::{cast, cast_to_i128, cast_to_i64};
@@ -118,7 +118,7 @@ pub fn update_funding_rate(
     precomputed_mark_price: Option<u128>,
 ) -> Result<(), ContractError> {
     let mut market = MARKETS.load(deps.storage, market_index)?;
-    let guard_rails = STATE.load(deps.storage)?.oracle_guard_rails;
+    let guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
     let price_oracle = market.amm.oracle.clone();
 
     let time_since_last_update = now

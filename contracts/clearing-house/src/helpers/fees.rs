@@ -9,7 +9,7 @@ use crate::helpers::casting::cast_to_u128;
 
 use num_integer::Roots;
 
-use ariel::types::{FeeStructure, DiscountTokenTier, OrderDiscountTier};
+use ariel::types::{FeeStructure, OrderDiscountTier};
 
 pub fn calculate_fee_for_trade(
     quote_asset_amount: u128,
@@ -23,7 +23,7 @@ pub fn calculate_fee_for_trade(
         .checked_div(fee_structure.fee_denominator)
         .ok_or_else(|| (ContractError::MathError))?;
 
-    let token_discount = calculate_token_discount(fee, fee_structure, discount_token_amt);
+        let token_discount = calculate_token_discount(fee, fee_structure, discount_token_amt);
 
     let (referrer_reward, referee_discount) =
         calculate_referral_reward_and_referee_discount(fee, fee_structure, referrer)?;
@@ -57,50 +57,53 @@ fn calculate_token_discount(
     }
 
     if let Some(discount) =
-        calculate_token_discount_for_tier(fee, &fee_structure.first_tier, discount_token_amt)
+        calculate_token_discount_for_tier(fee, fee_structure.first_tier_minimum_balance, fee_structure.first_tier_discount_numerator, fee_structure.first_tier_discount_denominator, discount_token_amt)
     {
         return discount;
     }
 
     if let Some(discount) =
-        calculate_token_discount_for_tier(fee, &fee_structure.second_tier, discount_token_amt)
+        calculate_token_discount_for_tier(fee, fee_structure.second_tier_minimum_balance, fee_structure.second_tier_discount_numerator, fee_structure.second_tier_discount_denominator, discount_token_amt)
     {
         return discount;
     }
 
     if let Some(discount) =
-        calculate_token_discount_for_tier(fee, &fee_structure.third_tier, discount_token_amt)
+        calculate_token_discount_for_tier(fee, fee_structure.third_tier_minimum_balance, fee_structure.third_tier_discount_numerator, fee_structure.third_tier_discount_denominator, discount_token_amt)
     {
         return discount;
     }
 
     if let Some(discount) =
-        calculate_token_discount_for_tier(fee, &fee_structure.fourth_tier, discount_token_amt)
+        calculate_token_discount_for_tier(fee, fee_structure.fourth_tier_minimum_balance, fee_structure.fourth_tier_discount_numerator, fee_structure.fourth_tier_discount_denominator, discount_token_amt)
     {
         return discount;
     }
+
 
     return 0;
 }
 
 fn calculate_token_discount_for_tier(
     fee: u128,
-    tier: &DiscountTokenTier,
+    tier_minimum_balance: u64,
+    discount_numerator:u128,
+    discount_denominator: u128,
     discount_token_amt: u128,
 ) -> Option<u128> {
-    if belongs_to_tier(tier, discount_token_amt) {
-        return try_calculate_token_discount_for_tier(fee, tier);
+    if belongs_to_tier(tier_minimum_balance, discount_token_amt) {
+        return try_calculate_token_discount_for_tier(fee, discount_numerator, discount_denominator);
     }
     None
 }
 
-fn try_calculate_token_discount_for_tier(fee: u128, tier: &DiscountTokenTier) -> Option<u128> {
-    fee.checked_mul(tier.discount_numerator)?
-        .checked_div(tier.discount_denominator)
+fn try_calculate_token_discount_for_tier(fee: u128, discount_numerator:u128, discount_denominator:u128 ) -> Option<u128> {
+    fee.checked_mul(discount_numerator)?
+        .checked_div(discount_denominator)
 }
 
-fn belongs_to_tier(tier: &DiscountTokenTier, discount_token_amt: u128) -> bool {
-    discount_token_amt >= tier.minimum_balance as u128
+fn belongs_to_tier(tier_minimum_balance: u64, discount_token_amt: u128) -> bool {
+    discount_token_amt >= tier_minimum_balance as u128
 }
 
 fn calculate_referral_reward_and_referee_discount(
@@ -137,28 +140,28 @@ pub fn calculate_order_fee_tier(
     }
 
     if belongs_to_tier(
-        &fee_structure.first_tier,
+        fee_structure.first_tier_minimum_balance,
         discount_token_amt,
     ) {
         return Ok(OrderDiscountTier::First);
     }
 
     if belongs_to_tier(
-        &fee_structure.second_tier,
+        fee_structure.second_tier_minimum_balance,
         discount_token_amt,
     ) {
         return Ok(OrderDiscountTier::Second);
     }
 
     if belongs_to_tier(
-        &fee_structure.third_tier,
+        fee_structure.third_tier_minimum_balance,
         discount_token_amt,
     ) {
         return Ok(OrderDiscountTier::Third);
     }
 
     if belongs_to_tier(
-        &fee_structure.fourth_tier,
+        fee_structure.fourth_tier_minimum_balance,
         discount_token_amt,
     ) {
         return Ok(OrderDiscountTier::Fourth);
@@ -239,19 +242,19 @@ fn calculate_token_discount_for_limit_order(
     match order_discount_tier {
         OrderDiscountTier::None => Ok(0),
         OrderDiscountTier::First => {
-            try_calculate_token_discount_for_tier(fee, &fee_structure.first_tier)
+            try_calculate_token_discount_for_tier(fee, fee_structure.first_tier_discount_numerator, fee_structure.first_tier_discount_denominator)
                 .ok_or_else(|| (ContractError::MathError))
         }
         OrderDiscountTier::Second => {
-            try_calculate_token_discount_for_tier(fee, &fee_structure.second_tier)
+            try_calculate_token_discount_for_tier(fee, fee_structure.second_tier_discount_numerator, fee_structure.second_tier_discount_denominator)
                 .ok_or_else(|| (ContractError::MathError))
         }
         OrderDiscountTier::Third => {
-            try_calculate_token_discount_for_tier(fee, &fee_structure.third_tier)
+            try_calculate_token_discount_for_tier(fee, fee_structure.third_tier_discount_numerator, fee_structure.third_tier_discount_denominator)
                 .ok_or_else(|| (ContractError::MathError))
         }
         OrderDiscountTier::Fourth => {
-            try_calculate_token_discount_for_tier(fee, &fee_structure.fourth_tier)
+            try_calculate_token_discount_for_tier(fee, fee_structure.fourth_tier_discount_numerator, fee_structure.fourth_tier_discount_denominator)
                 .ok_or_else(|| (ContractError::MathError))
         }
     }

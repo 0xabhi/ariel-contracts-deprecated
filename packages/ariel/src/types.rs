@@ -142,22 +142,27 @@ pub struct FeeStructure {
     pub fee_numerator: u128,
     pub fee_denominator: u128,
 
-    pub first_tier: DiscountTokenTier,
-    pub second_tier: DiscountTokenTier,
-    pub third_tier: DiscountTokenTier,
-    pub fourth_tier: DiscountTokenTier,
+    pub first_tier_minimum_balance: u64,
+    pub first_tier_discount_numerator: u128,
+    pub first_tier_discount_denominator: u128,
+
+    pub second_tier_minimum_balance: u64,
+    pub second_tier_discount_numerator: u128,
+    pub second_tier_discount_denominator: u128,
+
+    pub third_tier_minimum_balance: u64,
+    pub third_tier_discount_numerator: u128,
+    pub third_tier_discount_denominator: u128,
+
+    pub fourth_tier_minimum_balance: u64,
+    pub fourth_tier_discount_numerator: u128,
+    pub fourth_tier_discount_denominator: u128,
+
 
     pub referrer_reward_numerator: u128,
     pub referrer_reward_denominator: u128,
     pub referee_discount_numerator: u128,
     pub referee_discount_denominator: u128,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct DiscountTokenTier {
-    pub minimum_balance: u64,
-    pub discount_numerator: u128,
-    pub discount_denominator: u128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

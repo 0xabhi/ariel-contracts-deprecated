@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{DiscountTokenTier, OracleSource, OrderParams, PositionDirection};
+use crate::types::{OracleSource, OrderParams, PositionDirection};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -133,10 +133,18 @@ pub enum ExecuteMsg {
     UpdateFee {
         fee_numerator: u128,
         fee_denominator: u128,
-        first_tier: DiscountTokenTier,
-        second_tier: DiscountTokenTier,
-        third_tier: DiscountTokenTier,
-        fourth_tier: DiscountTokenTier,
+        first_tier_minimum_balance: u64,
+        first_tier_discount_numerator: u128,
+        first_tier_discount_denominator: u128,
+        second_tier_minimum_balance: u64,
+        second_tier_discount_numerator: u128,
+        second_tier_discount_denominator: u128,
+        third_tier_minimum_balance: u64,
+        third_tier_discount_numerator: u128,
+        third_tier_discount_denominator: u128,
+        fourth_tier_minimum_balance: u64,
+        fourth_tier_discount_numerator: u128,
+        fourth_tier_discount_denominator: u128,
         referrer_reward_numerator: u128,
         referrer_reward_denominator: u128,
         referee_discount_numerator: u128,

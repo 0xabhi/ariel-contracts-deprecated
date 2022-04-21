@@ -8,13 +8,13 @@ use cw_utils::maybe_addr;
 
 use crate::helpers::constants::*;
 use crate::states::order::OrderState;
-use crate::states::state::{State, ADMIN, STATE};
+use crate::states::state::{State, ADMIN, STATE, FEESTRUCTURE, ORDERSTATE, ORACLEGUARDRAILS};
 
 use ariel::execute::{ExecuteMsg, InstantiateMsg};
 use ariel::helper::addr_validate_to_lower;
 use ariel::queries::QueryMsg;
 
-use ariel::types::{DiscountTokenTier, FeeStructure, OracleGuardRails};
+use ariel::types::{FeeStructure, OracleGuardRails};
 
 use crate::error::ContractError;
 
@@ -26,7 +26,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    mut deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -35,27 +35,24 @@ pub fn instantiate(
     let fs = FeeStructure {
         fee_numerator: DEFAULT_FEE_NUMERATOR,
         fee_denominator: DEFAULT_FEE_DENOMINATOR,
-        first_tier: DiscountTokenTier {
-            minimum_balance: DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_MINIMUM_BALANCE,
-            discount_numerator: DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_DISCOUNT_NUMERATOR,
-            discount_denominator: DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_DISCOUNT_DENOMINATOR,
-        },
 
-        second_tier: DiscountTokenTier {
-            minimum_balance: DEFAULT_DISCOUNT_TOKEN_SECOND_TIER_MINIMUM_BALANCE,
-            discount_numerator: DEFAULT_DISCOUNT_TOKEN_SECOND_TIER_DISCOUNT_NUMERATOR,
-            discount_denominator: DEFAULT_DISCOUNT_TOKEN_SECOND_TIER_DISCOUNT_DENOMINATOR,
-        },
-        third_tier: DiscountTokenTier {
-            minimum_balance: DEFAULT_DISCOUNT_TOKEN_THIRD_TIER_MINIMUM_BALANCE,
-            discount_numerator: DEFAULT_DISCOUNT_TOKEN_THIRD_TIER_DISCOUNT_NUMERATOR,
-            discount_denominator: DEFAULT_DISCOUNT_TOKEN_THIRD_TIER_DISCOUNT_DENOMINATOR,
-        },
-        fourth_tier: DiscountTokenTier {
-            minimum_balance: DEFAULT_DISCOUNT_TOKEN_FOURTH_TIER_MINIMUM_BALANCE,
-            discount_numerator: DEFAULT_DISCOUNT_TOKEN_FOURTH_TIER_DISCOUNT_NUMERATOR,
-            discount_denominator: DEFAULT_DISCOUNT_TOKEN_FOURTH_TIER_DISCOUNT_DENOMINATOR,
-        },
+
+        first_tier_minimum_balance: DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_MINIMUM_BALANCE,
+        first_tier_discount_numerator: DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_DISCOUNT_NUMERATOR,
+        first_tier_discount_denominator: DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_DISCOUNT_DENOMINATOR,
+    
+        second_tier_minimum_balance: DEFAULT_DISCOUNT_TOKEN_SECOND_TIER_MINIMUM_BALANCE,
+        second_tier_discount_numerator: DEFAULT_DISCOUNT_TOKEN_SECOND_TIER_DISCOUNT_NUMERATOR,
+        second_tier_discount_denominator: DEFAULT_DISCOUNT_TOKEN_SECOND_TIER_DISCOUNT_DENOMINATOR,
+    
+        third_tier_minimum_balance: DEFAULT_DISCOUNT_TOKEN_THIRD_TIER_MINIMUM_BALANCE,
+        third_tier_discount_numerator: DEFAULT_DISCOUNT_TOKEN_THIRD_TIER_DISCOUNT_NUMERATOR,
+        third_tier_discount_denominator: DEFAULT_DISCOUNT_TOKEN_THIRD_TIER_DISCOUNT_DENOMINATOR,
+    
+        fourth_tier_minimum_balance: DEFAULT_DISCOUNT_TOKEN_FOURTH_TIER_MINIMUM_BALANCE,
+        fourth_tier_discount_numerator: DEFAULT_DISCOUNT_TOKEN_FOURTH_TIER_DISCOUNT_NUMERATOR,
+        fourth_tier_discount_denominator: DEFAULT_DISCOUNT_TOKEN_FOURTH_TIER_DISCOUNT_DENOMINATOR,
+
         referrer_reward_numerator: DEFAULT_REFERRER_REWARD_NUMERATOR,
         referrer_reward_denominator: DEFAULT_REFERRER_REWARD_DENOMINATOR,
         referee_discount_numerator: DEFAULT_REFEREE_DISCOUNT_NUMERATOR,
@@ -94,14 +91,17 @@ pub fn instantiate(
         partial_liquidation_liquidator_share_denominator: 25u64,
         full_liquidation_liquidator_share_denominator: 2000u64,
         max_deposit: 0u128,
-        fee_structure: fs,
-        oracle_guard_rails: oracle_gr,
         markets_length: 0u64,
-        orderstate,
     };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    // ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
     STATE.save(deps.storage, &state)?;
-    ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
+    // STATE.load(deps.storage)?;
+
+    FEESTRUCTURE.save(deps.storage, &fs)?;
+    ORACLEGUARDRAILS.save(deps.storage, &oracle_gr)?;
+    ORDERSTATE.save(deps.storage, &orderstate)?;
+
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("owner", info.sender.clone()))
@@ -246,10 +246,18 @@ pub fn execute(
         ExecuteMsg::UpdateFee {
             fee_numerator,
             fee_denominator,
-            first_tier,
-            second_tier,
-            third_tier,
-            fourth_tier,
+            first_tier_minimum_balance,
+            first_tier_discount_numerator,
+            first_tier_discount_denominator,
+            second_tier_minimum_balance,
+            second_tier_discount_numerator,
+            second_tier_discount_denominator,
+            third_tier_minimum_balance,
+            third_tier_discount_numerator,
+            third_tier_discount_denominator,
+            fourth_tier_minimum_balance,
+            fourth_tier_discount_numerator,
+            fourth_tier_discount_denominator,
             referrer_reward_numerator,
             referrer_reward_denominator,
             referee_discount_numerator,
@@ -259,10 +267,18 @@ pub fn execute(
             info,
             fee_numerator,
             fee_denominator,
-            first_tier,
-            second_tier,
-            third_tier,
-            fourth_tier,
+            first_tier_minimum_balance,
+            first_tier_discount_numerator,
+            first_tier_discount_denominator,
+            second_tier_minimum_balance,
+            second_tier_discount_numerator,
+            second_tier_discount_denominator,
+            third_tier_minimum_balance,
+            third_tier_discount_numerator,
+            third_tier_discount_denominator,
+            fourth_tier_minimum_balance,
+            fourth_tier_discount_numerator,
+            fourth_tier_discount_denominator,
             referrer_reward_numerator,
             referrer_reward_denominator,
             referee_discount_numerator,
@@ -447,11 +463,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
 
 
 fn get_market_length2(deps: Deps) -> Result<MarketLengthResponse, ContractError> {
-    let state = STATE.load(deps.storage)?;
+    let k = STATE.load(deps.storage)?;
     // let length = MarketLengthResponse {
     //     length: state.markets_length,
     // };
     Ok(MarketLengthResponse {
-        length: state.markets_length
+        length: k.markets_length
     })
 }

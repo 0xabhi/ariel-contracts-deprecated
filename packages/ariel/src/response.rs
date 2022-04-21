@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{DepositDirection, DiscountTokenTier, OracleSource, PositionDirection};
+use crate::types::{DepositDirection, OracleSource, PositionDirection};
 
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -117,11 +117,18 @@ pub struct MarketLengthResponse {
 pub struct FeeStructureResponse {
     pub fee_numerator: u128,
     pub fee_denominator: u128,
-    pub first_tier: DiscountTokenTier,
-    pub second_tier: DiscountTokenTier,
-    pub third_tier: DiscountTokenTier,
-    pub fourth_tier: DiscountTokenTier,
-
+    pub first_tier_minimum_balance: u64,
+    pub first_tier_discount_numerator: u128,
+    pub first_tier_discount_denominator: u128,
+    pub second_tier_minimum_balance: u64,
+    pub second_tier_discount_numerator: u128,
+    pub second_tier_discount_denominator: u128,
+    pub third_tier_minimum_balance: u64,
+    pub third_tier_discount_numerator: u128,
+    pub third_tier_discount_denominator: u128,
+    pub fourth_tier_minimum_balance: u64,
+    pub fourth_tier_discount_numerator: u128,
+    pub fourth_tier_discount_denominator: u128,
     pub referrer_reward_numerator: u128,
     pub referrer_reward_denominator: u128,
     pub referee_discount_numerator: u128,

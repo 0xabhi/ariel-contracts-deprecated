@@ -71,6 +71,13 @@ impl Amm {
         //     OracleSource::Oracle => self.fetch_oracle_price(),
         //     // OracleSource::Bank => self.fetch_bank_price(deps),
         // }
+        // deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        //     contract_addr: self.oracle.to_string(),
+        //     msg: to_binary(&OracleQueryMsg::Price {
+        //         asset_token: base_asset,
+        //         timeframe,
+        //     })?,
+        // }))?;
         Ok(OraclePriceData {
             price: self.last_oracle_price,
             confidence: 100,

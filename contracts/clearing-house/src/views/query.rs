@@ -17,7 +17,7 @@ use crate::ContractError;
 use crate::states::curve_history::*;
 use crate::states::liquidation_history::{LIQUIDATION_HISTORY, LIQUIDATION_HISTORY_INFO};
 use crate::states::market::{LiquidationStatus, LiquidationType, MarketStatus, MARKETS};
-use crate::states::state::{ADMIN, STATE};
+use crate::states::state::{ADMIN, STATE, State, ORACLEGUARDRAILS, ORDERSTATE, FEESTRUCTURE};
 use crate::states::trade_history::{TRADE_HISTORY, TRADE_HISTORY_INFO};
 use crate::states::user::{POSITIONS, USERS};
 use crate::states::{deposit_history::*, funding_history::*};
@@ -199,46 +199,54 @@ pub fn get_market_length(deps: Deps) -> Result<MarketLengthResponse, ContractErr
 }
 
 pub fn get_oracle_guard_rails(deps: Deps) -> Result<OracleGuardRailsResponse, ContractError> {
-    let state = STATE.load(deps.storage)?;
+    let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
     let ogr = OracleGuardRailsResponse {
-        use_for_liquidations: state.oracle_guard_rails.use_for_liquidations,
-        mark_oracle_divergence_numerator: state.oracle_guard_rails.mark_oracle_divergence_numerator,
-        mark_oracle_divergence_denominator: state
-            .oracle_guard_rails
+        use_for_liquidations: oracle_guard_rails.use_for_liquidations,
+        mark_oracle_divergence_numerator: oracle_guard_rails.mark_oracle_divergence_numerator,
+        mark_oracle_divergence_denominator: 
+            oracle_guard_rails
             .mark_oracle_divergence_denominator,
-        slots_before_stale: state.oracle_guard_rails.slots_before_stale,
-        confidence_interval_max_size: state.oracle_guard_rails.confidence_interval_max_size,
-        too_volatile_ratio: state.oracle_guard_rails.too_volatile_ratio,
+        slots_before_stale: oracle_guard_rails.slots_before_stale,
+        confidence_interval_max_size: oracle_guard_rails.confidence_interval_max_size,
+        too_volatile_ratio: oracle_guard_rails.too_volatile_ratio,
     };
     Ok(ogr)
 }
 
 pub fn get_order_state(deps: Deps) -> Result<OrderStateResponse, ContractError> {
-    let state = STATE.load(deps.storage)?;
+    let orderstate = ORDERSTATE.load(deps.storage)?;
     let os = OrderStateResponse {
-        min_order_quote_asset_amount: state.orderstate.min_order_quote_asset_amount,
-        reward_numerator: state.orderstate.reward_numerator,
-        reward_denominator: state.orderstate.reward_denominator,
-        time_based_reward_lower_bound: state.orderstate.time_based_reward_lower_bound,
+        min_order_quote_asset_amount: orderstate.min_order_quote_asset_amount,
+        reward_numerator: orderstate.reward_numerator,
+        reward_denominator: orderstate.reward_denominator,
+        time_based_reward_lower_bound: orderstate.time_based_reward_lower_bound,
     };
     Ok(os)
 }
 
 pub fn get_fee_structure(deps: Deps) -> Result<FeeStructureResponse, ContractError> {
-    let fs = STATE.load(deps.storage)?;
-    let fee_structure = FeeStructureResponse {
-        fee_numerator: fs.fee_structure.fee_numerator,
-        fee_denominator: fs.fee_structure.fee_denominator,
-        first_tier: fs.fee_structure.first_tier,
-        second_tier: fs.fee_structure.second_tier,
-        third_tier: fs.fee_structure.third_tier,
-        fourth_tier: fs.fee_structure.fourth_tier,
-        referrer_reward_numerator: fs.fee_structure.referrer_reward_numerator,
-        referrer_reward_denominator: fs.fee_structure.referrer_reward_denominator,
-        referee_discount_numerator: fs.fee_structure.referee_discount_numerator,
-        referee_discount_denominator: fs.fee_structure.referee_discount_denominator,
+    let fs = FEESTRUCTURE.load(deps.storage)?;
+    let res = FeeStructureResponse {
+        fee_numerator: fs.fee_numerator,
+        fee_denominator: fs.fee_denominator,
+        first_tier_minimum_balance: fs.first_tier_minimum_balance,
+        first_tier_discount_numerator: fs.first_tier_discount_numerator,
+        first_tier_discount_denominator: fs.first_tier_discount_denominator,
+        second_tier_minimum_balance: fs.second_tier_minimum_balance,
+        second_tier_discount_numerator: fs.second_tier_discount_numerator,
+        second_tier_discount_denominator: fs.second_tier_discount_denominator,
+        third_tier_minimum_balance: fs.third_tier_minimum_balance,
+        third_tier_discount_numerator: fs.third_tier_discount_numerator,
+        third_tier_discount_denominator: fs.third_tier_discount_denominator,
+        fourth_tier_minimum_balance: fs.fourth_tier_minimum_balance,
+        fourth_tier_discount_numerator: fs.fourth_tier_discount_numerator,
+        fourth_tier_discount_denominator: fs.fourth_tier_discount_denominator,
+        referrer_reward_numerator: fs.referrer_reward_numerator,
+        referrer_reward_denominator: fs.referrer_reward_denominator,
+        referee_discount_numerator: fs.referee_discount_numerator,
+        referee_discount_denominator: fs.referee_discount_denominator,
     };
-    Ok(fee_structure)
+    Ok(res)
 }
 
 pub fn get_curve_history_length(deps: Deps) -> Result<CurveHistoryLengthResponse, ContractError> {
@@ -560,6 +568,7 @@ pub fn get_active_positions(
 ) -> Result<Vec<PositionResponse>, ContractError> {
     let user_addr = addr_validate_to_lower(deps.api, user_address.as_str())?;
     let user = USERS.load(deps.storage, &user_addr)?;
+    
     let mut active_positions: Vec<UserPositionResponse> = vec![];
     if user.positions_length > 0 {
         let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
@@ -596,9 +605,9 @@ pub fn get_active_positions(
         .ok_or_else(|| (ContractError::MathError))?;
 
         let entry_notional = position.quote_asset_amount;
-        let state = STATE.load(deps.storage)?;
+        let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
         let liq_status =
-            calculate_liquidation_status(&deps, &user_addr, &state.oracle_guard_rails).unwrap();
+            calculate_liquidation_status(&deps, &user_addr, &oracle_guard_rails).unwrap();
         let pr = PositionResponse {
             market_index,
             direction,

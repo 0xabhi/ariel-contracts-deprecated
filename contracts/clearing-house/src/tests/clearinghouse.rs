@@ -34,9 +34,9 @@ pub fn test_initialize_state() {
     let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(0, res.messages.len());
 
-    let res = query(deps.as_ref(), mock_env(), QueryMsg::GetAdmin {}).unwrap();
-    let value: AdminResponse = from_binary(&res).unwrap();
-    assert_eq!(String::from(ADMIN_ACCOUNT), value.admin);
+    // let res = query(deps.as_ref(), mock_env(), QueryMsg::GetAdmin {}).unwrap();
+    // let value: AdminResponse = from_binary(&res).unwrap();
+    // assert_eq!(String::from(ADMIN_ACCOUNT), value.admin);
     //query market_length
     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetMarketLength {});
     match res {
@@ -122,6 +122,6 @@ pub fn test_initialize_state() {
     assert_eq!(DEFAULT_FEE_NUMERATOR, value.fee_numerator);
     assert_eq!(
         DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_MINIMUM_BALANCE,
-        value.first_tier.minimum_balance
+        value.first_tier_minimum_balance
     );
 }
