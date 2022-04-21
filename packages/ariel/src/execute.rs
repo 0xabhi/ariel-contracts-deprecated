@@ -30,6 +30,7 @@ pub enum ExecuteMsg {
     //deposit collateral, updates user struct
     DepositCollateral {
         amount: u64,
+        referrer: Option<String>
     },
     //user function withdraw collateral, updates user struct
     WithdrawCollateral {

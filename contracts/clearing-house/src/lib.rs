@@ -5,7 +5,7 @@ pub mod controller;
 pub mod helpers;
 pub mod views;
 
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;
 
 pub use crate::error::ContractError;

@@ -141,11 +141,18 @@ pub fn try_deposit_collateral(
     env: Env,
     info: MessageInfo,
     amount: u64,
+    referrer: Option<String>
 ) -> Result<Response, ContractError> {
     let user_address = info.sender.clone();
     let mut user = USERS.load(deps.storage, &user_address)?;
     let now = env.block.time.seconds();
-
+    let reff = addr_validate_to_lower(deps.api, &referrer.clone().unwrap().to_string())?;
+    if user.cumulative_deposits == 0 {
+        if referrer.is_some() {
+            user.referrer = Some(reff);
+        }
+    }
+    
     if amount == 0 {
         return Err(ContractError::InsufficientDeposit.into());
     }

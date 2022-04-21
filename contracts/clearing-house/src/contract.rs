@@ -1,3 +1,4 @@
+use ariel::response::MarketLengthResponse;
 use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
 };
@@ -25,7 +26,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -81,29 +82,29 @@ pub fn instantiate(
         collateral_vault: addr_validate_to_lower(deps.api, &msg.collateral_vault).unwrap(),
         insurance_vault: addr_validate_to_lower(deps.api, &msg.insurance_vault).unwrap(),
         oracle: addr_validate_to_lower(deps.api, &msg.oracle)?,
-        margin_ratio_initial: 2000,
-        margin_ratio_maintenance: 500,
-        margin_ratio_partial: 625,
-        partial_liquidation_close_percentage_numerator: 25,
-        partial_liquidation_close_percentage_denominator: 100,
-        partial_liquidation_penalty_percentage_numerator: 25,
-        partial_liquidation_penalty_percentage_denominator: 100,
-        full_liquidation_penalty_percentage_numerator: 1,
-        full_liquidation_penalty_percentage_denominator: 1,
-        partial_liquidation_liquidator_share_denominator: 2,
-        full_liquidation_liquidator_share_denominator: 20,
-        max_deposit: 0,
+        margin_ratio_initial: 2000u128,
+        margin_ratio_maintenance: 500u128,
+        margin_ratio_partial: 625u128,
+        partial_liquidation_close_percentage_numerator: 25u128,
+        partial_liquidation_close_percentage_denominator: 100u128,
+        partial_liquidation_penalty_percentage_numerator: 25u128,
+        partial_liquidation_penalty_percentage_denominator: 100u128,
+        full_liquidation_penalty_percentage_numerator: 1u128,
+        full_liquidation_penalty_percentage_denominator: 1u128,
+        partial_liquidation_liquidator_share_denominator: 25u64,
+        full_liquidation_liquidator_share_denominator: 2000u64,
+        max_deposit: 0u128,
         fee_structure: fs,
         oracle_guard_rails: oracle_gr,
-        markets_length: 0,
+        markets_length: 0u64,
         orderstate,
     };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     STATE.save(deps.storage, &state)?;
-    ADMIN.set(deps, Some(info.sender.clone()))?;
+    ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", info.sender))
+        .add_attribute("owner", info.sender.clone()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -141,8 +142,8 @@ pub fn execute(
             margin_ratio_partial,
             margin_ratio_maintenance,
         ),
-        ExecuteMsg::DepositCollateral { amount } => {
-            try_deposit_collateral(deps, _env, info, amount)
+        ExecuteMsg::DepositCollateral { amount, referrer } => {
+            try_deposit_collateral(deps, _env, info, amount, referrer)
         }
         ExecuteMsg::WithdrawCollateral { amount } => {
             try_withdraw_collateral(deps, _env, info, amount)
@@ -382,7 +383,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         }
         QueryMsg::GetMaxDepositLimit {} => Ok(to_binary(&get_max_deposit_limit(deps)?)?),
         QueryMsg::GetOracle {} => Ok(to_binary(&get_oracle_address(deps)?)?),
-        QueryMsg::GetMarketLength {} => Ok(to_binary(&get_market_length(deps)?)?),
+        QueryMsg::GetMarketLength {} => Ok(to_binary(&get_market_length2(deps)?)?),
         QueryMsg::GetOracleGuardRails {} => Ok(to_binary(&get_oracle_guard_rails(deps)?)?),
         QueryMsg::GetOrderState {} => Ok(to_binary(&get_order_state(deps)?)?),
         QueryMsg::GetFeeStructure {} => Ok(to_binary(&get_fee_structure(deps)?)?),
@@ -442,4 +443,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
             Ok(to_binary(&get_market_info(deps, market_index)?)?)
         }
     }
+}
+
+
+fn get_market_length2(deps: Deps) -> Result<MarketLengthResponse, ContractError> {
+    let state = STATE.load(deps.storage)?;
+    // let length = MarketLengthResponse {
+    //     length: state.markets_length,
+    // };
+    Ok(MarketLengthResponse {
+        length: state.markets_length
+    })
 }

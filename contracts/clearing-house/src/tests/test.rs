@@ -1,14 +1,14 @@
-// use crate::contract::{execute, instantiate, query};
-// use crate::views::execute::*;
-// use crate::views::query::*;
-// use ariel::execute::{ExecuteMsg, InstantiateMsg};
-// use ariel::queries::QueryMsg;
-// use ariel::response::*;
-// use ariel::types::*;
-// use cosmwasm_std::testing::{
-//     mock_dependencies, mock_dependencies_with_balance, mock_env, mock_info, MOCK_CONTRACT_ADDR,
-// };
-// use cosmwasm_std::{coins, from_binary};
+use crate::contract::{execute, instantiate, query};
+use crate::views::execute::*;
+use crate::views::query::*;
+use ariel::execute::{ExecuteMsg, InstantiateMsg};
+use ariel::queries::QueryMsg;
+use ariel::response::*;
+use ariel::types::*;
+use cosmwasm_std::testing::{
+    mock_dependencies, mock_dependencies_with_balance, mock_env, mock_info, MOCK_CONTRACT_ADDR,
+};
+use cosmwasm_std::{coins, from_binary};
 
 // #[test]
 // fn proper_initialization() {

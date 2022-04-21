@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::types::{DepositDirection, DiscountTokenTier, OracleSource, PositionDirection};
 
-// We define a custom struct for each query response
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UserResponse {
     pub collateral: u128,
@@ -110,7 +110,7 @@ pub struct MaxDepositLimitResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MarketLengthResponse {
-    pub length: u64,
+    pub length: u64
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

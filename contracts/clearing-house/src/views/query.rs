@@ -107,8 +107,8 @@ pub fn admin_controls_prices(deps: Deps) -> Result<AdminControlsPricesResponse, 
 pub fn get_vaults_address(deps: Deps) -> Result<VaultsResponse, ContractError> {
     let state = STATE.load(deps.storage)?;
     let vaults = VaultsResponse {
-        collateral_vault: state.collateral_vault.into(),
-        insurance_vault: state.insurance_vault.into(),
+        collateral_vault: state.collateral_vault.to_string(),
+        insurance_vault: state.insurance_vault.to_string(),
     };
     Ok(vaults)
 }
@@ -190,10 +190,12 @@ pub fn get_max_deposit_limit(deps: Deps) -> Result<MaxDepositLimitResponse, Cont
 
 pub fn get_market_length(deps: Deps) -> Result<MarketLengthResponse, ContractError> {
     let state = STATE.load(deps.storage)?;
-    let length = MarketLengthResponse {
-        length: state.markets_length,
-    };
-    Ok(length)
+    // let length = MarketLengthResponse {
+    //     length: state.markets_length,
+    // };
+    Ok(MarketLengthResponse {
+        length: state.markets_length
+    })
 }
 
 pub fn get_oracle_guard_rails(deps: Deps) -> Result<OracleGuardRailsResponse, ContractError> {
@@ -484,7 +486,6 @@ pub fn get_trade_history(
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> Result<Vec<TradeHistoryResponse>, ContractError> {
-    
     let mut trade_history: Vec<TradeHistoryResponse> = vec![];
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after

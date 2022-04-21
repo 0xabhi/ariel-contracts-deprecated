@@ -33,8 +33,6 @@ pub enum QueryMsg {
     GetFullLiquidatorSharePercentage {},
     GetMaxDepositLimit {},
     GetFeeStructure {},
-    //TODO::get user market positions which returns array
-    // TODO:: get all the history with bound length like 1-100, 101-200 etc.String
     GetCurveHistoryLength {},
     GetCurveHistory {
         start_after: Option<String>,
