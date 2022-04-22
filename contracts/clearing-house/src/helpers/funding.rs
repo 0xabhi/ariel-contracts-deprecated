@@ -1,16 +1,15 @@
 use std::cmp::max;
 
+use cosmwasm_std::{Uint128};
+
 use crate::error::ContractError;
 
 use crate::states::market::Market;
 use crate::states::user::Position;
 
-use crate::helpers::bn;
-use crate::helpers::casting::cast_to_i128;
 use crate::helpers::constants::{
     AMM_TO_QUOTE_PRECISION_RATIO, FUNDING_PAYMENT_PRECISION, MARK_PRICE_PRECISION,
-    QUOTE_TO_BASE_AMT_FUNDING_PRECISION, SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_DENOMINATOR,
-    SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_NUMERATOR,
+    QUOTE_TO_BASE_AMT_FUNDING_PRECISION, SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_DENOMINATOR,SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_NUMERATOR
 };
 
 /// With a virtual AMM, there can be an imbalance between longs and shorts and thus funding can be asymmetric.
@@ -19,7 +18,7 @@ use crate::helpers::constants::{
 pub fn calculate_funding_rate_long_short(
     market: &Market,
     funding_rate: i128,
-) -> Result<(i128, i128, u128), ContractError> {
+) -> Result<(i128, i128, Uint128), ContractError> {
     // Calculate the funding payment owed by the net_market_position if funding is not capped
     // If the net market position owes funding payment, the clearing house receives payment
     let net_market_position = market.base_asset_amount;
@@ -32,8 +31,7 @@ pub fn calculate_funding_rate_long_short(
         let new_total_fee_minus_distributions = market
             .amm
             .total_fee_minus_distributions
-            .checked_add(uncapped_funding_pnl.unsigned_abs())
-            .ok_or_else(|| (ContractError::MathError))?;
+            .checked_add(Uint128::from(uncapped_funding_pnl.unsigned_abs()))?;
         return Ok((funding_rate, funding_rate, new_total_fee_minus_distributions));
     }
 
@@ -43,21 +41,18 @@ pub fn calculate_funding_rate_long_short(
     let new_total_fee_minus_distributions = market
         .amm
         .total_fee_minus_distributions
-        .checked_sub(capped_funding_pnl.unsigned_abs())
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_sub(Uint128::from(capped_funding_pnl.unsigned_abs()))?;
 
     // clearing house is paying part of funding imbalance
     if capped_funding_pnl != 0 {
         let total_fee_minus_distributions_lower_bound = market
             .amm
             .total_fee
-            .checked_mul(SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_NUMERATOR)
-            .ok_or_else(|| (ContractError::MathError))?
-            .checked_div(SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_DENOMINATOR)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .checked_mul(SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_NUMERATOR)?
+            .checked_div(SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_DENOMINATOR)?;
 
         // makes sure the clearing house doesn't pay more than the share of fees allocated to `distributions`
-        if new_total_fee_minus_distributions < total_fee_minus_distributions_lower_bound {
+        if new_total_fee_minus_distributions.lt(&total_fee_minus_distributions_lower_bound) {
             return Err(ContractError::InvalidFundingProfitability.into());
         }
     }
@@ -86,25 +81,19 @@ fn calculate_capped_funding_rate(
     let total_fee_minus_distributions_lower_bound = market
         .amm
         .total_fee
-        .checked_mul(SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_NUMERATOR)
-        .ok_or_else(|| (ContractError::MathError))?
-        .checked_div(SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_DENOMINATOR)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_mul(SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_NUMERATOR)?
+        .checked_div(SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_DENOMINATOR)?;
 
     // limit to 2/3 of current fee pool per funding period
     let funding_rate_pnl_limit =
         if market.amm.total_fee_minus_distributions > total_fee_minus_distributions_lower_bound {
-            -cast_to_i128(
-                market
+            -(market
                     .amm
                     .total_fee_minus_distributions
-                    .checked_sub(total_fee_minus_distributions_lower_bound)
-                    .ok_or_else(|| (ContractError::MathError))?
-                    .checked_mul(2)
-                    .ok_or_else(|| (ContractError::MathError))?
-                    .checked_div(3)
-                    .ok_or_else(|| (ContractError::MathError))?,
-            )?
+                    .checked_sub(total_fee_minus_distributions_lower_bound)?
+                    .checked_mul(Uint128::from(2 as u32))?
+                    .checked_div(Uint128::from(3 as u32))?
+                    .u128() as i128)
         } else {
             0
         };
@@ -172,21 +161,18 @@ fn _calculate_funding_payment(
 ) -> Result<i128, ContractError> {
     let funding_rate_delta_sign: i128 = if funding_rate_delta > 0 { 1 } else { -1 };
 
-    let funding_rate_payment_magnitude = cast_to_i128(
-        bn::U192::from(funding_rate_delta.unsigned_abs())
-            .checked_mul(bn::U192::from(base_asset_amount.unsigned_abs()))
+    let funding_rate_payment_magnitude = funding_rate_delta.unsigned_abs()
+            .checked_mul(base_asset_amount.unsigned_abs())
             .ok_or_else(|| (ContractError::MathError))?
-            .checked_div(bn::U192::from(MARK_PRICE_PRECISION))
+            .checked_div(MARK_PRICE_PRECISION.u128())
             .ok_or_else(|| (ContractError::MathError))?
-            .checked_div(bn::U192::from(FUNDING_PAYMENT_PRECISION))
-            .ok_or_else(|| (ContractError::MathError))?
-            .try_to_u128()?,
-    )?;
+            .checked_div(FUNDING_PAYMENT_PRECISION.u128())
+            .ok_or_else(|| (ContractError::MathError))?;
 
     // funding_rate: longs pay shorts
     let funding_rate_payment_sign: i128 = if base_asset_amount > 0 { -1 } else { 1 };
 
-    let funding_rate_payment = (funding_rate_payment_magnitude)
+    let funding_rate_payment = (funding_rate_payment_magnitude as i128)
         .checked_mul(funding_rate_payment_sign)
         .ok_or_else(|| (ContractError::MathError))?
         .checked_mul(funding_rate_delta_sign)
@@ -210,7 +196,7 @@ fn calculate_funding_rate_from_pnl_limit(
     };
 
     let funding_rate = pnl_limit_biased
-        .checked_mul(QUOTE_TO_BASE_AMT_FUNDING_PRECISION)
+        .checked_mul(QUOTE_TO_BASE_AMT_FUNDING_PRECISION.u128() as i128)
         .ok_or_else(|| (ContractError::MathError))?
         .checked_div(base_asset_amount)
         .ok_or_else(|| (ContractError::MathError));
@@ -224,7 +210,7 @@ fn calculate_funding_payment_in_quote_precision(
 ) -> Result<i128, ContractError> {
     let funding_payment = _calculate_funding_payment(funding_rate_delta, base_asset_amount)?;
     let funding_payment_collateral = funding_payment
-        .checked_div(cast_to_i128(AMM_TO_QUOTE_PRECISION_RATIO)?)
+        .checked_div(AMM_TO_QUOTE_PRECISION_RATIO.u128() as i128)
         .ok_or_else(|| (ContractError::MathError))?;
 
     Ok(funding_payment_collateral)

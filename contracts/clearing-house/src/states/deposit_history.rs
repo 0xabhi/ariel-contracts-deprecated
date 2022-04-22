@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Addr};
+use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Map, Item};
 use ariel::types::DepositDirection;
 
@@ -9,11 +9,11 @@ use ariel::types::DepositDirection;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DepositRecord {
     pub ts: u64,
-    pub record_id: u128,
+    pub record_id: u64,
     pub user: Addr,
     pub direction: DepositDirection,
-    pub collateral_before: u128,
-    pub cumulative_deposits_before: u128,
+    pub collateral_before: Uint128,
+    pub cumulative_deposits_before: Uint128,
     pub amount: u64,
 }
 

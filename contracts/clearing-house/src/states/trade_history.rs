@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Addr};
+use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Map, Item};
 
 use ariel::types::PositionDirection;
@@ -11,19 +11,18 @@ pub struct TradeRecord {
     pub ts: u64,
     pub user: Addr,
     pub direction: PositionDirection,
-    pub base_asset_amount: u128,
-    pub quote_asset_amount: u128,
-    pub mark_price_before: u128,
-    pub mark_price_after: u128,
-    pub fee: u128,
-    pub referrer_reward: u128,
-    pub referee_discount: u128,
-    pub token_discount: u128,
+    pub base_asset_amount: Uint128,
+    pub quote_asset_amount: Uint128,
+    pub mark_price_before: Uint128,
+    pub mark_price_after: Uint128,
+    pub fee: Uint128,
+    pub referrer_reward: Uint128,
+    pub referee_discount: Uint128,
+    pub token_discount: Uint128,
     pub liquidation: bool,
     pub market_index: u64,
     pub oracle_price: i128,
 }
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TradeInfo {

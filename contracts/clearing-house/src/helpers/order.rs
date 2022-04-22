@@ -5,9 +5,8 @@ use crate::states::order::{get_limit_price, OrderState, has_oracle_price_offset}
 use std::cmp::min;
 use std::ops::Div;
 use ariel::types::{Order, OrderType, OrderTriggerCondition, PositionDirection, OracleGuardRails};
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Uint128};
 
-use crate::helpers::casting::{cast_to_u128};
 use crate::helpers::constants::{
     AMM_TO_QUOTE_PRECISION_RATIO, MARK_PRICE_PRECISION,
     MARK_PRICE_TIMES_AMM_TO_QUOTE_PRECISION_RATIO
@@ -22,9 +21,9 @@ use crate::helpers::constants::{AMM_RESERVE_PRECISION, QUOTE_PRECISION};
 pub fn calculate_base_asset_amount_market_can_execute(
     order: &Order,
     market: &Market,
-    precomputed_mark_price: Option<u128>,
+    precomputed_mark_price: Option<Uint128>,
     valid_oracle_price: Option<i128>,
-) -> Result<u128, ContractError> {
+) -> Result<Uint128, ContractError> {
     match order.order_type {
         OrderType::Limit => {
             calculate_base_asset_amount_to_trade_for_limit(order, market, valid_oracle_price)
@@ -49,18 +48,17 @@ pub fn calculate_base_asset_amount_to_trade_for_limit(
     order: &Order,
     market: &Market,
     valid_oracle_price: Option<i128>,
-) -> Result<u128, ContractError> {
+) -> Result<Uint128, ContractError> {
     let base_asset_amount_to_fill = order
         .base_asset_amount
-        .checked_sub(order.base_asset_amount_filled)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_sub(order.base_asset_amount_filled)?;
 
     let limit_price = get_limit_price(order, valid_oracle_price)?;
 
     let (max_trade_base_asset_amount, max_trade_direction) =
         amm::calculate_max_base_asset_amount_to_trade(&market.amm, limit_price)?;
-    if max_trade_direction != order.direction || max_trade_base_asset_amount == 0 {
-        return Ok(0);
+    if max_trade_direction != order.direction || max_trade_base_asset_amount.is_zero() {
+        return Ok(Uint128::zero());
     }
 
     let base_asset_amount_to_trade = min(base_asset_amount_to_fill, max_trade_base_asset_amount);
@@ -71,9 +69,9 @@ pub fn calculate_base_asset_amount_to_trade_for_limit(
 fn calculate_base_asset_amount_to_trade_for_trigger_market(
     order: &Order,
     market: &Market,
-    precomputed_mark_price: Option<u128>,
+    precomputed_mark_price: Option<Uint128>,
     valid_oracle_price: Option<i128>,
-) -> Result<u128, ContractError> {
+) -> Result<Uint128, ContractError> {
     let mark_price = match precomputed_mark_price {
         Some(mark_price) => mark_price,
         None => market.amm.mark_price()?,
@@ -82,7 +80,7 @@ fn calculate_base_asset_amount_to_trade_for_trigger_market(
     match order.trigger_condition {
         OrderTriggerCondition::Above => {
             if mark_price <= order.trigger_price {
-                return Ok(0);
+                return Ok(Uint128::zero());
             }
 
             // If there is a valid oracle, check that trigger condition is also satisfied by
@@ -94,14 +92,14 @@ fn calculate_base_asset_amount_to_trade_for_trigger_market(
                     .checked_div(100)
                     .ok_or_else(|| (ContractError::MathError))?;
 
-                if cast_to_u128(oracle_price_101pct)? <= order.trigger_price {
-                    return Ok(0);
+                if oracle_price_101pct.le(&(order.trigger_price.u128() as i128)) {
+                    return Ok(Uint128::zero());
                 }
             }
         }
         OrderTriggerCondition::Below => {
             if mark_price >= order.trigger_price {
-                return Ok(0);
+                return Ok(Uint128::zero());
             }
 
             // If there is a valid oracle, check that trigger condition is also satisfied by
@@ -113,35 +111,36 @@ fn calculate_base_asset_amount_to_trade_for_trigger_market(
                     .checked_div(100)
                     .ok_or_else(|| (ContractError::MathError))?;
 
-                if cast_to_u128(oracle_price_99pct)? >= order.trigger_price {
-                    return Ok(0);
+                if Uint128::from(oracle_price_99pct.unsigned_abs()).ge(&order.trigger_price) {
+                    return Ok(Uint128::zero());
                 }
             }
         }
     }
 
-    order
+    let res = order
         .base_asset_amount
-        .checked_sub(order.base_asset_amount_filled)
-        .ok_or_else(|| (ContractError::MathError))
+        .checked_sub(order.base_asset_amount_filled)?;
+
+    Ok(res)
 }
 
 fn calculate_base_asset_amount_to_trade_for_trigger_limit(
     order: &Order,
     market: &Market,
-    precomputed_mark_price: Option<u128>,
+    precomputed_mark_price: Option<Uint128>,
     valid_oracle_price: Option<i128>,
-) -> Result<u128, ContractError> {
+) -> Result<Uint128, ContractError> {
     // if the order has not been filled yet, need to check that trigger condition is met
-    if order.base_asset_amount_filled == 0 {
+    if order.base_asset_amount_filled.is_zero() {
         let base_asset_amount = calculate_base_asset_amount_to_trade_for_trigger_market(
             order,
             market,
             precomputed_mark_price,
             valid_oracle_price,
         )?;
-        if base_asset_amount == 0 {
-            return Ok(0);
+        if base_asset_amount.is_zero() {
+            return Ok(Uint128::zero());
         }
     }
 
@@ -149,15 +148,14 @@ fn calculate_base_asset_amount_to_trade_for_trigger_limit(
 }
 
 pub fn limit_price_satisfied(
-    limit_price: u128,
-    quote_asset_amount: u128,
-    base_asset_amount: u128,
+    limit_price: Uint128,
+    quote_asset_amount: Uint128,
+    base_asset_amount: Uint128,
     direction: PositionDirection,
 ) -> Result<bool, ContractError> {
     let price = quote_asset_amount
-        .checked_mul(MARK_PRICE_PRECISION * AMM_TO_QUOTE_PRECISION_RATIO)
-        .ok_or_else(|| (ContractError::MathError))?
-        .div(base_asset_amount);
+        .checked_mul(MARK_PRICE_PRECISION * AMM_TO_QUOTE_PRECISION_RATIO)?
+        .checked_div(base_asset_amount)?;
 
     match direction {
         PositionDirection::Long => {
@@ -176,13 +174,13 @@ pub fn limit_price_satisfied(
 }
 
 pub fn calculate_quote_asset_amount_for_maker_order(
-    base_asset_amount: u128,
-    limit_price: u128,
-) -> Result<u128, ContractError> {
-    Ok(base_asset_amount
-        .checked_mul(limit_price)
-        .ok_or_else(|| (ContractError::MathError))?
-        .div(MARK_PRICE_TIMES_AMM_TO_QUOTE_PRECISION_RATIO))
+    base_asset_amount: Uint128,
+    limit_price: Uint128,
+) -> Result<Uint128, ContractError> {
+    let res = base_asset_amount
+    .checked_mul(limit_price)?
+    .checked_div(MARK_PRICE_TIMES_AMM_TO_QUOTE_PRECISION_RATIO)?;
+    Ok(res)
 }
 
 pub fn get_valid_oracle_price(
@@ -239,18 +237,18 @@ fn validate_market_order(
     order: &Order, 
     market: &Market
 ) -> Result<bool, ContractError> {
-    if order.quote_asset_amount > 0 && order.base_asset_amount > 0 {
+    if order.quote_asset_amount.gt(&Uint128::zero()) && order.base_asset_amount.gt(&Uint128::zero()) {
         // msg!("Market order should not have quote_asset_amount and base_asset_amount set");
         return Err(ContractError::InvalidOrder);
     }
 
-    if order.base_asset_amount > 0 {
+    if order.base_asset_amount.gt(&Uint128::zero()) {
         validate_base_asset_amount(order, market)?;
     } else {
         validate_quote_asset_amount(order, market)?;
     }
 
-    if order.trigger_price > 0 {
+    if order.trigger_price.gt(&Uint128::zero()) {
         // msg!("Market should not have trigger price");
         return Err(ContractError::InvalidOrder);
     }
@@ -276,22 +274,22 @@ fn validate_limit_order(
 ) -> Result<bool, ContractError> {
     validate_base_asset_amount(order, market)?;
 
-    if order.price == 0 && !has_oracle_price_offset(order) {
+    if order.price.is_zero() && !has_oracle_price_offset(order) {
         // msg!("Limit order price == 0");
         return Err(ContractError::InvalidOrder);
     }
 
-    if order.price != 0 && has_oracle_price_offset(order) {
+    if order.price.ne(&Uint128::zero()) && has_oracle_price_offset(order) {
         // msg!("Limit order price != 0 and oracle price offset is set");
         return Err(ContractError::InvalidOrder);
     }
 
-    if order.trigger_price > 0 {
+    if order.trigger_price.gt(&Uint128::zero()) {
         // msg!("Limit order should not have trigger price");
         return Err(ContractError::InvalidOrder);
     }
 
-    if order.quote_asset_amount != 0 {
+    if order.quote_asset_amount.ne(&Uint128::zero()) {
         // msg!("Limit order should not have a quote asset amount");
         return Err(ContractError::InvalidOrder);
     }
@@ -301,14 +299,14 @@ fn validate_limit_order(
     }
 
     let limit_price = get_limit_price(order, valid_oracle_price)?;
-    let approximate_market_value = limit_price
-        .checked_mul(order.base_asset_amount)
+    let approximate_market_value = limit_price.u128()
+        .checked_mul(order.base_asset_amount.u128())
         .or(Some(u128::MAX))
         .unwrap()
-        .div(AMM_RESERVE_PRECISION)
-        .div(MARK_PRICE_PRECISION / QUOTE_PRECISION);
+        .div(AMM_RESERVE_PRECISION.u128())
+        .div(MARK_PRICE_PRECISION.u128() / QUOTE_PRECISION.u128());
 
-    if approximate_market_value < order_state.min_order_quote_asset_amount {
+    if approximate_market_value < order_state.min_order_quote_asset_amount.u128() {
         // msg!("Order value < $0.50 ({:?})", approximate_market_value);
         return Err(ContractError::InvalidOrder);
     }
@@ -324,7 +322,7 @@ fn validate_post_only_order(
     let base_asset_amount_market_can_fill =
         calculate_base_asset_amount_to_trade_for_limit(order, market, valid_oracle_price)?;
 
-    if base_asset_amount_market_can_fill != 0 {
+    if base_asset_amount_market_can_fill.ne(&Uint128::zero()) {
         // msg!(
         //     "Post-only order can immediately fill {} base asset amount",
         //     base_asset_amount_market_can_fill
@@ -342,17 +340,17 @@ fn validate_trigger_limit_order(
 ) -> Result<bool, ContractError> {
     validate_base_asset_amount(order, market)?;
 
-    if order.price == 0 {
+    if order.price.is_zero() {
         // msg!("Trigger limit order price == 0");
         return Err(ContractError::InvalidOrder);
     }
 
-    if order.trigger_price == 0 {
+    if order.trigger_price.is_zero() {
         // msg!("Trigger price == 0");
         return Err(ContractError::InvalidOrder);
     }
 
-    if order.quote_asset_amount != 0 {
+    if !order.quote_asset_amount.is_zero() {
         // msg!("Trigger limit order should not have a quote asset amount");
         return Err(ContractError::InvalidOrder);
     }
@@ -369,13 +367,13 @@ fn validate_trigger_limit_order(
 
     match order.trigger_condition {
         OrderTriggerCondition::Above => {
-            if order.direction == PositionDirection::Long && order.price < order.trigger_price {
+            if order.direction == PositionDirection::Long && order.price.lt(&order.trigger_price) {
                 // msg!("If trigger condition is above and direction is long, limit price must be above trigger price");
                 return Err(ContractError::InvalidOrder);
             }
         }
         OrderTriggerCondition::Below => {
-            if order.direction == PositionDirection::Short && order.price > order.trigger_price {
+            if order.direction == PositionDirection::Short && order.price.gt(&order.trigger_price) {
                 // msg!("If trigger condition is below and direction is short, limit price must be below trigger price");
                 return Err(ContractError::InvalidOrder);
             }
@@ -383,14 +381,14 @@ fn validate_trigger_limit_order(
     }
 
     let approximate_market_value = order
-        .price
-        .checked_mul(order.base_asset_amount)
+        .price.u128()
+        .checked_mul(order.base_asset_amount.u128())
         .or(Some(u128::MAX))
         .unwrap()
-        .div(AMM_RESERVE_PRECISION)
-        .div(MARK_PRICE_PRECISION / QUOTE_PRECISION);
+        .div(AMM_RESERVE_PRECISION.u128())
+        .div(MARK_PRICE_PRECISION.u128() / QUOTE_PRECISION.u128());
 
-    if approximate_market_value < order_state.min_order_quote_asset_amount {
+    if approximate_market_value < order_state.min_order_quote_asset_amount.u128() {
         // msg!("Order value < $0.50 ({:?})", approximate_market_value);
         return Err(ContractError::InvalidOrder);
     }
@@ -405,17 +403,17 @@ fn validate_trigger_market_order(
 ) -> Result<bool, ContractError> {
     validate_base_asset_amount(order, market)?;
 
-    if order.price > 0 {
+    if order.price.gt(&Uint128::zero()) {
         // msg!("Trigger market order should not have price");
         return Err(ContractError::InvalidOrder);
     }
 
-    if order.trigger_price == 0 {
+    if order.trigger_price.is_zero() {
         // msg!("Trigger market order trigger_price == 0");
         return Err(ContractError::InvalidOrder);
     }
 
-    if order.quote_asset_amount != 0 {
+    if !order.quote_asset_amount.is_zero() {
         // msg!("Trigger market order should not have a quote asset amount");
         return Err(ContractError::InvalidOrder);
     }
@@ -431,15 +429,15 @@ fn validate_trigger_market_order(
     }
 
     let approximate_market_value = order
-        .trigger_price
-        .checked_mul(order.base_asset_amount)
+        .trigger_price.u128()
+        .checked_mul(order.base_asset_amount.u128())
         .or(Some(u128::MAX))
         .unwrap()
-        .div(AMM_RESERVE_PRECISION)
-        .div(MARK_PRICE_PRECISION / QUOTE_PRECISION);
+        .div(AMM_RESERVE_PRECISION.u128())
+        .div(MARK_PRICE_PRECISION.u128() / QUOTE_PRECISION.u128());
 
     // decide min trade size ($10?)
-    if approximate_market_value < order_state.min_order_quote_asset_amount {
+    if approximate_market_value < order_state.min_order_quote_asset_amount.u128() {
         // msg!("Order value < $0.50 ({:?})", approximate_market_value);
         return Err(ContractError::InvalidOrder);
     }
@@ -450,12 +448,12 @@ fn validate_trigger_market_order(
 fn validate_base_asset_amount(
     order: &Order, market: &Market
 ) -> Result<bool, ContractError> {
-    if order.base_asset_amount == 0 {
+    if order.base_asset_amount.is_zero() {
         // msg!("Order base_asset_amount cant be 0");
         return Err(ContractError::InvalidOrder);
     }
 
-    if order.base_asset_amount < market.amm.minimum_base_asset_trade_size {
+    if order.base_asset_amount.lt(&market.amm.minimum_base_asset_trade_size) {
         // msg!("Order base_asset_amount smaller than market minimum_base_asset_trade_size");
         return Err(ContractError::InvalidOrder);
     }
@@ -466,7 +464,7 @@ fn validate_base_asset_amount(
 fn validate_quote_asset_amount(
     order: &Order, market: &Market
 ) -> Result<bool, ContractError> {
-    if order.quote_asset_amount == 0 {
+    if order.quote_asset_amount.is_zero() {
         // msg!("Order quote_asset_amount cant be 0");
         return Err(ContractError::InvalidOrder);
     }
@@ -474,7 +472,7 @@ fn validate_quote_asset_amount(
     let quote_asset_reserve_amount =
         asset_to_reserve_amount(order.quote_asset_amount, market.amm.peg_multiplier)?;
 
-    if quote_asset_reserve_amount < market.amm.minimum_quote_asset_trade_size {
+    if quote_asset_reserve_amount.lt(&market.amm.minimum_quote_asset_trade_size) {
         // msg!("Order quote_asset_reserve_amount smaller than market minimum_quote_asset_trade_size");
         return Err(ContractError::InvalidOrder);
     }
@@ -494,7 +492,7 @@ pub fn validate_order_can_be_canceled(
     let base_asset_amount_market_can_fill =
         calculate_base_asset_amount_to_trade_for_limit(order, market, valid_oracle_price)?;
 
-    if base_asset_amount_market_can_fill > 0 {
+    if base_asset_amount_market_can_fill.gt(&Uint128::zero()) {
         // msg!(
         //     "Cant cancel as post only order can be filled for {} base asset amount",
         //     base_asset_amount_market_can_fill

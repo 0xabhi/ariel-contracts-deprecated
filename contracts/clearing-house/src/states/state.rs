@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_controllers::Admin;
 use cw_storage_plus::Item;
 
@@ -17,18 +17,21 @@ pub struct State {
     pub collateral_vault: Addr,
     pub insurance_vault: Addr,
     pub oracle: Addr,
-    pub margin_ratio_initial: u128,
-    pub margin_ratio_maintenance: u128,
-    pub margin_ratio_partial: u128,
-    pub partial_liquidation_close_percentage_numerator: u128,
-    pub partial_liquidation_close_percentage_denominator: u128,
-    pub partial_liquidation_penalty_percentage_numerator: u128,
-    pub partial_liquidation_penalty_percentage_denominator: u128,
-    pub full_liquidation_penalty_percentage_numerator: u128,
-    pub full_liquidation_penalty_percentage_denominator: u128,
+    pub margin_ratio_initial: Uint128,
+    pub margin_ratio_maintenance: Uint128,
+    pub margin_ratio_partial: Uint128,
+    
+    pub partial_liquidation_close_percentage: Decimal,
+    
+    pub partial_liquidation_penalty_percentage: Decimal,
+    
+    pub full_liquidation_penalty_percentage: Decimal,
+
+    
     pub partial_liquidation_liquidator_share_denominator: u64,
     pub full_liquidation_liquidator_share_denominator: u64,
-    pub max_deposit: u128,
+
+    pub max_deposit: Uint128,
     pub markets_length: u64,
 }
 

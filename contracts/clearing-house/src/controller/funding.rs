@@ -2,6 +2,7 @@ use std::cmp::max;
 
 use cosmwasm_std::Addr;
 use cosmwasm_std::DepsMut;
+use cosmwasm_std::Uint128;
 
 use crate::error::ContractError;
 
@@ -14,7 +15,6 @@ use crate::states::market::{Market, MARKETS};
 use crate::states::state::ORACLEGUARDRAILS;
 use crate::states::user::{Position, POSITIONS, User, USERS};
 
-use crate::helpers::casting::{cast, cast_to_i128, cast_to_i64};
 use crate::helpers::collateral::calculate_updated_collateral;
 use crate::helpers::constants::{
     AMM_TO_QUOTE_PRECISION_RATIO_I128, FUNDING_PAYMENT_PRECISION, ONE_HOUR,
@@ -95,7 +95,7 @@ pub fn settle_funding_payment(
     }
 
     let funding_payment_collateral = funding_payment
-        .checked_div(AMM_TO_QUOTE_PRECISION_RATIO_I128)
+        .checked_div(AMM_TO_QUOTE_PRECISION_RATIO_I128.u128() as i128)
         .ok_or_else(|| (ContractError::MathError))?;
 
     user.collateral = calculate_updated_collateral(user.collateral, funding_payment_collateral)?;
@@ -115,7 +115,7 @@ pub fn update_funding_rate(
     price_oracle: Addr,
     now: u64,
     funding_paused: bool,
-    precomputed_mark_price: Option<u128>,
+    precomputed_mark_price: Option<Uint128>,
 ) -> Result<(), ContractError> {
     let mut market = MARKETS.load(deps.storage, market_index)?;
     let guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
@@ -173,7 +173,7 @@ pub fn update_funding_rate(
             amm::update_oracle_price_twap(deps, market_index, now, normalised_oracle_price)?;
         let mark_price_twap = amm::update_mark_twap(deps, market_index, now, None)?;
 
-        let one_hour_i64 = cast_to_i64(ONE_HOUR)?;
+        let one_hour_i64 = ONE_HOUR.u128() as i64;
         let period_adjustment = (24_i64)
             .checked_mul(one_hour_i64)
             .ok_or_else(|| (ContractError::MathError))?
@@ -182,14 +182,13 @@ pub fn update_funding_rate(
 
         // funding period = 1 hour, window = 1 day
         // low periodicity => quickly updating/settled funding rates => lower funding rate payment per interval
-        let price_spread = cast_to_i128(mark_price_twap)?
-            .checked_sub(oracle_price_twap)
-            .ok_or_else(|| (ContractError::MathError))?;
+        let price_spread = (mark_price_twap.u128()  as i128)
+            .checked_sub(oracle_price_twap).ok_or_else(|| (ContractError::MathError))?;
 
         let funding_rate = price_spread
-            .checked_mul(cast(FUNDING_PAYMENT_PRECISION)?)
+            .checked_mul(FUNDING_PAYMENT_PRECISION.u128() as i128)
             .ok_or_else(|| (ContractError::MathError))?
-            .checked_div(cast(period_adjustment)?)
+            .checked_div(period_adjustment as i128)
             .ok_or_else(|| (ContractError::MathError))?;
 
         let (funding_rate_long, funding_rate_short, new_total_fee_minus_distributions) =

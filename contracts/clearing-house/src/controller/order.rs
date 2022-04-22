@@ -11,10 +11,9 @@ use crate::helpers::order::get_valid_oracle_price;
 use crate::states::trade_history::{TRADE_HISTORY_INFO, TradeInfo, TRADE_HISTORY, TradeRecord};
 use std::cmp::min;
 use ariel::types::{Order, OrderType, PositionDirection, SwapDirection, OrderStatus, OrderParams};
-use cosmwasm_std::{DepsMut, Addr};
+use cosmwasm_std::{DepsMut, Addr, Uint128};
 
 use crate::helpers::amm::{calculate_swap_output, normalise_oracle_price};
-use crate::helpers::casting::{cast, cast_to_i128, cast_to_u128};
 use crate::helpers::constants::{
     MARGIN_PRECISION, QUOTE_PRECISION
 };
@@ -35,7 +34,7 @@ pub fn calculate_base_asset_amount_user_can_execute(
     user_addr: &Addr,
     order_index: u64,
     market_index: u64,
-) -> Result<u128, ContractError> {
+) -> Result<Uint128, ContractError> {
 
     let position_index = market_index;
     let market = MARKETS.load(deps.storage, market_index)?;
@@ -60,8 +59,7 @@ pub fn calculate_base_asset_amount_user_can_execute(
         market
             .amm
             .quote_asset_reserve
-            .checked_sub(1)
-            .ok_or_else(|| (ContractError::MathError))?,
+            .checked_sub(Uint128::from(1 as u128))?,
         asset_to_reserve_amount(quote_asset_amount, market.amm.peg_multiplier)?,
     );
 
@@ -73,10 +71,8 @@ pub fn calculate_base_asset_amount_user_can_execute(
         market.amm.sqrt_k,
     )?;
 
-    let base_asset_amount = cast_to_i128(initial_base_asset_amount)?
-        .checked_sub(cast(new_base_asset_amount)?)
-        .ok_or_else(|| (ContractError::MathError))?
-        .unsigned_abs();
+    let base_asset_amount = initial_base_asset_amount
+        .checked_sub(new_base_asset_amount)?;
 
     Ok(base_asset_amount)
 }
@@ -86,7 +82,7 @@ pub fn calculate_available_quote_asset_user_can_execute(
     user_addr: &Addr,
     order_index: u64,
     position_index: u64,
-) -> Result<u128, ContractError> {
+) -> Result<Uint128, ContractError> {
 
     let market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
     
@@ -98,11 +94,9 @@ pub fn calculate_available_quote_asset_user_can_execute(
     let max_leverage = MARGIN_PRECISION
         .checked_div(
             // add one to initial margin ratio so we don't fill exactly to max leverage
-            cast_to_u128(market.margin_ratio_initial)?
-                .checked_add(1)
-                .ok_or_else(|| (ContractError::MathError))?,
-        )
-        .ok_or_else(|| (ContractError::MathError))?;
+            Uint128::from(market.margin_ratio_initial)
+                .checked_add(Uint128::from(1 as u64))?,
+        )?;
 
     let risk_increasing_in_same_direction = market_position.base_asset_amount == 0
         || market_position.base_asset_amount > 0 && order.direction == PositionDirection::Long
@@ -116,18 +110,15 @@ pub fn calculate_available_quote_asset_user_can_execute(
         )?;
 
         free_collateral
-            .checked_mul(max_leverage)
-            .ok_or_else(|| (ContractError::MathError))?
+            .checked_mul(max_leverage)?
     } else {
         let market_index = market_position.market_index;
         let (free_collateral, closed_position_base_asset_value) =
             calculate_free_collateral(deps, user_addr, Some(market_index))?;
 
         free_collateral
-            .checked_mul(max_leverage)
-            .ok_or_else(|| (ContractError::MathError))?
-            .checked_add(closed_position_base_asset_value)
-            .ok_or_else(|| (ContractError::MathError))?
+            .checked_mul(max_leverage)?
+            .checked_add(closed_position_base_asset_value)?
     };
 
     Ok(available_quote_asset_for_order)
@@ -179,9 +170,9 @@ pub fn place_order(
         user_base_asset_amount: market_position.base_asset_amount,
         base_asset_amount: params.base_asset_amount,
         quote_asset_amount: params.quote_asset_amount,
-        base_asset_amount_filled: 0,
-        quote_asset_amount_filled: 0,
-        fee: 0,
+        base_asset_amount_filled: Uint128::zero(),
+        quote_asset_amount_filled: Uint128::zero(),
+        fee: Uint128::zero(),
         direction: params.direction,
         reduce_only: params.reduce_only,
         discount_tier,
@@ -229,11 +220,11 @@ pub fn place_order(
         action: OrderAction::Place,
         filler: Addr::unchecked(""),
         trade_record_id: 0,
-        base_asset_amount_filled: 0,
-        quote_asset_amount_filled: 0,
-        filler_reward: 0,
-        fee: 0,
-        quote_asset_amount_surplus: 0,
+        base_asset_amount_filled: Uint128::zero(),
+        quote_asset_amount_filled: Uint128::zero(),
+        filler_reward: Uint128::zero(),
+        fee: Uint128::zero(),
+        quote_asset_amount_surplus: Uint128::zero(),
         position_index,
     })?;
 
@@ -295,11 +286,11 @@ pub fn cancel_order(
         action: OrderAction::Cancel,
         filler: Addr::unchecked(""),
         trade_record_id: 0,
-        base_asset_amount_filled: 0,
-        quote_asset_amount_filled: 0,
-        fee: 0,
-        filler_reward: 0,
-        quote_asset_amount_surplus: 0,
+        base_asset_amount_filled: Uint128::zero(),
+        quote_asset_amount_filled: Uint128::zero(),
+        fee: Uint128::zero(),
+        filler_reward: Uint128::zero(),
+        quote_asset_amount_surplus: Uint128::zero(),
         position_index,
     })?;
 
@@ -332,15 +323,15 @@ pub fn expire_orders(
     let mut user = USERS.load(deps.storage, user_addr)?;
     let mut filler = USERS.load(deps.storage, filler_addr)?;
     
-    let ten_quote = 10 * QUOTE_PRECISION;
+    let ten_quote = 10 * QUOTE_PRECISION.u128();
 
-    if user.collateral >= ten_quote {
+    if user.collateral.u128() >= ten_quote {
         // msg!("User has more than ten quote asset, cant expire orders");
         return Err(ContractError::CantExpireOrders);
     }
 
-    let max_filler_reward = QUOTE_PRECISION / 100; // .01 quote asset
-    let filler_reward = min(user.collateral, max_filler_reward);
+    let max_filler_reward = QUOTE_PRECISION.u128() / 100; // .01 quote asset
+    let filler_reward = min(user.collateral.u128(), max_filler_reward);
 
     user.collateral = calculate_updated_collateral(user.collateral, -(filler_reward as i128))?;
     filler.collateral = calculate_updated_collateral(filler.collateral, filler_reward as i128)?;
@@ -381,8 +372,7 @@ pub fn expire_orders(
                             }
                             order.fee = order
                             .fee
-                            .checked_add(filler_reward_per_order)
-                            .ok_or_else(|| (ContractError::MathError))?;
+                            .checked_add(Uint128::from(filler_reward_per_order))?;
 
                             // Add to the order history account
                             let order_history_info_length = 
@@ -399,11 +389,11 @@ pub fn expire_orders(
                                 action: OrderAction::Expire,
                                 filler: filler_addr.clone(),
                                 trade_record_id: 0,
-                                base_asset_amount_filled: 0,
-                                quote_asset_amount_filled: 0,
-                                filler_reward: filler_reward_per_order,
-                                fee: filler_reward_per_order,
-                                quote_asset_amount_surplus: 0,
+                                base_asset_amount_filled: Uint128::zero(),
+                                quote_asset_amount_filled: Uint128::zero(),
+                                filler_reward: Uint128::from(filler_reward_per_order),
+                                fee: Uint128::from(filler_reward_per_order),
+                                quote_asset_amount_surplus: Uint128::zero(),
                                 position_index : i,
                             })?;
 
@@ -439,7 +429,7 @@ pub fn fill_order(
     position_index: u64,
     order_index: u64,
     now: u64,
-) -> Result<u128, ContractError> {
+) -> Result<Uint128, ContractError> {
     let state = STATE.load(deps.storage)?;
     let order_state = ORDERSTATE.load(deps.storage)?;
     let mut user = USERS.load(deps.storage, user_addr)?;
@@ -471,7 +461,7 @@ pub fn fill_order(
         return Err(ContractError::OrderNotOpen);
     }
 
-    let mark_price_before: u128;
+    let mark_price_before: Uint128;
     let oracle_mark_spread_pct_before: i128;
     let is_oracle_valid: bool;
     let oracle_price: i128;
@@ -522,11 +512,11 @@ pub fn fill_order(
         valid_oracle_price,
     )?;
 
-    if base_asset_amount == 0 {
-        return Ok(0);
+    if base_asset_amount.is_zero() {
+        return Ok(Uint128::zero());
     }
 
-    let mark_price_after: u128;
+    let mark_price_after: Uint128;
     let oracle_price_after: i128;
     let oracle_mark_spread_pct_after: i128;
     {
@@ -602,43 +592,36 @@ pub fn fill_order(
         market.amm.total_fee = market
             .amm
             .total_fee
-            .checked_add(fee_to_market)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .checked_add(fee_to_market)?;
         market.amm.total_fee_minus_distributions = market
             .amm
             .total_fee_minus_distributions
-            .checked_add(fee_to_market)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .checked_add(fee_to_market)?;
     }
 
     // Subtract the fee from user's collateral
-    user.collateral = user.collateral.checked_sub(user_fee).or(Some(0)).unwrap();
+    user.collateral = Uint128::from(user.collateral.u128().checked_sub(user_fee.u128()).or(Some(0)).unwrap());
 
     // Increment the user's total fee variables
     user.total_fee_paid = user
         .total_fee_paid
-        .checked_add(user_fee)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_add(user_fee)?;
     user.total_token_discount = user
         .total_token_discount
-        .checked_add(token_discount)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_add(token_discount)?;
     user.total_referee_discount = user
         .total_referee_discount
-        .checked_add(referee_discount)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_add(referee_discount)?;
 
     filler.collateral = filler
         .collateral
-        .checked_add(cast(filler_reward)?)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_add(filler_reward)?;
 
     // Update the referrer's collateral with their reward
     if let Some(mut r) = referrer.clone() {
         r.total_referral_reward = r
             .total_referral_reward
-            .checked_add(referrer_reward)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .checked_add(referrer_reward)?;
     }
 
     {
@@ -761,10 +744,10 @@ pub fn execute_order(
     user_addr: &Addr,
     order_index: u64,
     market_index: u64,
-    mark_price_before: u128,
+    mark_price_before: Uint128,
     now: u64,
     value_oracle_price: Option<i128>,
-) -> Result<(u128, u128, bool, u128), ContractError> {
+) -> Result<(Uint128, Uint128, bool, Uint128), ContractError> {
     let order = ORDERS.load(deps.storage, ((user_addr, market_index), order_index))?;
     
     match order.order_type {
@@ -793,16 +776,16 @@ pub fn execute_market_order(
     user_addr: &Addr,
     order_index: u64,
     market_index: u64,
-    mark_price_before: u128,
+    mark_price_before: Uint128,
     now: u64,
-) -> Result<(u128, u128, bool, u128), ContractError> {
+) -> Result<(Uint128, Uint128, bool, Uint128), ContractError> {
     let order = ORDERS.load(deps.storage, ((user_addr, market_index), order_index))?;
     let market = MARKETS.load(deps.storage, market_index)?;
 
     let position_index = market_index;
 
     let (potentially_risk_increasing, reduce_only, base_asset_amount, quote_asset_amount, _) =
-        if order.base_asset_amount > 0 {
+        if order.base_asset_amount.u128() > 0 {
             update_position_with_base_asset_amount(
                 deps,
                 order.base_asset_amount,
@@ -834,7 +817,7 @@ pub fn execute_market_order(
         return Err(ContractError::ReduceOnlyOrderIncreasedRisk);
     }
 
-    if order.price > 0
+    if order.price.u128() > 0
         && !limit_price_satisfied(
             order.price,
             quote_asset_amount,
@@ -849,7 +832,7 @@ pub fn execute_market_order(
         base_asset_amount,
         quote_asset_amount,
         potentially_risk_increasing,
-        0_u128,
+        Uint128::zero(),
     ))
 }
 
@@ -858,10 +841,10 @@ pub fn execute_non_market_order(
     user_addr: &Addr,
     order_index: u64,
     market_index: u64,
-    mark_price_before: u128,
+    mark_price_before: Uint128,
     now: u64,
     valid_oracle_price: Option<i128>,
-) -> Result<(u128, u128, bool, u128), ContractError> {
+) -> Result<(Uint128, Uint128, bool, Uint128), ContractError> {
     // Determine the base asset amount the user can fill
     let base_asset_amount_user_can_execute = calculate_base_asset_amount_user_can_execute(
         deps,
@@ -870,9 +853,9 @@ pub fn execute_non_market_order(
         market_index
     )?;
 
-    if base_asset_amount_user_can_execute == 0 {
+    if base_asset_amount_user_can_execute.is_zero() {
         // msg!("User cant execute order");
-        return Ok((0, 0, false, 0));
+        return Ok((Uint128::zero(), Uint128::zero(), false, Uint128::zero()));
     }
 
     let order = ORDERS.load(deps.storage, ((user_addr, market_index), order_index))?;
@@ -886,9 +869,9 @@ pub fn execute_non_market_order(
         valid_oracle_price,
     )?;
 
-    if base_asset_amount_market_can_execute == 0 {
+    if base_asset_amount_market_can_execute.is_zero() {
         // msg!("Market cant position_index : execute order");
-        return Ok((0, 0, false, 0));
+        return Ok((Uint128::zero(), Uint128::zero(), false, Uint128::zero()));
     }
 
     let mut base_asset_amount = min(
@@ -898,7 +881,7 @@ pub fn execute_non_market_order(
 
     if base_asset_amount < market.amm.minimum_base_asset_trade_size {
         // msg!("base asset amount too small {}", base_asset_amount);
-        return Ok((0, 0, false, 0));
+        return Ok((Uint128::zero(), Uint128::zero(), false, Uint128::zero()));
     }
 
     let minimum_base_asset_trade_size = market.amm.minimum_base_asset_trade_size;
@@ -907,21 +890,18 @@ pub fn execute_non_market_order(
         .checked_sub(
             order
                 .base_asset_amount_filled
-                .checked_add(base_asset_amount)
-                .ok_or_else(|| (ContractError::MathError))?,
-        )
-        .ok_or_else(|| (ContractError::MathError))?;
+                .checked_add(base_asset_amount)?,
+        )?;
 
-    if base_asset_amount_left_to_fill > 0
+    if base_asset_amount_left_to_fill.gt(&Uint128::zero())
         && base_asset_amount_left_to_fill < minimum_base_asset_trade_size
     {
         base_asset_amount = base_asset_amount
-            .checked_add(base_asset_amount_left_to_fill)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .checked_add(base_asset_amount_left_to_fill)?;
     }
 
-    if base_asset_amount == 0 {
-        return Ok((0, 0, false, 0));
+    if base_asset_amount.is_zero() {
+        return Ok((Uint128::zero(), Uint128::zero(), false, Uint128::zero()));
     }
 
     let maker_limit_price = if order.post_only {
@@ -963,37 +943,34 @@ pub fn update_order_after_trade(
     user_addr: &Addr,
     position_index: u64,
     order_index: u64,
-    minimum_base_asset_trade_size: u128,
-    base_asset_amount: u128,
-    quote_asset_amount: u128,
-    fee: u128,
+    minimum_base_asset_trade_size: Uint128,
+    base_asset_amount: Uint128,
+    quote_asset_amount: Uint128,
+    fee: Uint128,
 ) -> Result<bool, ContractError>{
     let mut order = ORDERS.load(deps.storage, ((user_addr, position_index), order_index))?;
     order.base_asset_amount_filled = order
         .base_asset_amount_filled
-        .checked_add(base_asset_amount)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_add(base_asset_amount)?;
 
     order.quote_asset_amount_filled = order
         .quote_asset_amount_filled
-        .checked_add(quote_asset_amount)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_add(quote_asset_amount)?;
 
     if order.order_type != OrderType::Market {
         // redundant test to make sure no min trade size remaining
         let base_asset_amount_to_fill = order
             .base_asset_amount
-            .checked_sub(order.base_asset_amount_filled)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .checked_sub(order.base_asset_amount_filled)?;
 
-        if base_asset_amount_to_fill > 0
+        if base_asset_amount_to_fill.u128() > 0
             && base_asset_amount_to_fill < minimum_base_asset_trade_size
         {
             return Err(ContractError::OrderAmountTooSmall);
         }
     }
 
-    order.fee = order.fee.checked_add(fee).ok_or_else(|| (ContractError::MathError))?;
+    order.fee = order.fee.checked_add(fee)?;
 
     ORDERS.update(deps.storage, ((user_addr, position_index), order_index), |_o| -> Result<Order, ContractError> {
         Ok(order)

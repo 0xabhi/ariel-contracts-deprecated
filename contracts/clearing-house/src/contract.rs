@@ -1,6 +1,6 @@
 use ariel::response::MarketLengthResponse;
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, Decimal, Uint128
 };
 
 use cw2::set_contract_version;
@@ -33,66 +33,50 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     //TODO:: adding condition to check the initialization, if it's done already
     let fs = FeeStructure {
-        fee_numerator: DEFAULT_FEE_NUMERATOR,
-        fee_denominator: DEFAULT_FEE_DENOMINATOR,
-
-
-        first_tier_minimum_balance: DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_MINIMUM_BALANCE,
-        first_tier_discount_numerator: DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_DISCOUNT_NUMERATOR,
-        first_tier_discount_denominator: DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_DISCOUNT_DENOMINATOR,
-    
-        second_tier_minimum_balance: DEFAULT_DISCOUNT_TOKEN_SECOND_TIER_MINIMUM_BALANCE,
-        second_tier_discount_numerator: DEFAULT_DISCOUNT_TOKEN_SECOND_TIER_DISCOUNT_NUMERATOR,
-        second_tier_discount_denominator: DEFAULT_DISCOUNT_TOKEN_SECOND_TIER_DISCOUNT_DENOMINATOR,
-    
-        third_tier_minimum_balance: DEFAULT_DISCOUNT_TOKEN_THIRD_TIER_MINIMUM_BALANCE,
-        third_tier_discount_numerator: DEFAULT_DISCOUNT_TOKEN_THIRD_TIER_DISCOUNT_NUMERATOR,
-        third_tier_discount_denominator: DEFAULT_DISCOUNT_TOKEN_THIRD_TIER_DISCOUNT_DENOMINATOR,
-    
-        fourth_tier_minimum_balance: DEFAULT_DISCOUNT_TOKEN_FOURTH_TIER_MINIMUM_BALANCE,
-        fourth_tier_discount_numerator: DEFAULT_DISCOUNT_TOKEN_FOURTH_TIER_DISCOUNT_NUMERATOR,
-        fourth_tier_discount_denominator: DEFAULT_DISCOUNT_TOKEN_FOURTH_TIER_DISCOUNT_DENOMINATOR,
-
-        referrer_reward_numerator: DEFAULT_REFERRER_REWARD_NUMERATOR,
-        referrer_reward_denominator: DEFAULT_REFERRER_REWARD_DENOMINATOR,
-        referee_discount_numerator: DEFAULT_REFEREE_DISCOUNT_NUMERATOR,
-        referee_discount_denominator: DEFAULT_REFEREE_DISCOUNT_DENOMINATOR,
+        fee : Decimal::from_ratio(DEFAULT_FEE_NUMERATOR, DEFAULT_FEE_DENOMINATOR),
+        first_tier_minimum_balance:DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_MINIMUM_BALANCE,
+        first_tier_discount: Decimal::from_ratio(DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_DISCOUNT_NUMERATOR, DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_DISCOUNT_DENOMINATOR),
+        second_tier_minimum_balance:DEFAULT_DISCOUNT_TOKEN_SECOND_TIER_MINIMUM_BALANCE,
+        second_tier_discount: Decimal::from_ratio(DEFAULT_DISCOUNT_TOKEN_SECOND_TIER_DISCOUNT_DENOMINATOR, DEFAULT_DISCOUNT_TOKEN_SECOND_TIER_DISCOUNT_DENOMINATOR),
+        third_tier_minimum_balance:DEFAULT_DISCOUNT_TOKEN_THIRD_TIER_MINIMUM_BALANCE, 
+        third_tier_discount: Decimal::from_ratio(DEFAULT_DISCOUNT_TOKEN_THIRD_TIER_DISCOUNT_DENOMINATOR, DEFAULT_DISCOUNT_TOKEN_THIRD_TIER_DISCOUNT_DENOMINATOR), 
+        fourth_tier_minimum_balance:DEFAULT_DISCOUNT_TOKEN_FOURTH_TIER_MINIMUM_BALANCE, 
+        fourth_tier_discount: Decimal::from_ratio(DEFAULT_DISCOUNT_TOKEN_FOURTH_TIER_DISCOUNT_DENOMINATOR, DEFAULT_DISCOUNT_TOKEN_FOURTH_TIER_DISCOUNT_DENOMINATOR), 
+        referrer_reward:  Decimal::from_ratio(DEFAULT_REFERRER_REWARD_NUMERATOR, DEFAULT_REFERRER_REWARD_DENOMINATOR),
+        referee_discount: Decimal::from_ratio(DEFAULT_REFEREE_DISCOUNT_NUMERATOR, DEFAULT_REFEREE_DISCOUNT_DENOMINATOR), 
     };
+
     let oracle_gr = OracleGuardRails {
         use_for_liquidations: true,
-        mark_oracle_divergence_numerator: 1,
-        mark_oracle_divergence_denominator: 10,
+        mark_oracle_divergence: Decimal::percent(10),
         slots_before_stale: 1000,
-        confidence_interval_max_size: 4,
+        confidence_interval_max_size: Uint128::from(4u64),
         too_volatile_ratio: 5,
     };
+
     let orderstate = OrderState {
-        min_order_quote_asset_amount: 0,
-        reward_numerator: 0,
-        reward_denominator: 0,
-        time_based_reward_lower_bound: 0, // minimum filler reward for time-based reward
+        min_order_quote_asset_amount: Uint128::zero(),
+        reward: Decimal::zero(),
+        time_based_reward_lower_bound: Uint128::zero(), // minimum filler reward for time-based reward
     };
     let state = State {
-        exchange_paused: false,
-        funding_paused: false,
-        admin_controls_prices: true,
-        collateral_vault: addr_validate_to_lower(deps.api, &msg.collateral_vault).unwrap(),
-        insurance_vault: addr_validate_to_lower(deps.api, &msg.insurance_vault).unwrap(),
-        oracle: addr_validate_to_lower(deps.api, &msg.oracle)?,
-        margin_ratio_initial: 2000u128,
-        margin_ratio_maintenance: 500u128,
-        margin_ratio_partial: 625u128,
-        partial_liquidation_close_percentage_numerator: 25u128,
-        partial_liquidation_close_percentage_denominator: 100u128,
-        partial_liquidation_penalty_percentage_numerator: 25u128,
-        partial_liquidation_penalty_percentage_denominator: 100u128,
-        full_liquidation_penalty_percentage_numerator: 1u128,
-        full_liquidation_penalty_percentage_denominator: 1u128,
-        partial_liquidation_liquidator_share_denominator: 25u64,
-        full_liquidation_liquidator_share_denominator: 2000u64,
-        max_deposit: 0u128,
-        markets_length: 0u64,
-    };
+        exchange_paused:false,
+        funding_paused:false,
+        admin_controls_prices:true,
+        collateral_vault:addr_validate_to_lower(deps.api, &msg.collateral_vault).unwrap(),
+        insurance_vault:addr_validate_to_lower(deps.api, &msg.insurance_vault).unwrap(),
+        oracle:addr_validate_to_lower(deps.api, &msg.oracle)?,
+        margin_ratio_initial:Uint128::from(2000u128),
+        margin_ratio_maintenance:Uint128::from(500u128),
+        margin_ratio_partial:Uint128::from(625u128),
+        partial_liquidation_close_percentage:Decimal::percent(25),
+        partial_liquidation_penalty_percentage:Decimal::percent(25),
+        full_liquidation_penalty_percentage:Decimal::one(),
+        full_liquidation_liquidator_share_denominator:2000u64,
+        max_deposit:Uint128::zero(),
+        markets_length:0u64, 
+        partial_liquidation_liquidator_share_denominator: 1u64
+     };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     // ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
     STATE.save(deps.storage, &state)?;
@@ -226,17 +210,14 @@ pub fn execute(
             margin_ratio_maintenance,
         ),
         ExecuteMsg::UpdatePartialLiquidationClosePercentage {
-            numerator,
-            denominator,
-        } => try_update_partial_liquidation_close_percentage(deps, info, numerator, denominator),
+            value
+        } => try_update_partial_liquidation_close_percentage(deps, info, value),
         ExecuteMsg::UpdatePartialLiquidationPenaltyPercentage {
-            numerator,
-            denominator,
-        } => try_update_partial_liquidation_penalty_percentage(deps, info, numerator, denominator),
+            value
+        } => try_update_partial_liquidation_penalty_percentage(deps, info, value),
         ExecuteMsg::UpdateFullLiquidationPenaltyPercentage {
-            numerator,
-            denominator,
-        } => try_update_full_liquidation_penalty_percentage(deps, info, numerator, denominator),
+           value
+        } => try_update_full_liquidation_penalty_percentage(deps, info, value),
         ExecuteMsg::UpdatePartialLiquidationLiquidatorShareDenominator { denominator } => {
             try_update_partial_liquidation_liquidator_share_denominator(deps, info, denominator)
         }
@@ -244,50 +225,35 @@ pub fn execute(
             try_update_full_liquidation_liquidator_share_denominator(deps, info, denominator)
         }
         ExecuteMsg::UpdateFee {
-            fee_numerator,
-            fee_denominator,
+            fee_ : fee,
             first_tier_minimum_balance,
-            first_tier_discount_numerator,
-            first_tier_discount_denominator,
+            first_tier_discount,
             second_tier_minimum_balance,
-            second_tier_discount_numerator,
-            second_tier_discount_denominator,
+            second_tier_discount,
             third_tier_minimum_balance,
-            third_tier_discount_numerator,
-            third_tier_discount_denominator,
+            third_tier_discount,
             fourth_tier_minimum_balance,
-            fourth_tier_discount_numerator,
-            fourth_tier_discount_denominator,
-            referrer_reward_numerator,
-            referrer_reward_denominator,
-            referee_discount_numerator,
-            referee_discount_denominator,
+            fourth_tier_discount,
+            referrer_reward,
+            referee_discount,
         } => try_update_fee(
             deps,
             info,
-            fee_numerator,
-            fee_denominator,
+            fee,
             first_tier_minimum_balance,
-            first_tier_discount_numerator,
-            first_tier_discount_denominator,
+            first_tier_discount,
             second_tier_minimum_balance,
-            second_tier_discount_numerator,
-            second_tier_discount_denominator,
+            second_tier_discount,
             third_tier_minimum_balance,
-            third_tier_discount_numerator,
-            third_tier_discount_denominator,
+            third_tier_discount,
             fourth_tier_minimum_balance,
-            fourth_tier_discount_numerator,
-            fourth_tier_discount_denominator,
-            referrer_reward_numerator,
-            referrer_reward_denominator,
-            referee_discount_numerator,
-            referee_discount_denominator,
+            fourth_tier_discount,
+            referrer_reward,
+            referee_discount,
         ),
         ExecuteMsg::UpdateOraceGuardRails {
             use_for_liquidations,
-            mark_oracle_divergence_numerator,
-            mark_oracle_divergence_denominator,
+            mark_oracle_divergence,
             slots_before_stale,
             confidence_interval_max_size,
             too_volatile_ratio,
@@ -295,8 +261,7 @@ pub fn execute(
             deps,
             info,
             use_for_liquidations,
-            mark_oracle_divergence_numerator,
-            mark_oracle_divergence_denominator,
+            mark_oracle_divergence,
             slots_before_stale,
             confidence_interval_max_size,
             too_volatile_ratio,
@@ -334,15 +299,13 @@ pub fn execute(
         ),
         ExecuteMsg::UpdateOrderState {
             min_order_quote_asset_amount,
-            reward_numerator,
-            reward_denominator,
+            reward,
             time_based_reward_lower_bound,
         } => try_update_order_state_structure(
             deps,
             info,
             min_order_quote_asset_amount,
-            reward_numerator,
-            reward_denominator,
+            reward,
             time_based_reward_lower_bound,
         ),
         ExecuteMsg::UpdateMarketOracle {

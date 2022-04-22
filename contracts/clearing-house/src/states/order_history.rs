@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Addr};
+use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Map, Item};
 
 use ariel::types::Order;
@@ -29,11 +29,11 @@ pub struct OrderRecord {
     pub action: OrderAction,
     pub filler: Addr,
     pub trade_record_id: u64,
-    pub base_asset_amount_filled: u128,
-    pub quote_asset_amount_filled: u128,
-    pub fee: u128,
-    pub filler_reward: u128,
-    pub quote_asset_amount_surplus: u128,
+    pub base_asset_amount_filled: Uint128,
+    pub quote_asset_amount_filled: Uint128,
+    pub fee: Uint128,
+    pub filler_reward: Uint128,
+    pub quote_asset_amount_surplus: Uint128,
     pub position_index: u64,
 }
 

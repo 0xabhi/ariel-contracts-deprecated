@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, OverflowError, DivideByZeroError};
 use cw_controllers::AdminError;
 use thiserror::Error;
 
@@ -136,4 +136,17 @@ pub enum ContractError {
     CantExpireOrders,
     #[error("Helpers Error")]
     HelpersError,
+}
+
+
+impl From<OverflowError> for ContractError {
+    fn from(o: OverflowError) -> Self {
+        StdError::from(o).into()
+    }
+}
+
+impl From<DivideByZeroError> for ContractError {
+    fn from(o: DivideByZeroError) -> Self {
+        StdError::from(o).into()
+    }
 }

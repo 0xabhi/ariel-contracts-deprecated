@@ -1,3 +1,4 @@
+use cosmwasm_std::{Decimal, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -18,10 +19,10 @@ pub enum ExecuteMsg {
     InitializeMarket {
         market_index: u64,
         market_name: String,
-        amm_base_asset_reserve: u128,
-        amm_quote_asset_reserve: u128,
+        amm_base_asset_reserve: Uint128,
+        amm_quote_asset_reserve: Uint128,
         amm_periodicity: u64,
-        amm_peg_multiplier: u128,
+        amm_peg_multiplier: Uint128,
         oracle_source: OracleSource,
         margin_ratio_initial: u32,
         margin_ratio_partial: u32,
@@ -38,9 +39,9 @@ pub enum ExecuteMsg {
     },
     OpenPosition {
         direction: PositionDirection,
-        quote_asset_amount: u128,
+        quote_asset_amount: Uint128,
         market_index: u64,
-        limit_price: u128,
+        limit_price: Uint128,
     },
     ClosePosition {
         market_index: u64,
@@ -67,8 +68,8 @@ pub enum ExecuteMsg {
         market_index: u64,
     },
     MoveAMMPrice {
-        base_asset_reserve: u128,
-        quote_asset_reserve: u128,
+        base_asset_reserve: Uint128,
+        quote_asset_reserve: Uint128,
         market_index: u64,
     },
     //user function
@@ -86,7 +87,7 @@ pub enum ExecuteMsg {
     },
     //admin function
     RepegAMMCurve {
-        new_peg_candidate: u128,
+        new_peg_candidate: Uint128,
         market_index: u64,
     },
 
@@ -104,7 +105,7 @@ pub enum ExecuteMsg {
     },
     UpdateK {
         market_index: u64,
-        sqrt_k: u128,
+        sqrt_k: Uint128,
     },
     UpdateMarginRatio {
         market_index: u64,
@@ -113,16 +114,13 @@ pub enum ExecuteMsg {
         margin_ratio_maintenance: u32,
     },
     UpdatePartialLiquidationClosePercentage {
-        numerator: u128,
-        denominator: u128,
+        value: Decimal,
     },
     UpdatePartialLiquidationPenaltyPercentage {
-        numerator: u128,
-        denominator: u128,
+        value: Decimal,
     },
     UpdateFullLiquidationPenaltyPercentage {
-        numerator: u128,
-        denominator: u128,
+        value: Decimal,
     },
     UpdatePartialLiquidationLiquidatorShareDenominator {
         denominator: u64,
@@ -131,38 +129,29 @@ pub enum ExecuteMsg {
         denominator: u64,
     },
     UpdateFee {
-        fee_numerator: u128,
-        fee_denominator: u128,
-        first_tier_minimum_balance: u64,
-        first_tier_discount_numerator: u128,
-        first_tier_discount_denominator: u128,
-        second_tier_minimum_balance: u64,
-        second_tier_discount_numerator: u128,
-        second_tier_discount_denominator: u128,
-        third_tier_minimum_balance: u64,
-        third_tier_discount_numerator: u128,
-        third_tier_discount_denominator: u128,
-        fourth_tier_minimum_balance: u64,
-        fourth_tier_discount_numerator: u128,
-        fourth_tier_discount_denominator: u128,
-        referrer_reward_numerator: u128,
-        referrer_reward_denominator: u128,
-        referee_discount_numerator: u128,
-        referee_discount_denominator: u128,
+        fee_: Decimal,
+        first_tier_minimum_balance: Uint128,
+        first_tier_discount: Decimal,
+        second_tier_minimum_balance: Uint128,
+        second_tier_discount: Decimal,
+        third_tier_minimum_balance: Uint128,
+        third_tier_discount: Decimal,
+        fourth_tier_minimum_balance: Uint128,
+        fourth_tier_discount: Decimal,
+        referrer_reward: Decimal,
+        referee_discount: Decimal,
     },
     UpdateOraceGuardRails {
         use_for_liquidations: bool,
-        mark_oracle_divergence_numerator: u128,
-        mark_oracle_divergence_denominator: u128,
+        mark_oracle_divergence: Decimal,
         slots_before_stale: i64,
-        confidence_interval_max_size: u128,
+        confidence_interval_max_size: Uint128,
         too_volatile_ratio: i128,
     },
     UpdateOrderState {
-        min_order_quote_asset_amount: u128,
-        reward_numerator: u128,
-        reward_denominator: u128,
-        time_based_reward_lower_bound: u128,
+        min_order_quote_asset_amount: Uint128,
+        reward: Decimal,
+        time_based_reward_lower_bound: Uint128,
     },
     UpdateMarketOracle {
         market_index: u64,
@@ -174,19 +163,19 @@ pub enum ExecuteMsg {
     },
     UpdateMarketMinimumQuoteAssetTradeSize {
         market_index: u64,
-        minimum_trade_size: u128,
+        minimum_trade_size: Uint128,
     },
 
     UpdateMarketMinimumBaseAssetTradeSize {
         market_index: u64,
-        minimum_trade_size: u128,
+        minimum_trade_size: Uint128,
     },
     // will move to admin controller
     UpdateAdmin {
         admin: String,
     },
     UpdateMaxDeposit {
-        max_deposit: u128,
+        max_deposit: Uint128,
     },
     UpdateExchangePaused {
         exchange_paused: bool,

@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Addr};
+use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Map, Item};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -32,7 +32,7 @@ pub struct FundingRateRecord {
     pub cumulative_funding_rate_long: i128,
     pub cumulative_funding_rate_short: i128,
     pub oracle_price_twap: i128,
-    pub mark_price_twap: u128,
+    pub mark_price_twap: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

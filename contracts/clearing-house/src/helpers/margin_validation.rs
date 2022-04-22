@@ -6,7 +6,7 @@ pub fn validate_margin(
     margin_ratio_partial: u32,
     margin_ratio_maintenance: u32,
 ) -> Result<bool, ContractError> {
-    if !(MINIMUM_MARGIN_RATIO..=MAXIMUM_MARGIN_RATIO).contains(&margin_ratio_initial) {
+    if !(MINIMUM_MARGIN_RATIO.u128()..=MAXIMUM_MARGIN_RATIO.u128()).contains(&(margin_ratio_initial as u128)) {
         return Err(ContractError::InvalidMarginRatio);
     }
 
@@ -14,7 +14,7 @@ pub fn validate_margin(
         return Err(ContractError::InvalidMarginRatio);
     }
 
-    if !(MINIMUM_MARGIN_RATIO..=MAXIMUM_MARGIN_RATIO).contains(&margin_ratio_partial) {
+    if !(MINIMUM_MARGIN_RATIO.u128()..=MAXIMUM_MARGIN_RATIO.u128()).contains(&(margin_ratio_partial as u128)) {
         return Err(ContractError::InvalidMarginRatio);
     }
 
@@ -22,7 +22,7 @@ pub fn validate_margin(
         return Err(ContractError::InvalidMarginRatio);
     }
 
-    if !(MINIMUM_MARGIN_RATIO..=MAXIMUM_MARGIN_RATIO).contains(&margin_ratio_maintenance) {
+    if !(MINIMUM_MARGIN_RATIO.u128()..=MAXIMUM_MARGIN_RATIO.u128()).contains(&(margin_ratio_maintenance as u128)) {
         return Err(ContractError::InvalidMarginRatio);
     }
 

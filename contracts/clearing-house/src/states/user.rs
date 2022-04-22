@@ -2,16 +2,16 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cw_storage_plus::Map;
-use cosmwasm_std::{Addr};
+use cosmwasm_std::{Addr, Uint128};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct User {
-    pub collateral: u128,
-    pub cumulative_deposits: u128,
-    pub total_fee_paid: u128,
-    pub total_token_discount: u128,
-    pub total_referral_reward: u128,
-    pub total_referee_discount: u128,
+    pub collateral: Uint128,
+    pub cumulative_deposits: Uint128,
+    pub total_fee_paid: Uint128,
+    pub total_token_discount: Uint128,
+    pub total_referral_reward: Uint128,
+    pub total_referee_discount: Uint128,
     pub positions_length: u64,
     pub referrer: Option<Addr>,
 }
@@ -20,9 +20,9 @@ pub struct User {
 pub struct Position {
     pub market_index: u64,
     pub base_asset_amount: i128,
-    pub quote_asset_amount: u128,
+    pub quote_asset_amount: Uint128,
     pub last_cumulative_funding_rate: i128,
-    pub last_cumulative_repeg_rebate: u128,
+    pub last_cumulative_repeg_rebate: Uint128,
     pub last_funding_rate_ts: u64,
     pub order_length: u64,
 }

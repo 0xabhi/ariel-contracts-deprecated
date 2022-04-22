@@ -1,42 +1,40 @@
 use std::cmp::{max, min};
 
+use num::integer::Roots;
+use std::ops::Mul;
+
 use crate::error::ContractError;
 
 use ariel::types::{OracleGuardRails, SwapDirection, PositionDirection, OraclePriceData};
+use cosmwasm_std::{Fraction, Uint128};
 
 use crate::states::market::{Market, Amm};
 
-use crate::helpers::bn::U192;
-use crate::helpers::casting::{cast, cast_to_i128, cast_to_u128};
 use crate::helpers::constants::{PEG_PRECISION, PRICE_TO_PEG_PRECISION_RATIO,MARK_PRICE_PRECISION, PRICE_SPREAD_PRECISION, PRICE_SPREAD_PRECISION_U128};
 use crate::helpers::markets::{get_mark_price};
 use crate::helpers::quote_asset::{reserve_to_asset_amount, asset_to_reserve_amount};
 
 pub fn calculate_price(
-    quote_asset_reserve: u128,
-    base_asset_reserve: u128,
-    peg_multiplier: u128,
-) -> Result<u128, ContractError> {
+    quote_asset_reserve: Uint128,
+    base_asset_reserve: Uint128,
+    peg_multiplier: Uint128,
+) -> Result<Uint128, ContractError> {
     let peg_quote_asset_amount = quote_asset_reserve
-        .checked_mul(peg_multiplier)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_mul(peg_multiplier)?;
 
-    U192::from(peg_quote_asset_amount)
-        .checked_mul(U192::from(PRICE_TO_PEG_PRECISION_RATIO))
-        .ok_or_else(|| (ContractError::MathError))?
-        .checked_div(U192::from(base_asset_reserve))
-        .ok_or_else(|| (ContractError::MathError))?
-        .try_to_u128()
+    let res = peg_quote_asset_amount.checked_mul(PRICE_TO_PEG_PRECISION_RATIO)?.checked_div(base_asset_reserve)?;
+
+    Ok(res)
 }
 
-pub fn calculate_terminal_price(market: &mut Market) -> Result<u128, ContractError> {
+pub fn calculate_terminal_price(market: &mut Market) -> Result<Uint128, ContractError> {
     let swap_direction = if market.base_asset_amount > 0 {
         SwapDirection::Add
     } else {
         SwapDirection::Remove
     };
     let (new_quote_asset_amount, new_base_asset_amount) = calculate_swap_output(
-        market.base_asset_amount.unsigned_abs(),
+        Uint128::from(market.base_asset_amount.unsigned_abs()),
         market.amm.base_asset_reserve,
         swap_direction,
         market.amm.sqrt_k,
@@ -54,16 +52,16 @@ pub fn calculate_terminal_price(market: &mut Market) -> Result<u128, ContractErr
 pub fn calculate_new_mark_twap(
     a: &Amm,
     now: u64,
-    precomputed_mark_price: Option<u128>,
-) -> Result<u128, ContractError> {
-    let since_last = cast_to_i128(max(
+    precomputed_mark_price: Option<Uint128>,
+) -> Result<Uint128, ContractError> {
+    let since_last = max(
         1,
         now.checked_sub(a.last_mark_price_twap_ts)
             .ok_or_else(|| (ContractError::MathError))?,
-    ))?;
+    );
     let from_start = max(
         1,
-        cast_to_i128(a.funding_period)?
+        a.funding_period
             .checked_sub(since_last)
             .ok_or_else(|| (ContractError::MathError))?,
     );
@@ -72,14 +70,14 @@ pub fn calculate_new_mark_twap(
         None => get_mark_price(&a)?,
     };
 
-    let new_twap: u128 = cast(calculate_twap(
-        cast(current_price)?,
-        cast(a.last_mark_price_twap)?,
-        since_last,
-        from_start,
-    )?)?;
+    let new_twap = (calculate_twap(
+        current_price.u128() as i128,
+        a.last_mark_price_twap.u128() as i128,
+        since_last as i128,
+        from_start as i128,
+    )?).unsigned_abs();
 
-    return Ok(new_twap);
+    return Ok(Uint128::from(new_twap));
 }
 
 pub fn calculate_new_oracle_price_twap(
@@ -87,17 +85,18 @@ pub fn calculate_new_oracle_price_twap(
     now: u64,
     oracle_price: i128,
 ) -> Result<i128, ContractError> {
-    let since_last = cast_to_i128(max(
+    let since_last = max(
         1,
         now.checked_sub(a.last_oracle_price_twap_ts)
             .ok_or_else(|| (ContractError::MathError))?,
-    ))?;
+    );
+
     let from_start = max(
-        1,
-        cast_to_i128(a.funding_period)?
+        1 as u64,
+        a.funding_period
             .checked_sub(since_last)
             .ok_or_else(|| (ContractError::MathError))?,
-    );
+        );
 
     // ensure amm.last_oracle_price is proper
     // let capped_last_oracle_price = if a.last_oracle_price > 0 {
@@ -126,8 +125,8 @@ pub fn calculate_new_oracle_price_twap(
     let new_twap = calculate_twap(
         oracle_price,
         a.last_oracle_price_twap,
-        since_last,
-        from_start,
+        since_last as i128,
+        from_start as i128,
     )?;
 
     return Ok(new_twap);
@@ -153,15 +152,13 @@ pub fn calculate_twap(
 }
 
 pub fn calculate_swap_output(
-    swap_amount: u128,
-    input_asset_amount: u128,
+    swap_amount: Uint128,
+    input_asset_amount: Uint128,
     direction: SwapDirection,
-    invariant_sqrt: u128,
-) -> Result<(u128, u128), ContractError> {
-    let invariant_sqrt_u192 = U192::from(invariant_sqrt);
-    let invariant = invariant_sqrt_u192
-        .checked_mul(invariant_sqrt_u192)
-        .ok_or_else(|| (ContractError::MathError))?;
+    invariant_sqrt: Uint128,
+) -> Result<(Uint128, Uint128), ContractError> {
+    let invariant = invariant_sqrt
+        .checked_mul(invariant_sqrt)?;
 
     if direction == SwapDirection::Remove && swap_amount > input_asset_amount {
         return Err(ContractError::TradeSizeTooLarge);
@@ -169,37 +166,30 @@ pub fn calculate_swap_output(
 
     let new_input_amount = if let SwapDirection::Add = direction {
         input_asset_amount
-            .checked_add(swap_amount)
-            .ok_or_else(|| (ContractError::MathError))?
+            .checked_add(swap_amount)?
     } else {
         input_asset_amount
-            .checked_sub(swap_amount)
-            .ok_or_else(|| (ContractError::MathError))?
+            .checked_sub(swap_amount)?
     };
 
-    let new_input_amount_u192 = U192::from(new_input_amount);
     let new_output_amount = invariant
-        .checked_div(new_input_amount_u192)
-        .ok_or_else(|| (ContractError::MathError))?
-        .try_to_u128()?;
+        .checked_div(new_input_amount)?;
 
     return Ok((new_output_amount, new_input_amount));
 }
 
 pub fn calculate_quote_asset_amount_swapped(
-    quote_asset_reserve_before: u128,
-    quote_asset_reserve_after: u128,
+    quote_asset_reserve_before: Uint128,
+    quote_asset_reserve_after: Uint128,
     swap_direction: SwapDirection,
-    peg_multiplier: u128,
-) -> Result<u128, ContractError> {
+    peg_multiplier: Uint128,
+) -> Result<Uint128, ContractError> {
     let quote_asset_reserve_change = match swap_direction {
         SwapDirection::Add => quote_asset_reserve_before
-            .checked_sub(quote_asset_reserve_after)
-            .ok_or_else(|| (ContractError::MathError))?,
+            .checked_sub(quote_asset_reserve_after)?,
 
         SwapDirection::Remove => quote_asset_reserve_after
-            .checked_sub(quote_asset_reserve_before)
-            .ok_or_else(|| (ContractError::MathError))?,
+            .checked_sub(quote_asset_reserve_before)?,
     };
 
     let mut quote_asset_amount =
@@ -209,8 +199,7 @@ pub fn calculate_quote_asset_amount_swapped(
     // by adding one unit of quote asset
     if swap_direction == SwapDirection::Remove {
         quote_asset_amount = quote_asset_amount
-            .checked_add(1)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .checked_add(Uint128::from(1 as u64))?;
     }
 
     Ok(quote_asset_amount)
@@ -220,7 +209,7 @@ pub fn calculate_quote_asset_amount_swapped(
 pub fn normalise_oracle_price(
     a: &Amm,
     oracle_price: &OraclePriceData,
-    precomputed_mark_price: Option<u128>,
+    precomputed_mark_price: Option<Uint128>,
 ) -> Result<i128, ContractError> {
     let OraclePriceData {
         price: oracle_price,
@@ -229,12 +218,12 @@ pub fn normalise_oracle_price(
     } = *oracle_price;
 
     let mark_price = match precomputed_mark_price {
-        Some(mark_price) => cast_to_i128(mark_price)?,
-        None => cast_to_i128(a.mark_price()?)?,
+        Some(mark_price) => mark_price.u128() as i128,
+        None => a.mark_price()?.u128() as i128,
     };
 
     let mark_price_1bp = mark_price.checked_div(10000).ok_or_else(|| (ContractError::MathError))?;
-    let conf_int = cast_to_i128(oracle_conf)?;
+    let conf_int = oracle_conf.u128() as i128;
 
     //  normalises oracle toward mark price based on the oracle’s confidence interval
     //  if mark above oracle: use oracle+conf unless it exceeds .9999 * mark price
@@ -273,11 +262,11 @@ pub fn normalise_oracle_price(
 pub fn calculate_oracle_mark_spread(
     a: &Amm,
     oracle_price_data: &OraclePriceData,
-    precomputed_mark_price: Option<u128>,
+    precomputed_mark_price: Option<Uint128>,
 ) -> Result<(i128, i128), ContractError> {
     let mark_price = match precomputed_mark_price {
-        Some(mark_price) => cast_to_i128(mark_price)?,
-        None => cast_to_i128(a.mark_price()?)?,
+        Some(mark_price) => mark_price.u128() as i128,
+        None => a.mark_price()?.u128() as i128,
     };
 
     let oracle_price = oracle_price_data.price;
@@ -293,7 +282,7 @@ pub fn calculate_oracle_mark_spread(
 pub fn calculate_oracle_mark_spread_pct(
     a: &Amm,
     oracle_price_data: &OraclePriceData,
-    precomputed_mark_price: Option<u128>,
+    precomputed_mark_price: Option<Uint128>,
 ) -> Result<i128, ContractError> {
     let (oracle_price, price_spread) =
         calculate_oracle_mark_spread(a, oracle_price_data, precomputed_mark_price)?;
@@ -310,18 +299,18 @@ pub fn is_oracle_mark_too_divergent(
     oracle_guard_rails: &OracleGuardRails,
 ) -> Result<bool, ContractError> {
     let max_divergence = oracle_guard_rails
-        .mark_oracle_divergence_numerator
-        .checked_shl(10)
-        .ok_or_else(|| (ContractError::MathError))?
-        .checked_div(oracle_guard_rails.mark_oracle_divergence_denominator)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .mark_oracle_divergence.numerator()
+        .checked_mul(Uint128::from(PRICE_SPREAD_PRECISION_U128))?
+        .checked_div(oracle_guard_rails.mark_oracle_divergence.denominator())?;
+        // .ok_or_else(|| (ContractError::MathError))?;
 
-    Ok(price_spread_pct.unsigned_abs() > max_divergence)
+    // Ok(max_divergence.lt(&Uint128::from(price_spread_pct.unsigned_abs())))
+    Ok(Uint128::from(price_spread_pct.unsigned_abs()).gt(&max_divergence))
 }
 
-pub fn calculate_mark_twap_spread_pct(a: &Amm, mark_price: u128) -> Result<i128, ContractError> {
-    let mark_price = cast_to_i128(mark_price)?;
-    let mark_twap = cast_to_i128(a.last_mark_price_twap)?;
+pub fn calculate_mark_twap_spread_pct(a: &Amm, mark_price: Uint128) -> Result<i128, ContractError> {
+    let mark_price = mark_price.u128() as i128;
+    let mark_twap = a.last_mark_price_twap.u128() as i128;
 
     let price_spread = mark_price
         .checked_sub(mark_twap)
@@ -339,15 +328,12 @@ pub fn use_oracle_price_for_margin_calculation(
     oracle_guard_rails: &OracleGuardRails,
 ) -> Result<bool, ContractError> {
     let max_divergence = oracle_guard_rails
-        .mark_oracle_divergence_numerator
-        .checked_mul(PRICE_SPREAD_PRECISION_U128)
-        .ok_or_else(|| (ContractError::MathError))?
-        .checked_div(oracle_guard_rails.mark_oracle_divergence_denominator)
-        .ok_or_else(|| (ContractError::MathError))?
-        .checked_div(3)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .mark_oracle_divergence.numerator()
+        .mul(PRICE_SPREAD_PRECISION_U128)
+        .checked_div(Uint128::from(3 as u64))?
+        .checked_div(oracle_guard_rails.mark_oracle_divergence.denominator())?;
 
-    Ok(price_spread_pct.unsigned_abs() > max_divergence)
+    Ok(price_spread_pct.unsigned_abs() > max_divergence.u128())
 }
 
 
@@ -376,9 +362,9 @@ pub fn is_oracle_valid(
             .ok_or_else(|| (ContractError::MathError))?)
         .gt(&valid_oracle_guard_rails.too_volatile_ratio));
 
-    let conf_denom_of_price = cast_to_u128(oracle_price)?
-        .checked_div(max(1, oracle_conf))
-        .ok_or_else(|| (ContractError::MathError))?;
+    let conf_denom_of_price = Uint128::from(oracle_price.unsigned_abs())
+        .checked_div(Uint128::from(max(1 as u128, oracle_conf.u128())))?;
+
     let is_conf_too_large =
         conf_denom_of_price.lt(&valid_oracle_guard_rails.confidence_interval_max_size);
 
@@ -393,58 +379,45 @@ pub fn is_oracle_valid(
 
 pub fn calculate_max_base_asset_amount_to_trade(
     amm: &Amm,
-    limit_price: u128,
-) -> Result<(u128, PositionDirection), ContractError> {
-    let invariant_sqrt_u192 = U192::from(amm.sqrt_k);
-    let invariant = invariant_sqrt_u192
-        .checked_mul(invariant_sqrt_u192)
-        .ok_or_else(|| (ContractError::MathError))?;
+    limit_price: Uint128,
+) -> Result<(Uint128, PositionDirection), ContractError> {
+    let invariant = amm.sqrt_k
+        .checked_mul(amm.sqrt_k)?;
 
     let new_base_asset_reserve_squared = invariant
-        .checked_mul(U192::from(MARK_PRICE_PRECISION))
-        .ok_or_else(|| (ContractError::MathError))?
-        .checked_div(U192::from(limit_price))
-        .ok_or_else(|| (ContractError::MathError))?
-        .checked_mul(U192::from(amm.peg_multiplier))
-        .ok_or_else(|| (ContractError::MathError))?
-        .checked_div(U192::from(PEG_PRECISION))
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_mul(MARK_PRICE_PRECISION)?
+        .checked_div(limit_price)?
+        .checked_mul(amm.peg_multiplier)?
+        .checked_div(PEG_PRECISION)?;
 
-    let new_base_asset_reserve = new_base_asset_reserve_squared
-        .integer_sqrt()
-        .try_to_u128()?;
+    let new_base_asset_reserve = new_base_asset_reserve_squared.u128().sqrt();
 
-    if new_base_asset_reserve > amm.base_asset_reserve {
-        let max_trade_amount = new_base_asset_reserve
-            .checked_sub(amm.base_asset_reserve)
-            .ok_or_else(|| (ContractError::MathError))?;
+    if new_base_asset_reserve > amm.base_asset_reserve.u128() {
+        let max_trade_amount = Uint128::from(new_base_asset_reserve)
+            .checked_sub(amm.base_asset_reserve)?;
         Ok((max_trade_amount, PositionDirection::Short))
     } else {
         let max_trade_amount = amm
             .base_asset_reserve
-            .checked_sub(new_base_asset_reserve)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .checked_sub(Uint128::from(new_base_asset_reserve))?;
         Ok((max_trade_amount, PositionDirection::Long))
     }
 }
 
 pub fn should_round_trade(
     a: &Amm,
-    quote_asset_amount: u128,
-    base_asset_value: u128,
+    quote_asset_amount: Uint128,
+    base_asset_value: Uint128,
 ) -> Result<bool, ContractError> {
     let difference = if quote_asset_amount > base_asset_value {
         quote_asset_amount
-            .checked_sub(base_asset_value)
-            .ok_or_else(|| (ContractError::MathError))?
+            .checked_sub(base_asset_value)?
     } else {
         base_asset_value
-            .checked_sub(quote_asset_amount)
-            .ok_or_else(|| (ContractError::MathError))?
+            .checked_sub(quote_asset_amount)?
     };
 
     let quote_asset_reserve_amount = asset_to_reserve_amount(difference, a.peg_multiplier)?;
 
     Ok(quote_asset_reserve_amount < a.minimum_quote_asset_trade_size)
 }
-

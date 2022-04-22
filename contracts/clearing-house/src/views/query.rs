@@ -1,7 +1,4 @@
-use std::ops::Div;
-
 use crate::helpers::amm::use_oracle_price_for_margin_calculation;
-use crate::helpers::casting::{cast, cast_to_i128};
 use crate::helpers::collateral::calculate_updated_collateral;
 use crate::helpers::constants::{
     AMM_TO_QUOTE_PRECISION_RATIO, DEFAULT_LIMIT, MARGIN_PRECISION, MARK_PRICE_PRECISION, MAX_LIMIT,
@@ -17,7 +14,7 @@ use crate::ContractError;
 use crate::states::curve_history::*;
 use crate::states::liquidation_history::{LIQUIDATION_HISTORY, LIQUIDATION_HISTORY_INFO};
 use crate::states::market::{LiquidationStatus, LiquidationType, MarketStatus, MARKETS};
-use crate::states::state::{ADMIN, STATE, State, ORACLEGUARDRAILS, ORDERSTATE, FEESTRUCTURE};
+use crate::states::state::{ADMIN, STATE, ORACLEGUARDRAILS, ORDERSTATE, FEESTRUCTURE};
 use crate::states::trade_history::{TRADE_HISTORY, TRADE_HISTORY_INFO};
 use crate::states::user::{POSITIONS, USERS};
 use crate::states::{deposit_history::*, funding_history::*};
@@ -27,7 +24,7 @@ use ariel::helper::addr_validate_to_lower;
 use ariel::response::*;
 
 use ariel::types::OracleGuardRails;
-use cosmwasm_std::{Addr, Deps, Order};
+use cosmwasm_std::{Addr, Deps, Order, Uint128};
 use cw_storage_plus::{Bound, PrimaryKey};
 
 pub fn get_user(deps: Deps, user_address: String) -> Result<UserResponse, ContractError> {
@@ -120,6 +117,7 @@ pub fn get_oracle_address(deps: Deps) -> Result<OracleResponse, ContractError> {
     };
     Ok(oracle)
 }
+
 pub fn get_margin_ratios(deps: Deps) -> Result<MarginRatioResponse, ContractError> {
     let state = STATE.load(deps.storage)?;
     let margin_ratio = MarginRatioResponse {
@@ -129,23 +127,23 @@ pub fn get_margin_ratios(deps: Deps) -> Result<MarginRatioResponse, ContractErro
     };
     Ok(margin_ratio)
 }
+
 pub fn get_partial_liquidation_close_percentage(
     deps: Deps,
 ) -> Result<PartialLiquidationClosePercentageResponse, ContractError> {
     let state = STATE.load(deps.storage)?;
     let partial_liq_close_perc = PartialLiquidationClosePercentageResponse {
-        numerator: state.partial_liquidation_close_percentage_numerator,
-        denominator: state.partial_liquidation_close_percentage_denominator,
+        value: state.partial_liquidation_close_percentage,
     };
     Ok(partial_liq_close_perc)
 }
+
 pub fn get_partial_liquidation_penalty_percentage(
     deps: Deps,
 ) -> Result<PartialLiquidationPenaltyPercentageResponse, ContractError> {
     let state = STATE.load(deps.storage)?;
     let partial_liq_penalty_perc = PartialLiquidationPenaltyPercentageResponse {
-        numerator: state.partial_liquidation_penalty_percentage_numerator,
-        denominator: state.partial_liquidation_penalty_percentage_denominator,
+        value: state.partial_liquidation_penalty_percentage,
     };
     Ok(partial_liq_penalty_perc)
 }
@@ -155,8 +153,7 @@ pub fn get_full_liquidation_penalty_percentage(
 ) -> Result<FullLiquidationPenaltyPercentageResponse, ContractError> {
     let state = STATE.load(deps.storage)?;
     let full_liq_penalty_perc = FullLiquidationPenaltyPercentageResponse {
-        numerator: state.full_liquidation_penalty_percentage_numerator,
-        denominator: state.full_liquidation_penalty_percentage_denominator,
+        value: state.full_liquidation_penalty_percentage,
     };
     Ok(full_liq_penalty_perc)
 }
@@ -202,10 +199,9 @@ pub fn get_oracle_guard_rails(deps: Deps) -> Result<OracleGuardRailsResponse, Co
     let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
     let ogr = OracleGuardRailsResponse {
         use_for_liquidations: oracle_guard_rails.use_for_liquidations,
-        mark_oracle_divergence_numerator: oracle_guard_rails.mark_oracle_divergence_numerator,
-        mark_oracle_divergence_denominator: 
+        mark_oracle_divergence : 
             oracle_guard_rails
-            .mark_oracle_divergence_denominator,
+            .mark_oracle_divergence,
         slots_before_stale: oracle_guard_rails.slots_before_stale,
         confidence_interval_max_size: oracle_guard_rails.confidence_interval_max_size,
         too_volatile_ratio: oracle_guard_rails.too_volatile_ratio,
@@ -217,8 +213,7 @@ pub fn get_order_state(deps: Deps) -> Result<OrderStateResponse, ContractError> 
     let orderstate = ORDERSTATE.load(deps.storage)?;
     let os = OrderStateResponse {
         min_order_quote_asset_amount: orderstate.min_order_quote_asset_amount,
-        reward_numerator: orderstate.reward_numerator,
-        reward_denominator: orderstate.reward_denominator,
+        reward: orderstate.reward,
         time_based_reward_lower_bound: orderstate.time_based_reward_lower_bound,
     };
     Ok(os)
@@ -227,24 +222,17 @@ pub fn get_order_state(deps: Deps) -> Result<OrderStateResponse, ContractError> 
 pub fn get_fee_structure(deps: Deps) -> Result<FeeStructureResponse, ContractError> {
     let fs = FEESTRUCTURE.load(deps.storage)?;
     let res = FeeStructureResponse {
-        fee_numerator: fs.fee_numerator,
-        fee_denominator: fs.fee_denominator,
+        fee: fs.fee,
         first_tier_minimum_balance: fs.first_tier_minimum_balance,
-        first_tier_discount_numerator: fs.first_tier_discount_numerator,
-        first_tier_discount_denominator: fs.first_tier_discount_denominator,
+        first_tier_discount : fs.first_tier_discount,
         second_tier_minimum_balance: fs.second_tier_minimum_balance,
-        second_tier_discount_numerator: fs.second_tier_discount_numerator,
-        second_tier_discount_denominator: fs.second_tier_discount_denominator,
+        second_tier_discount : fs.second_tier_discount,
         third_tier_minimum_balance: fs.third_tier_minimum_balance,
-        third_tier_discount_numerator: fs.third_tier_discount_numerator,
-        third_tier_discount_denominator: fs.third_tier_discount_denominator,
+        third_tier_discount : fs.third_tier_discount,
         fourth_tier_minimum_balance: fs.fourth_tier_minimum_balance,
-        fourth_tier_discount_numerator: fs.fourth_tier_discount_numerator,
-        fourth_tier_discount_denominator: fs.fourth_tier_discount_denominator,
-        referrer_reward_numerator: fs.referrer_reward_numerator,
-        referrer_reward_denominator: fs.referrer_reward_denominator,
-        referee_discount_numerator: fs.referee_discount_numerator,
-        referee_discount_denominator: fs.referee_discount_denominator,
+        fourth_tier_discount : fs.fourth_tier_discount,
+        referrer_reward : fs.referrer_reward,
+        referee_discount : fs.referee_discount,
     };
     Ok(res)
 }
@@ -264,8 +252,6 @@ pub fn get_curve_history(
     let chl = (get_curve_history_length(deps)?).length;
     let mut curves: Vec<CurveHistoryResponse> = vec![];
     if chl > 0 {
-        const MAX_LIMIT: u32 = 20;
-        const DEFAULT_LIMIT: u32 = 1;
         let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
         let start = start_after
             .map(|start| start.joined_key())
@@ -321,7 +307,7 @@ pub fn get_deposit_history(
     let user_addr = addr_validate_to_lower(deps.api, &user_address.to_string())?;
     let mut deposit_history: Vec<DepositHistoryResponse> = vec![];
     let user_cumulative_deposit = (USERS.load(deps.storage, &user_addr)?).cumulative_deposits;
-    if user_cumulative_deposit > 0 {
+    if user_cumulative_deposit.u128() > 0 {
         let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
         let start = start_after
             .map(|start| start.joined_key())
@@ -552,7 +538,7 @@ pub fn get_market_info(deps: Deps, market_index: u64) -> Result<MarketInfoRespon
         total_fee: market.amm.total_fee,
         total_fee_minus_distributions: market.amm.total_fee_minus_distributions,
         total_fee_withdrawn: market.amm.total_fee_withdrawn,
-        minimum_trade_size: 100000000,
+        minimum_trade_size: Uint128::from(100000000 as u64),
         last_oracle_price_twap_ts: market.amm.last_oracle_price_twap_ts,
         last_oracle_price: market.amm.last_oracle_price,
     };
@@ -596,13 +582,11 @@ pub fn get_active_positions(
     let mut positions: Vec<PositionResponse> = vec![];
     for position in active_positions.clone() {
         let market_index = position.market_index;
-        let direction = direction_to_close_position(cast(position.base_asset_amount)?);
-        let entry_price: u128 = (position
+        let direction = direction_to_close_position(position.base_asset_amount);
+        let entry_price: Uint128 = (position
             .quote_asset_amount
-            .checked_mul(MARK_PRICE_PRECISION * AMM_TO_QUOTE_PRECISION_RATIO))
-        .unwrap()
-        .checked_div(position.base_asset_amount.unsigned_abs())
-        .ok_or_else(|| (ContractError::MathError))?;
+            .checked_mul(MARK_PRICE_PRECISION * AMM_TO_QUOTE_PRECISION_RATIO))?
+        .checked_div(Uint128::from(position.base_asset_amount.unsigned_abs()))?;
 
         let entry_notional = position.quote_asset_amount;
         let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
@@ -611,8 +595,8 @@ pub fn get_active_positions(
         let pr = PositionResponse {
             market_index,
             direction,
-            initial_size: cast(position.base_asset_amount).unwrap(),
-            entry_notional: cast(entry_notional).unwrap(),
+            initial_size: Uint128::from(position.base_asset_amount.unsigned_abs()),
+            entry_notional: entry_notional.u128() as i128,
             entry_price,
             pnl: liq_status.unrealized_pnl,
         };
@@ -629,9 +613,9 @@ pub fn calculate_liquidation_status(
 ) -> Result<LiquidationStatus, ContractError> {
     let user = USERS.load(deps.storage, user_addr)?;
 
-    let mut partial_margin_requirement: u128 = 0;
-    let mut maintenance_margin_requirement: u128 = 0;
-    let mut base_asset_value: u128 = 0;
+    let mut partial_margin_requirement: Uint128 = Uint128::zero();
+    let mut maintenance_margin_requirement: Uint128 = Uint128::zero();
+    let mut base_asset_value: Uint128 = Uint128::zero();
     let mut unrealized_pnl: i128 = 0;
     let mut adjusted_unrealized_pnl: i128 = 0;
     let mut market_statuses: Vec<MarketStatus> = Vec::new();
@@ -649,8 +633,7 @@ pub fn calculate_liquidation_status(
                 calculate_base_asset_value_and_pnl(&market_position, a)?;
 
             base_asset_value = base_asset_value
-                .checked_add(amm_position_base_asset_value)
-                .ok_or_else(|| (ContractError::HelpersError))?;
+                .checked_add(amm_position_base_asset_value)?;
             unrealized_pnl = unrealized_pnl
                 .checked_add(amm_position_unrealized_pnl)
                 .ok_or_else(|| (ContractError::HelpersError))?;
@@ -661,8 +644,8 @@ pub fn calculate_liquidation_status(
             let oracle_status =
                 get_oracle_status(&market.amm, oracle_guard_rails, Some(mark_price_before))?;
 
-            let market_partial_margin_requirement: u128;
-            let market_maintenance_margin_requirement: u128;
+            let market_partial_margin_requirement: Uint128;
+            let market_maintenance_margin_requirement: Uint128;
             let mut close_position_slippage = None;
             if oracle_status.is_valid
                 && use_oracle_price_for_margin_calculation(
@@ -672,8 +655,8 @@ pub fn calculate_liquidation_status(
             {
                 let exit_slippage = calculate_slippage(
                     amm_position_base_asset_value,
-                    market_position.base_asset_amount.unsigned_abs(),
-                    cast_to_i128(mark_price_before)?,
+                    Uint128::from(market_position.base_asset_amount.unsigned_abs()),
+                    mark_price_before.u128() as i128,
                 )?;
                 close_position_slippage = Some(exit_slippage);
 
@@ -697,40 +680,32 @@ pub fn calculate_liquidation_status(
                         .ok_or_else(|| (ContractError::HelpersError))?;
 
                     market_partial_margin_requirement = (oracle_position_base_asset_value)
-                        .checked_mul(market.margin_ratio_partial.into())
-                        .ok_or_else(|| (ContractError::HelpersError))?;
+                        .checked_mul(market.margin_ratio_partial.into())?;
 
                     partial_margin_requirement = partial_margin_requirement
-                        .checked_add(market_partial_margin_requirement)
-                        .ok_or_else(|| (ContractError::HelpersError))?;
+                        .checked_add(market_partial_margin_requirement)?;
 
                     market_maintenance_margin_requirement = oracle_position_base_asset_value
-                        .checked_mul(market.margin_ratio_maintenance.into())
-                        .ok_or_else(|| (ContractError::HelpersError))?;
+                        .checked_mul(market.margin_ratio_maintenance.into())?;
 
                     maintenance_margin_requirement = maintenance_margin_requirement
-                        .checked_add(market_maintenance_margin_requirement)
-                        .ok_or_else(|| (ContractError::HelpersError))?;
+                        .checked_add(market_maintenance_margin_requirement)?;
                 } else {
                     adjusted_unrealized_pnl = adjusted_unrealized_pnl
                         .checked_add(amm_position_unrealized_pnl)
                         .ok_or_else(|| (ContractError::HelpersError))?;
 
                     market_partial_margin_requirement = (amm_position_base_asset_value)
-                        .checked_mul(market.margin_ratio_partial.into())
-                        .ok_or_else(|| (ContractError::HelpersError))?;
+                        .checked_mul(market.margin_ratio_partial.into())?;
 
                     partial_margin_requirement = partial_margin_requirement
-                        .checked_add(market_partial_margin_requirement)
-                        .ok_or_else(|| (ContractError::HelpersError))?;
+                        .checked_add(market_partial_margin_requirement)?;
 
                     market_maintenance_margin_requirement = amm_position_base_asset_value
-                        .checked_mul(market.margin_ratio_maintenance.into())
-                        .ok_or_else(|| (ContractError::HelpersError))?;
+                        .checked_mul(market.margin_ratio_maintenance.into())?;
 
                     maintenance_margin_requirement = maintenance_margin_requirement
-                        .checked_add(market_maintenance_margin_requirement)
-                        .ok_or_else(|| (ContractError::HelpersError))?;
+                        .checked_add(market_maintenance_margin_requirement)?;
                 }
             } else {
                 adjusted_unrealized_pnl = adjusted_unrealized_pnl
@@ -738,27 +713,23 @@ pub fn calculate_liquidation_status(
                     .ok_or_else(|| (ContractError::HelpersError))?;
 
                 market_partial_margin_requirement = (amm_position_base_asset_value)
-                    .checked_mul(market.margin_ratio_partial.into())
-                    .ok_or_else(|| (ContractError::HelpersError))?;
+                    .checked_mul(market.margin_ratio_partial.into())?;
 
                 partial_margin_requirement = partial_margin_requirement
-                    .checked_add(market_partial_margin_requirement)
-                    .ok_or_else(|| (ContractError::HelpersError))?;
+                    .checked_add(market_partial_margin_requirement)?;
 
                 market_maintenance_margin_requirement = amm_position_base_asset_value
-                    .checked_mul(market.margin_ratio_maintenance.into())
-                    .ok_or_else(|| (ContractError::HelpersError))?;
+                    .checked_mul(market.margin_ratio_maintenance.into())?;
 
                 maintenance_margin_requirement = maintenance_margin_requirement
-                    .checked_add(market_maintenance_margin_requirement)
-                    .ok_or_else(|| (ContractError::HelpersError))?;
+                    .checked_add(market_maintenance_margin_requirement)?;
             }
 
             market_statuses.push(MarketStatus {
                 market_index: market_position.market_index,
-                partial_margin_requirement: market_partial_margin_requirement.div(MARGIN_PRECISION),
+                partial_margin_requirement: market_partial_margin_requirement.checked_div(MARGIN_PRECISION)?,
                 maintenance_margin_requirement: market_maintenance_margin_requirement
-                    .div(MARGIN_PRECISION),
+                    .checked_div(MARGIN_PRECISION)?,
                 base_asset_value: amm_position_base_asset_value,
                 mark_price_before,
                 oracle_status,
@@ -768,12 +739,10 @@ pub fn calculate_liquidation_status(
     }
 
     partial_margin_requirement = partial_margin_requirement
-        .checked_div(MARGIN_PRECISION)
-        .ok_or_else(|| (ContractError::HelpersError))?;
+        .checked_div(MARGIN_PRECISION)?;
 
     maintenance_margin_requirement = maintenance_margin_requirement
-        .checked_div(MARGIN_PRECISION)
-        .ok_or_else(|| (ContractError::HelpersError))?;
+        .checked_div(MARGIN_PRECISION)?;
 
     let total_collateral = calculate_updated_collateral(user.collateral, unrealized_pnl)?;
     let adjusted_total_collateral =
@@ -809,14 +778,12 @@ pub fn calculate_liquidation_status(
         });
     }
 
-    let margin_ratio = if base_asset_value == 0 {
-        u128::MAX
+    let margin_ratio = if base_asset_value.is_zero() {
+        Uint128::MAX
     } else {
         total_collateral
-            .checked_mul(MARGIN_PRECISION)
-            .ok_or_else(|| (ContractError::HelpersError))?
-            .checked_div(base_asset_value)
-            .ok_or_else(|| (ContractError::HelpersError))?
+            .checked_mul(MARGIN_PRECISION)?
+            .checked_div(base_asset_value)?
     };
 
     Ok(LiquidationStatus {

@@ -1,4 +1,4 @@
-use cosmwasm_std::{DepsMut, Addr};
+use cosmwasm_std::{DepsMut, Addr, Uint128};
 
 use ariel::types::{SwapDirection, PositionDirection};
 
@@ -10,7 +10,6 @@ use crate::helpers::position::calculate_base_asset_value_and_pnl;
 use crate::states::market::{Market, MARKETS};
 use crate::states::user::{Position, User, POSITIONS, USERS};
 
-use crate::helpers::casting::{cast, cast_to_i128};
 use crate::helpers::collateral::calculate_updated_collateral;
 use crate::helpers::pnl::calculate_pnl;
 
@@ -19,17 +18,17 @@ use crate::controller::amm;
 pub fn increase(
     deps: &mut DepsMut,
     direction: PositionDirection,
-    quote_asset_amount: u128,
+    quote_asset_amount: Uint128,
     market_index : u64,
     user_addr: &Addr,
     position_index: u64,
     now: u64,
-    precomputed_mark_price: Option<u128>,
+    precomputed_mark_price: Option<Uint128>,
 ) -> Result<i128, ContractError> {
     let mut market = MARKETS.load(deps.storage, market_index)?;
     let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
-    if quote_asset_amount == 0 {
-        return Ok(0);
+    if quote_asset_amount.is_zero() {
+        return Ok(0 as i128);
     }
 
     // Update funding rate if this is a new position
@@ -41,14 +40,12 @@ pub fn increase(
 
         market.open_interest = market
             .open_interest
-            .checked_add(1)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .checked_add(Uint128::from(1 as u128))?;
     }
 
     market_position.quote_asset_amount = market_position
         .quote_asset_amount
-        .checked_add(quote_asset_amount)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_add(quote_asset_amount)?;
 
     let swap_direction = match direction {
         PositionDirection::Long => SwapDirection::Add,
@@ -100,12 +97,12 @@ pub fn increase(
 pub fn reduce(
     deps: &mut DepsMut,
     direction: PositionDirection,
-    quote_asset_swap_amount: u128,
+    quote_asset_swap_amount: Uint128,
     user_addr: &Addr,
     market_index : u64,
     position_index: u64,
     now: u64,
-    precomputed_mark_price: Option<u128>,
+    precomputed_mark_price: Option<Uint128>,
 ) -> Result<i128, ContractError> {
     let mut user = USERS.load(deps.storage, user_addr)?;
     let mut market = MARKETS.load(deps.storage, market_index)?;
@@ -133,8 +130,8 @@ pub fn reduce(
 
     market.open_interest = market
         .open_interest
-        .checked_sub(cast(market_position.base_asset_amount == 0)?)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_sub(Uint128::from(market_position.base_asset_amount.unsigned_abs()))?;
+
     market.base_asset_amount = market
         .base_asset_amount
         .checked_add(base_asset_swapped)
@@ -159,24 +156,20 @@ pub fn reduce(
 
     let initial_quote_asset_amount_closed = market_position
         .quote_asset_amount
-        .checked_mul(base_asset_amount_change.unsigned_abs())
-        .ok_or_else(|| (ContractError::MathError))?
-        .checked_div(base_asset_amount_before.unsigned_abs())
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_mul(Uint128::from(base_asset_amount_change.unsigned_abs()))?
+        .checked_div(Uint128::from(base_asset_amount_before.unsigned_abs()))?;
 
     market_position.quote_asset_amount = market_position
         .quote_asset_amount
-        .checked_sub(initial_quote_asset_amount_closed)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_sub(initial_quote_asset_amount_closed)?;
 
     let pnl = if market_position.base_asset_amount > 0 {
-        cast_to_i128(quote_asset_swap_amount)?
-            .checked_sub(cast(initial_quote_asset_amount_closed)?)
+        (quote_asset_swap_amount.u128() as i128)
+            .checked_sub(initial_quote_asset_amount_closed.u128() as i128)
             .ok_or_else(|| (ContractError::MathError))?
     } else {
-        cast_to_i128(initial_quote_asset_amount_closed)?
-            .checked_sub(cast(quote_asset_swap_amount)?)
-            .ok_or_else(|| (ContractError::MathError))?
+        (initial_quote_asset_amount_closed
+            .checked_sub(quote_asset_swap_amount)?).u128() as i128
     };
 
     user.collateral = calculate_updated_collateral(user.collateral, pnl)?;
@@ -202,16 +195,16 @@ pub fn close(
     market_index : u64,
     position_index: u64,
     now: u64,
-    maker_limit_price: Option<u128>,
-    precomputed_mark_price: Option<u128>,
-) -> Result<(u128, i128, u128), ContractError> {
+    maker_limit_price: Option<Uint128>,
+    precomputed_mark_price: Option<Uint128>,
+) -> Result<(Uint128, i128, Uint128), ContractError> {
     let mut user = USERS.load(deps.storage, user_addr)?;
     let mut market = MARKETS.load(deps.storage, market_index)?;
     let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
     
     // If user has no base asset, return early
     if market_position.base_asset_amount == 0 {
-        return Ok((0, 0, 0));
+        return Ok((Uint128::zero(), 0, Uint128::zero()));
     }
 
     let swap_direction = if market_position.base_asset_amount > 0 {
@@ -223,7 +216,7 @@ pub fn close(
     let quote_asset_swapped = amm::swap_base_asset(
         deps, 
         market_index,
-        market_position.base_asset_amount.unsigned_abs(),
+        Uint128::from(market_position.base_asset_amount.unsigned_abs()),
         swap_direction,
         now,
         precomputed_mark_price
@@ -233,10 +226,10 @@ pub fn close(
         Some(limit_price) => calculate_quote_asset_amount_surplus(	
             swap_direction,	
             quote_asset_swapped,	
-            market_position.base_asset_amount.unsigned_abs(),	
+            Uint128::from(market_position.base_asset_amount.unsigned_abs()),	
             limit_price,	
         )?,	
-        None => (quote_asset_swapped, 0),	
+        None => (quote_asset_swapped, Uint128::zero()),	
     };
 
     let pnl = calculate_pnl(
@@ -251,10 +244,9 @@ pub fn close(
 
     market.open_interest = market
         .open_interest
-        .checked_sub(1)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_sub(Uint128::from(1 as u128))?;
 
-    market_position.quote_asset_amount = 0;
+    market_position.quote_asset_amount = Uint128::zero();
 
     market.base_asset_amount = market
         .base_asset_amount
@@ -309,9 +301,9 @@ pub fn add_new_position(
     let new_market_position = Position {
         market_index,
         base_asset_amount: 0,
-        quote_asset_amount: 0,
+        quote_asset_amount: Uint128::zero(),
         last_cumulative_funding_rate: 0,
-        last_cumulative_repeg_rebate: 0,
+        last_cumulative_repeg_rebate: Uint128::zero(),
         last_funding_rate_ts: 0,
         order_length: 0,
     };
@@ -332,21 +324,21 @@ pub fn add_new_position(
 pub fn increase_with_base_asset_amount(
     deps: &mut DepsMut,
     direction: PositionDirection,
-    base_asset_amount: u128,
+    base_asset_amount: Uint128,
     user_addr: &Addr,
     position_index: u64,
     now: u64,
-    maker_limit_price: Option<u128>,
-    precomputed_mark_price: Option<u128>,
-) -> Result<(u128, u128), ContractError> {
+    maker_limit_price: Option<Uint128>,
+    precomputed_mark_price: Option<Uint128>,
+) -> Result<(Uint128, Uint128), ContractError> {
 
     let user = USERS.load(deps.storage, user_addr)?;
     let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
     
     let market_index = market_position.market_index;
     
-    if base_asset_amount == 0 {
-        return Ok((0, 0));
+    if base_asset_amount.is_zero() {
+        return Ok((Uint128::zero(), Uint128::zero()));
     }
     
     let mut market = MARKETS.load(deps.storage, market_index)?;
@@ -360,8 +352,7 @@ pub fn increase_with_base_asset_amount(
 
         market.open_interest = market
             .open_interest
-            .checked_add(1)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .checked_add(Uint128::from(1 as u64))?;
     }
 
     let swap_direction = match direction {
@@ -385,17 +376,16 @@ pub fn increase_with_base_asset_amount(
             base_asset_amount,
             limit_price,
         )?,
-        None => (quote_asset_swapped, 0),
+        None => (quote_asset_swapped, Uint128::zero()),
     };
 
     market_position.quote_asset_amount = market_position
         .quote_asset_amount
-        .checked_add(quote_asset_amount)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_add(quote_asset_amount)?;
 
     let base_asset_amount = match direction {
-        PositionDirection::Long => cast_to_i128(base_asset_amount)?,
-        PositionDirection::Short => -cast_to_i128(base_asset_amount)?,
+        PositionDirection::Long => (base_asset_amount.u128() as i128),
+        PositionDirection::Short => -(base_asset_amount.u128() as i128),
     };
 
     market_position.base_asset_amount = market_position
@@ -437,13 +427,13 @@ pub fn increase_with_base_asset_amount(
 pub fn reduce_with_base_asset_amount(
     deps: &mut DepsMut,
     direction: PositionDirection,
-    base_asset_amount: u128,
+    base_asset_amount: Uint128,
     user_addr: &Addr,
     position_index: u64,
     now: u64,
-    maker_limit_price: Option<u128>,
-    precomputed_mark_price: Option<u128>,
-) -> Result<(u128, u128), ContractError> {
+    maker_limit_price: Option<Uint128>,
+    precomputed_mark_price: Option<Uint128>,
+) -> Result<(Uint128, Uint128), ContractError> {
 
     let mut user = USERS.load(deps.storage, user_addr)?;
     let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
@@ -473,12 +463,12 @@ pub fn reduce_with_base_asset_amount(
             base_asset_amount,
             limit_price,
         )?,
-        None => (quote_asset_swapped, 0),
+        None => (quote_asset_swapped, Uint128::zero()),
     };
 
     let base_asset_amount = match direction {
-        PositionDirection::Long => cast_to_i128(base_asset_amount)?,
-        PositionDirection::Short => -cast_to_i128(base_asset_amount)?,
+        PositionDirection::Long => (base_asset_amount.u128() as i128),
+        PositionDirection::Short => -(base_asset_amount.u128() as i128),
     };
 
     let base_asset_amount_before = market_position.base_asset_amount;
@@ -489,8 +479,7 @@ pub fn reduce_with_base_asset_amount(
 
     market.open_interest = market
         .open_interest
-        .checked_sub(cast(market_position.base_asset_amount == 0)?)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_sub(Uint128::from(market_position.base_asset_amount.unsigned_abs()))?;
     market.base_asset_amount = market
         .base_asset_amount
         .checked_add(base_asset_amount)
@@ -515,23 +504,20 @@ pub fn reduce_with_base_asset_amount(
 
     let initial_quote_asset_amount_closed = market_position
         .quote_asset_amount
-        .checked_mul(base_asset_amount_change.unsigned_abs())
-        .ok_or_else(|| (ContractError::MathError))?
-        .checked_div(base_asset_amount_before.unsigned_abs())
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_mul(Uint128::from(base_asset_amount_change.unsigned_abs()))?
+        .checked_div(Uint128::from(base_asset_amount_before.unsigned_abs()))?;
 
     market_position.quote_asset_amount = market_position
         .quote_asset_amount
-        .checked_sub(initial_quote_asset_amount_closed)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .checked_sub(initial_quote_asset_amount_closed)?;
 
     let pnl = if PositionDirection::Short == direction {
-        cast_to_i128(quote_asset_amount)?
-            .checked_sub(cast(initial_quote_asset_amount_closed)?)
+        (quote_asset_amount.u128() as i128)
+            .checked_sub(initial_quote_asset_amount_closed.u128() as i128)
             .ok_or_else(|| (ContractError::MathError))?
     } else {
-        cast_to_i128(initial_quote_asset_amount_closed)?
-            .checked_sub(cast(quote_asset_amount)?)
+        (initial_quote_asset_amount_closed.u128() as i128)
+            .checked_sub(quote_asset_amount.u128() as i128)
             .ok_or_else(|| (ContractError::MathError))?
     };
 
@@ -555,14 +541,14 @@ pub fn reduce_with_base_asset_amount(
 
 pub fn update_position_with_base_asset_amount(
     deps: &mut DepsMut,
-    base_asset_amount: u128,
+    base_asset_amount: Uint128,
     direction: PositionDirection,
     user_addr: &Addr,
     position_index: u64,
-    mark_price_before: u128,
+    mark_price_before: Uint128,
     now: u64,
-    maker_limit_price: Option<u128>,
-) -> Result<(bool, bool, u128, u128, u128), ContractError> {
+    maker_limit_price: Option<Uint128>,
+) -> Result<(bool, bool, Uint128, Uint128, Uint128), ContractError> {
     
     let market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
     
@@ -597,7 +583,7 @@ pub fn update_position_with_base_asset_amount(
         )?;
         quote_asset_amount = _quote_asset_amount;
         quote_asset_amount_surplus = _quote_asset_amount_surplus;
-    } else if market_position.base_asset_amount.unsigned_abs() > base_asset_amount {
+    } else if market_position.base_asset_amount.unsigned_abs() > base_asset_amount.u128() {
         let (_quote_asset_amount, _quote_asset_amount_surplus) = reduce_with_base_asset_amount(
             deps,
             direction,
@@ -616,11 +602,10 @@ pub fn update_position_with_base_asset_amount(
     } else {
         // after closing existing position, how large should trade be in opposite direction
         let base_asset_amount_after_close = base_asset_amount
-            .checked_sub(market_position.base_asset_amount.unsigned_abs())
-            .ok_or_else(|| (ContractError::MathError))?;
+            .checked_sub(Uint128::from(market_position.base_asset_amount.unsigned_abs()))?;
 
         // If the value of the new position is less than value of the old position, consider it risk decreasing
-        if base_asset_amount_after_close < market_position.base_asset_amount.unsigned_abs() {
+        if base_asset_amount_after_close.u128() < market_position.base_asset_amount.unsigned_abs() {
             potentially_risk_increasing = false;
         }
 
@@ -648,17 +633,15 @@ pub fn update_position_with_base_asset_amount(
             )?;
 
         // means position was closed and it was reduce only
-        if quote_asset_amount_opened == 0 {
+        if quote_asset_amount_opened.is_zero() {
             reduce_only = true;
         }
 
         quote_asset_amount = quote_asset_amount_closed
-            .checked_add(quote_asset_amount_opened)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .checked_add(quote_asset_amount_opened)?;
 
         quote_asset_amount_surplus = quote_asset_amount_surplus_closed
-            .checked_add(quote_asset_amount_surplus_opened)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .checked_add(quote_asset_amount_surplus_opened)?;
     }
 
     Ok((
@@ -672,13 +655,13 @@ pub fn update_position_with_base_asset_amount(
 
 pub fn update_position_with_quote_asset_amount(
     deps: &mut DepsMut,
-    quote_asset_amount: u128,
+    quote_asset_amount: Uint128,
     direction: PositionDirection,
     user_addr: &Addr,
     position_index: u64,
-    mark_price_before: u128,
+    mark_price_before: Uint128,
     now: u64,
-) -> Result<(bool, bool, u128, u128, u128), ContractError> {
+) -> Result<(bool, bool, Uint128, Uint128, Uint128), ContractError> {
  
     let market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
     
@@ -744,8 +727,7 @@ pub fn update_position_with_quote_asset_amount(
         } else {
             // after closing existing position, how large should trade be in opposite direction
             let quote_asset_amount_after_close = quote_asset_amount
-                .checked_sub(base_asset_value)
-                .ok_or_else(|| (ContractError::MathError))?;
+                .checked_sub(base_asset_value)?;
 
             // If the value of the new position is less than value of the old position, consider it risk decreasing
             if quote_asset_amount_after_close < base_asset_value {
@@ -789,28 +771,26 @@ pub fn update_position_with_quote_asset_amount(
     Ok((
         potentially_risk_increasing,
         reduce_only,
-        base_asset_amount,
+        Uint128::from(base_asset_amount),
         quote_asset_amount,
-        0,
+        Uint128::zero(),
     ))
 }
 
 fn calculate_quote_asset_amount_surplus(
     swap_direction: SwapDirection,
-    quote_asset_swapped: u128,
-    base_asset_amount: u128,
-    limit_price: u128,
-) -> Result<(u128, u128), ContractError> {
+    quote_asset_swapped: Uint128,
+    base_asset_amount: Uint128,
+    limit_price: Uint128,
+) -> Result<(Uint128, Uint128), ContractError> {
     let quote_asset_amount =
         calculate_quote_asset_amount_for_maker_order(base_asset_amount, limit_price)?;
 
     let quote_asset_amount_surplus = match swap_direction {
         SwapDirection::Remove => quote_asset_amount
-            .checked_sub(quote_asset_swapped)
-            .ok_or_else(|| (ContractError::MathError))?,
+            .checked_sub(quote_asset_swapped)?,
         SwapDirection::Add => quote_asset_swapped
-            .checked_sub(quote_asset_amount)
-            .ok_or_else(|| (ContractError::MathError))?,
+            .checked_sub(quote_asset_amount)?,
     };
 
     Ok((quote_asset_amount, quote_asset_amount_surplus))

@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Decimal, Uint128};
 
 #[derive(Clone, Debug, JsonSchema, Copy, Serialize, Deserialize, PartialEq)]
 pub enum PositionDirection {
@@ -67,7 +67,7 @@ pub struct OracleStatus {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OraclePriceData {
     pub price: i128,
-    pub confidence: u128,
+    pub confidence: Uint128,
     pub delay: i64,
     pub has_sufficient_number_of_data_points: bool,
 }
@@ -81,19 +81,19 @@ pub struct Order {
     pub order_type: OrderType,
     pub position_index : u64,
     pub market_index: u64,
-    pub price: u128,
+    pub price: Uint128,
     pub user_base_asset_amount: i128,
-    pub quote_asset_amount: u128,
-    pub base_asset_amount: u128,
-    pub base_asset_amount_filled: u128,
-    pub quote_asset_amount_filled: u128,
-    pub fee: u128,
+    pub quote_asset_amount: Uint128,
+    pub base_asset_amount: Uint128,
+    pub base_asset_amount_filled: Uint128,
+    pub quote_asset_amount_filled: Uint128,
+    pub fee: Uint128,
     pub direction: PositionDirection,
     pub reduce_only: bool,
     pub post_only: bool,
     pub immediate_or_cancel: bool,
     pub discount_tier: OrderDiscountTier,
-    pub trigger_price: u128,
+    pub trigger_price: Uint128,
     pub trigger_condition: OrderTriggerCondition,
     pub referrer: Addr,
     pub oracle_price_offset: i128,
@@ -139,41 +139,33 @@ pub enum OrderDiscountTier {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct FeeStructure {
-    pub fee_numerator: u128,
-    pub fee_denominator: u128,
+    pub fee: Decimal,
 
-    pub first_tier_minimum_balance: u64,
-    pub first_tier_discount_numerator: u128,
-    pub first_tier_discount_denominator: u128,
+    pub first_tier_minimum_balance: Uint128,
+    pub first_tier_discount: Decimal,
 
-    pub second_tier_minimum_balance: u64,
-    pub second_tier_discount_numerator: u128,
-    pub second_tier_discount_denominator: u128,
+    pub second_tier_minimum_balance: Uint128,
+    pub second_tier_discount: Decimal,
 
-    pub third_tier_minimum_balance: u64,
-    pub third_tier_discount_numerator: u128,
-    pub third_tier_discount_denominator: u128,
+    pub third_tier_minimum_balance: Uint128,
+    pub third_tier_discount: Decimal,
 
-    pub fourth_tier_minimum_balance: u64,
-    pub fourth_tier_discount_numerator: u128,
-    pub fourth_tier_discount_denominator: u128,
+    pub fourth_tier_minimum_balance: Uint128,
+    pub fourth_tier_discount: Decimal,
 
 
-    pub referrer_reward_numerator: u128,
-    pub referrer_reward_denominator: u128,
-    pub referee_discount_numerator: u128,
-    pub referee_discount_denominator: u128,
+    pub referrer_reward: Decimal,
+    pub referee_discount: Decimal,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OracleGuardRails {
     pub use_for_liquidations: bool,
     // oracle price divergence rails
-    pub mark_oracle_divergence_numerator: u128,
-    pub mark_oracle_divergence_denominator: u128,
+    pub mark_oracle_divergence: Decimal,
     // validity guard rails
     pub slots_before_stale: i64,
-    pub confidence_interval_max_size: u128,
+    pub confidence_interval_max_size: Uint128,
     pub too_volatile_ratio: i128,
 }
 
@@ -181,15 +173,15 @@ pub struct OracleGuardRails {
 pub struct OrderParams {
     pub order_type: OrderType,
     pub direction: PositionDirection,
-    pub quote_asset_amount: u128,
-    pub base_asset_amount: u128,
-    pub price: u128,
+    pub quote_asset_amount: Uint128,
+    pub base_asset_amount: Uint128,
+    pub price: Uint128,
     pub market_index: u64,
     pub reduce_only: bool,
     pub post_only: bool,
     pub immediate_or_cancel: bool,
-    pub trigger_price: u128,
+    pub trigger_price: Uint128,
     pub trigger_condition: OrderTriggerCondition,
-    pub position_limit: u128,
+    pub position_limit: Uint128,
     pub oracle_price_offset: i128,
 }

@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, DepsMut};
+use cosmwasm_std::{DepsMut, Uint128};
 
 use crate::error::ContractError;
 
@@ -7,16 +7,14 @@ use crate::states::state::{STATE, ORACLEGUARDRAILS};
 
 use crate::helpers::{amm};
 use crate::helpers::constants::{
-    SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_DENOMINATOR,
-    SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_NUMERATOR,
+    SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_NUMERATOR,SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_DENOMINATOR
 };
 use crate::helpers::position::_calculate_base_asset_value_and_pnl;
-use crate::helpers::casting::cast_to_u128;
 
 pub fn repeg(
     deps: &mut DepsMut,
     market_index: u64,
-    new_peg_candidate: u128
+    new_peg_candidate: Uint128
 ) -> Result<i128, ContractError> {
 
     let mut market = MARKETS.load(deps.storage, market_index)?;
@@ -50,15 +48,13 @@ pub fn repeg(
             market.amm.peg_multiplier,
         )?;
 
-        let oracle_conf_band_top = cast_to_u128(oracle_price)?
-            .checked_add(oracle_conf)
-            .ok_or_else(|| (ContractError::MathError))?;
+        let oracle_conf_band_top = Uint128::from(oracle_price.unsigned_abs())
+            .checked_add(oracle_conf)?;
 
-        let oracle_conf_band_bottom = cast_to_u128(oracle_price)?
-            .checked_sub(oracle_conf)
-            .ok_or_else(|| (ContractError::MathError))?;
+        let oracle_conf_band_bottom = Uint128::from(oracle_price.unsigned_abs())
+            .checked_sub(oracle_conf)?;
 
-        if cast_to_u128(oracle_price)? > terminal_price_after {
+        if oracle_price.unsigned_abs() > terminal_price_after.u128() {
             // only allow terminal up when oracle is higher
             if terminal_price_after < terminal_price_before {
                 return Err(ContractError::InvalidRepegDirection.into());
@@ -75,7 +71,7 @@ pub fn repeg(
             }
         }
 
-        if cast_to_u128(oracle_price)? < terminal_price_after {
+        if oracle_price.unsigned_abs() < terminal_price_after.u128() {
             // only allow terminal down when oracle is lower
             if terminal_price_after > terminal_price_before {
                 return Err(ContractError::InvalidRepegDirection.into());
@@ -98,9 +94,7 @@ pub fn repeg(
         market.amm.total_fee_minus_distributions = market
             .amm
             .total_fee_minus_distributions
-            .checked_sub(adjustment_cost.unsigned_abs())
-            .or(Some(0))
-            .ok_or_else(|| (ContractError::MathError))?;
+            .checked_sub(Uint128::from(adjustment_cost.unsigned_abs()))?;
 
         // Only a portion of the protocol fees are allocated to repegging
         // This checks that the total_fee_minus_distributions does not decrease too much after repeg
@@ -108,10 +102,8 @@ pub fn repeg(
             < market
                 .amm
                 .total_fee
-                .checked_mul(SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_NUMERATOR)
-                .ok_or_else(|| (ContractError::MathError))?
-                .checked_div(SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_DENOMINATOR)
-                .ok_or_else(|| (ContractError::MathError))?
+                .checked_mul(SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_NUMERATOR)?
+                .checked_div(SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_DENOMINATOR)?
         {
             return Err(ContractError::InvalidRepegProfitability.into());
         }
@@ -119,8 +111,7 @@ pub fn repeg(
         market.amm.total_fee_minus_distributions = market
             .amm
             .total_fee_minus_distributions
-            .checked_add(adjustment_cost.unsigned_abs())
-            .ok_or_else(|| (ContractError::MathError))?;
+            .checked_add(Uint128::from(adjustment_cost.unsigned_abs()))?;
     }
 
     MARKETS.update(deps.storage, market_index, |_m| ->  Result<Market, ContractError>{
@@ -131,10 +122,10 @@ pub fn repeg(
 
 }
 
-pub fn adjust_peg_cost(market: &mut Market, new_peg: u128) -> Result<i128, ContractError> {
+pub fn adjust_peg_cost(market: &mut Market, new_peg: Uint128) -> Result<i128, ContractError> {
     // Find the net market value before adjusting peg
     let (current_net_market_value, _) =
-        _calculate_base_asset_value_and_pnl(market.base_asset_amount, 0, &market.amm)?;
+        _calculate_base_asset_value_and_pnl(market.base_asset_amount, Uint128::zero(), &market.amm)?;
 
     market.amm.peg_multiplier = new_peg;
 

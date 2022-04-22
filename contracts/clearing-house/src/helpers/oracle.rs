@@ -1,6 +1,7 @@
 use crate::error::ContractError;
 
 use ariel::types::{OracleGuardRails, OraclePriceData, OracleStatus};
+use cosmwasm_std::Uint128;
 
 use crate::helpers::amm;
 use crate::states::market::Amm;
@@ -8,7 +9,7 @@ use crate::states::market::Amm;
 pub fn block_operation(
     a: &Amm,
     guard_rails: &OracleGuardRails,
-    precomputed_mark_price: Option<u128>,
+    precomputed_mark_price: Option<Uint128>,
 ) -> Result<(bool, OraclePriceData), ContractError> {
     let OracleStatus {
         price_data: oracle_price_data,
@@ -28,7 +29,7 @@ pub fn block_operation(
 pub fn get_oracle_status(
     a: &Amm,
     guard_rails: &OracleGuardRails,
-    precomputed_mark_price: Option<u128>,
+    precomputed_mark_price: Option<Uint128>,
 ) -> Result<OracleStatus, ContractError> {
     let oracle_price_data = a.get_oracle_price()?;
     let oracle_is_valid = amm::is_oracle_valid(a, &oracle_price_data, &guard_rails)?;
