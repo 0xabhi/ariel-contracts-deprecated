@@ -21,6 +21,7 @@ use crate::states::{deposit_history::*, funding_history::*};
 
 use ariel::helper::addr_validate_to_lower;
 
+use ariel::number::Number128;
 use ariel::response::*;
 
 use ariel::types::OracleGuardRails;
@@ -62,9 +63,9 @@ pub fn get_user_position(
     )?;
     let upr = UserPositionResponse {
         market_index: position.market_index,
-        base_asset_amount: position.base_asset_amount.i128(),
+        base_asset_amount: position.base_asset_amount,
         quote_asset_amount: position.quote_asset_amount,
-        last_cumulative_funding_rate: position.last_cumulative_funding_rate.i128(),
+        last_cumulative_funding_rate: position.last_cumulative_funding_rate,
         last_cumulative_repeg_rebate: position.last_cumulative_repeg_rebate,
         last_funding_rate_ts: position.last_funding_rate_ts,
     };
@@ -202,9 +203,9 @@ pub fn get_oracle_guard_rails(deps: Deps) -> Result<OracleGuardRailsResponse, Co
         mark_oracle_divergence : 
             oracle_guard_rails
             .mark_oracle_divergence,
-        slots_before_stale: oracle_guard_rails.slots_before_stale,
+        slots_before_stale: Number128::new(oracle_guard_rails.slots_before_stale as i128),
         confidence_interval_max_size: oracle_guard_rails.confidence_interval_max_size,
-        too_volatile_ratio: oracle_guard_rails.too_volatile_ratio.i128(),
+        too_volatile_ratio: oracle_guard_rails.too_volatile_ratio,
     };
     Ok(ogr)
 }
@@ -274,12 +275,12 @@ pub fn get_curve_history(
                     sqrt_k_after: curve.1.sqrt_k_after,
                     base_asset_amount_long: curve.1.base_asset_amount_long,
                     base_asset_amount_short: curve.1.base_asset_amount_short,
-                    base_asset_amount: curve.1.base_asset_amount.i128(),
+                    base_asset_amount: curve.1.base_asset_amount,
                     open_interest: curve.1.open_interest,
                     total_fee: curve.1.total_fee,
                     total_fee_minus_distributions: curve.1.total_fee_minus_distributions,
-                    adjustment_cost: curve.1.adjustment_cost.i128(),
-                    oracle_price: curve.1.oracle_price.i128(),
+                    adjustment_cost: curve.1.adjustment_cost,
+                    oracle_price: curve.1.oracle_price,
                     trade_record: curve.1.trade_record,
                 })
             })
@@ -362,12 +363,12 @@ pub fn get_funding_payment_history(
                     record_id: fp.1.record_id,
                     user: fp.1.user.to_string(),
                     market_index: fp.1.market_index,
-                    funding_payment: fp.1.funding_payment.i128(),
-                    base_asset_amount: fp.1.base_asset_amount.i128(),
-                    user_last_cumulative_funding: fp.1.user_last_cumulative_funding.i128(),
+                    funding_payment: fp.1.funding_payment,
+                    base_asset_amount: fp.1.base_asset_amount,
+                    user_last_cumulative_funding: fp.1.user_last_cumulative_funding,
                     user_last_funding_rate_ts: fp.1.user_last_funding_rate_ts,
-                    amm_cumulative_funding_long: fp.1.amm_cumulative_funding_long.i128(),
-                    amm_cumulative_funding_short: fp.1.amm_cumulative_funding_short.i128(),
+                    amm_cumulative_funding_long: fp.1.amm_cumulative_funding_long,
+                    amm_cumulative_funding_short: fp.1.amm_cumulative_funding_short,
                 })
         })
         .take(limit)
@@ -404,12 +405,12 @@ pub fn get_funding_rate_history(
                         ts: funding_record.1.ts,
                         record_id: funding_record.1.record_id,
                         market_index: funding_record.1.market_index,
-                        funding_rate: funding_record.1.funding_rate.i128(),
-                        cumulative_funding_rate_long: funding_record.1.cumulative_funding_rate_long.i128(),
+                        funding_rate: funding_record.1.funding_rate,
+                        cumulative_funding_rate_long: funding_record.1.cumulative_funding_rate_long,
                         cumulative_funding_rate_short: funding_record
                             .1
-                            .cumulative_funding_rate_short.i128(),
-                        oracle_price_twap: funding_record.1.oracle_price_twap.i128(),
+                            .cumulative_funding_rate_short,
+                        oracle_price_twap: funding_record.1.oracle_price_twap,
                         mark_price_twap: funding_record.1.mark_price_twap,
                     })
             })
@@ -457,7 +458,7 @@ pub fn get_liquidation_history(
                 liquidator: record.1.liquidator.to_string(),
                 total_collateral: record.1.total_collateral,
                 collateral: record.1.collateral,
-                unrealized_pnl: record.1.unrealized_pnl.i128(),
+                unrealized_pnl: record.1.unrealized_pnl,
                 margin_ratio: record.1.margin_ratio,
             })
         })
@@ -499,7 +500,7 @@ pub fn get_trade_history(
                 token_discount: record.1.token_discount,
                 liquidation: record.1.liquidation,
                 market_index: record.1.market_index,
-                oracle_price: record.1.oracle_price.i128(),
+                oracle_price: record.1.oracle_price,
             })
         })
         .take(limit)
@@ -512,9 +513,9 @@ pub fn get_market_info(deps: Deps, market_index: u64) -> Result<MarketInfoRespon
     let market_info = MarketInfoResponse {
         market_name: market.market_name,
         initialized: market.initialized,
-        base_asset_amount_long: market.base_asset_amount_long.i128(),
-        base_asset_amount_short: market.base_asset_amount_short.i128(),
-        base_asset_amount: market.base_asset_amount.i128(),
+        base_asset_amount_long: market.base_asset_amount_long,
+        base_asset_amount_short: market.base_asset_amount_short,
+        base_asset_amount: market.base_asset_amount,
         open_interest: market.open_interest,
         oracle: market.amm.oracle.into(),
         oracle_source: market.amm.oracle_source,
@@ -522,12 +523,12 @@ pub fn get_market_info(deps: Deps, market_index: u64) -> Result<MarketInfoRespon
         quote_asset_reserve: market.amm.quote_asset_reserve,
         cumulative_repeg_rebate_long: market.amm.cumulative_repeg_rebate_long,
         cumulative_repeg_rebate_short: market.amm.cumulative_repeg_rebate_short,
-        cumulative_funding_rate_long: market.amm.cumulative_funding_rate_long.i128(),
-        cumulative_funding_rate_short: market.amm.cumulative_funding_rate_short.i128(),
-        last_funding_rate: market.amm.last_funding_rate.i128(),
+        cumulative_funding_rate_long: market.amm.cumulative_funding_rate_long,
+        cumulative_funding_rate_short: market.amm.cumulative_funding_rate_short,
+        last_funding_rate: market.amm.last_funding_rate,
         last_funding_rate_ts: market.amm.last_funding_rate_ts,
         funding_period: market.amm.funding_period,
-        last_oracle_price_twap: market.amm.last_oracle_price_twap.i128(),
+        last_oracle_price_twap: market.amm.last_oracle_price_twap,
         last_mark_price_twap: market.amm.last_mark_price_twap,
         last_mark_price_twap_ts: market.amm.last_mark_price_twap_ts,
         sqrt_k: market.amm.sqrt_k,
@@ -537,7 +538,7 @@ pub fn get_market_info(deps: Deps, market_index: u64) -> Result<MarketInfoRespon
         total_fee_withdrawn: market.amm.total_fee_withdrawn,
         minimum_trade_size: Uint128::from(100000000 as u64),
         last_oracle_price_twap_ts: market.amm.last_oracle_price_twap_ts,
-        last_oracle_price: market.amm.last_oracle_price.i128(),
+        last_oracle_price: market.amm.last_oracle_price,
     };
     Ok(market_info)
 }
@@ -565,9 +566,9 @@ pub fn get_active_positions(
             .filter_map(|positions| {
                 positions.ok().map(|position| UserPositionResponse {
                     market_index: position.1.market_index,
-                    base_asset_amount: position.1.base_asset_amount.i128(),
+                    base_asset_amount: position.1.base_asset_amount,
                     quote_asset_amount: position.1.quote_asset_amount,
-                    last_cumulative_funding_rate: position.1.last_cumulative_funding_rate.i128(),
+                    last_cumulative_funding_rate: position.1.last_cumulative_funding_rate,
                     last_cumulative_repeg_rebate: position.1.last_cumulative_repeg_rebate,
                     last_funding_rate_ts: position.1.last_funding_rate_ts,
                 })
@@ -579,11 +580,11 @@ pub fn get_active_positions(
     let mut positions: Vec<PositionResponse> = vec![];
     for position in active_positions.clone() {
         let market_index = position.market_index;
-        let direction = direction_to_close_position(position.base_asset_amount);
+        let direction = direction_to_close_position(position.base_asset_amount.i128());
         let entry_price: Uint128 = (position
             .quote_asset_amount
             .checked_mul(MARK_PRICE_PRECISION * AMM_TO_QUOTE_PRECISION_RATIO))?
-        .checked_div(Uint128::from(position.base_asset_amount.unsigned_abs()))?;
+        .checked_div(Uint128::from(position.base_asset_amount.i128().unsigned_abs()))?;
 
         let entry_notional = position.quote_asset_amount;
         let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
@@ -592,10 +593,10 @@ pub fn get_active_positions(
         let pr = PositionResponse {
             market_index,
             direction,
-            initial_size: Uint128::from(position.base_asset_amount.unsigned_abs()),
-            entry_notional: entry_notional.u128() as i128,
+            initial_size: Uint128::from(position.base_asset_amount.i128().unsigned_abs()),
+            entry_notional: Number128::new(entry_notional.u128() as i128),
             entry_price,
-            pnl: liq_status.unrealized_pnl,
+            pnl: Number128::new(liq_status.unrealized_pnl),
         };
         positions.push(pr);
     }

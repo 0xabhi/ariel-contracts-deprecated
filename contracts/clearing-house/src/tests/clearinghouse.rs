@@ -1,17 +1,14 @@
 use crate::contract::{execute, instantiate, query};
 use crate::helpers::constants::{
-    DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_DISCOUNT_DENOMINATOR,
-    DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_MINIMUM_BALANCE, DEFAULT_FEE_NUMERATOR, DEFAULT_FEE_DENOMINATOR,
+    DEFAULT_FEE_NUMERATOR, DEFAULT_FEE_DENOMINATOR,
 };
-use crate::views::execute::*;
-use crate::views::query::*;
-use crate::ContractError;
-use ariel::execute::{ExecuteMsg, InstantiateMsg};
+
+use ariel::execute::{InstantiateMsg};
 use ariel::queries::QueryMsg;
 use ariel::response::*;
-use ariel::types::*;
+
 use cosmwasm_std::testing::{
-    mock_dependencies, mock_dependencies_with_balance, mock_env, mock_info, MOCK_CONTRACT_ADDR,
+    mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR,
 };
 use cosmwasm_std::{coins, from_binary, Uint128, Decimal};
 
@@ -89,7 +86,7 @@ pub fn test_initialize_state() {
     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetOracleGuardRails {}).unwrap();
     let value: OracleGuardRailsResponse = from_binary(&res).unwrap();
     assert_eq!(true, value.use_for_liquidations);
-    assert_eq!(1000, value.slots_before_stale);
+    assert_eq!(1000, value.slots_before_stale.i128());
 
     // query order state
     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetOrderState {}).unwrap();
@@ -120,6 +117,5 @@ pub fn test_initialize_state() {
     // query fee structure
     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetFeeStructure {}).unwrap();
     let value: FeeStructureResponse = from_binary(&res).unwrap();
-    assert_eq!(Decimal::from_ratio(DEFAULT_FEE_NUMERATOR, DEFAULT_FEE_DENOMINATOR), value.fee);
-   
+    assert_eq!(Decimal::from_ratio(DEFAULT_FEE_NUMERATOR, DEFAULT_FEE_DENOMINATOR), value.fee); 
 }
