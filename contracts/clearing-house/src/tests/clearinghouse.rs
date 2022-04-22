@@ -1,7 +1,7 @@
 use crate::contract::{execute, instantiate, query};
 use crate::helpers::constants::{
     DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_DISCOUNT_DENOMINATOR,
-    DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_MINIMUM_BALANCE, DEFAULT_FEE_NUMERATOR,
+    DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_MINIMUM_BALANCE, DEFAULT_FEE_NUMERATOR, DEFAULT_FEE_DENOMINATOR,
 };
 use crate::views::execute::*;
 use crate::views::query::*;
@@ -13,7 +13,7 @@ use ariel::types::*;
 use cosmwasm_std::testing::{
     mock_dependencies, mock_dependencies_with_balance, mock_env, mock_info, MOCK_CONTRACT_ADDR,
 };
-use cosmwasm_std::{coins, from_binary};
+use cosmwasm_std::{coins, from_binary, Uint128, Decimal};
 
 const ADMIN_ACCOUNT: &str = "admin_account";
 
@@ -70,20 +70,20 @@ pub fn test_initialize_state() {
 
     let res = query(deps.as_ref(), mock_env(), QueryMsg::AdminControlsPrices {}).unwrap();
     let value: AdminControlsPricesResponse = from_binary(&res).unwrap();
-    assert_eq!(false, value.admin_controls_prices);
+    assert_eq!(true, value.admin_controls_prices);
 
     //query margin ratio
 
     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetMarginRatio {}).unwrap();
     let value: MarginRatioResponse = from_binary(&res).unwrap();
-    assert_eq!(2000, value.margin_ratio_initial);
-    assert_eq!(500, value.margin_ratio_maintenance);
-    assert_eq!(625, value.margin_ratio_partial);
+    assert_eq!(Uint128::from(2000u128), value.margin_ratio_initial);
+    assert_eq!(Uint128::from(500u128), value.margin_ratio_maintenance);
+    assert_eq!(Uint128::from(625u128), value.margin_ratio_partial);
 
     //query oracle
     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetOracle {}).unwrap();
     let value: OracleResponse = from_binary(&res).unwrap();
-    assert_eq!(ADMIN_ACCOUNT, value.oracle);
+    assert_eq!(MOCK_CONTRACT_ADDR, value.oracle);
 
     //query oracle guard rails
     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetOracleGuardRails {}).unwrap();
@@ -94,7 +94,7 @@ pub fn test_initialize_state() {
     // query order state
     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetOrderState {}).unwrap();
     let value: OrderStateResponse = from_binary(&res).unwrap();
-    assert_eq!(0, value.min_order_quote_asset_amount);
+    assert_eq!(Uint128::zero(), value.min_order_quote_asset_amount);
 
     //query partial liq close
     let res = query(
@@ -104,8 +104,9 @@ pub fn test_initialize_state() {
     )
     .unwrap();
     let value: PartialLiquidationClosePercentageResponse = from_binary(&res).unwrap();
-    assert_eq!(25, value.numerator);
-    assert_eq!(100, value.denominator);
+    // 25/100
+    assert_eq!(Decimal::percent(25), value.value);
+    
 
     //query partial liq penalty
     //query full liq penalty
@@ -114,14 +115,11 @@ pub fn test_initialize_state() {
     //query max deposit
     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetMaxDepositLimit {}).unwrap();
     let value: MaxDepositLimitResponse = from_binary(&res).unwrap();
-    assert_eq!(0, value.max_deposit);
+    assert_eq!(Uint128::zero(), value.max_deposit);
 
     // query fee structure
     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetFeeStructure {}).unwrap();
     let value: FeeStructureResponse = from_binary(&res).unwrap();
-    assert_eq!(DEFAULT_FEE_NUMERATOR, value.fee_numerator);
-    assert_eq!(
-        DEFAULT_DISCOUNT_TOKEN_FIRST_TIER_MINIMUM_BALANCE,
-        value.first_tier_minimum_balance
-    );
+    assert_eq!(Decimal::from_ratio(DEFAULT_FEE_NUMERATOR, DEFAULT_FEE_DENOMINATOR), value.fee);
+   
 }
