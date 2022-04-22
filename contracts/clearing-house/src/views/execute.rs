@@ -32,6 +32,7 @@ use ariel::helper::addr_validate_to_lower;
 use ariel::helper::assert_sent_uusd_balance;
 use ariel::helper::query_balance;
 use ariel::helper::VaultInterface;
+use ariel::number::Number128;
 use ariel::types::OraclePriceData;
 use ariel::types::OrderType;
 use ariel::types::{
@@ -87,12 +88,12 @@ pub fn try_initialize_market(
         quote_asset_reserve: amm_quote_asset_reserve,
         cumulative_repeg_rebate_long: Uint128::zero(),
         cumulative_repeg_rebate_short: Uint128::zero(),
-        cumulative_funding_rate_long: 0,
-        cumulative_funding_rate_short: 0,
-        last_funding_rate: 0,
+        cumulative_funding_rate_long: Number128::zero(),
+        cumulative_funding_rate_short: Number128::zero(),
+        last_funding_rate: Number128::zero(),
         last_funding_rate_ts: now,
         funding_period: amm_periodicity,
-        last_oracle_price_twap: 0,
+        last_oracle_price_twap: Number128::zero(),
         last_mark_price_twap: init_mark_price,
         last_mark_price_twap_ts: now,
         sqrt_k: amm_base_asset_reserve,
@@ -102,7 +103,7 @@ pub fn try_initialize_market(
         total_fee_withdrawn: Uint128::zero(),
         minimum_quote_asset_trade_size: Uint128::from(10000000 as u128),
         last_oracle_price_twap_ts: now,
-        last_oracle_price: 0,
+        last_oracle_price: Number128::zero(),
         minimum_base_asset_trade_size: Uint128::from(10000000 as u128),
     };
 
@@ -127,9 +128,9 @@ pub fn try_initialize_market(
     let market = Market {
         market_name: market_name,
         initialized: true,
-        base_asset_amount_long: 0,
-        base_asset_amount_short: 0,
-        base_asset_amount: 0,
+        base_asset_amount_long: Number128::zero(),
+        base_asset_amount_short: Number128::zero(),
+        base_asset_amount: Number128::zero(),
         open_interest: Uint128::zero(),
         margin_ratio_initial, // unit is 20% (+2 decimal places)
         margin_ratio_partial,
@@ -410,7 +411,7 @@ pub fn try_open_position(
             &oracle_price_data,
             Some(mark_price_after),
         )?;
-        oracle_price_after = oracle_price_data.price;
+        oracle_price_after = oracle_price_data.price.i128();
     }
 
     let meets_initial_margin_requirement =
@@ -519,7 +520,7 @@ pub fn try_open_position(
             token_discount,
             liquidation: false,
             market_index,
-            oracle_price: oracle_price_after,
+            oracle_price: Number128::new(oracle_price_after),
         },
     )?;
 
@@ -580,7 +581,7 @@ pub fn try_close_position(
         Some(mark_price_before),
     )?;
     let direction_to_close =
-        helpers::position::direction_to_close_position(market_position.base_asset_amount);
+        helpers::position::direction_to_close_position(market_position.base_asset_amount.i128());
 
     let (quote_asset_amount, base_asset_amount, _) = controller::position::close(
         &mut deps,
@@ -909,7 +910,7 @@ pub fn try_liquidate(
                 Some(close_position_slippage) => close_position_slippage,
                 None => helpers::slippage::calculate_slippage(
                     market_status.base_asset_value,
-                    Uint128::from(market_position.base_asset_amount.unsigned_abs()),
+                    Uint128::from(market_position.base_asset_amount.i128().unsigned_abs()),
                     mark_price_before_i128,
                 )?,
             };
@@ -924,18 +925,18 @@ pub fn try_liquidate(
 
             let oracle_mark_divergence_after_close = if !close_slippage_pct_too_large {
                 oracle_status
-                    .oracle_mark_spread_pct
+                    .oracle_mark_spread_pct.i128()
                     .checked_add(close_position_slippage_pct)
                     .ok_or_else(|| (ContractError::MathError))?
             } else if close_position_slippage_pct > 0 {
                 oracle_status
-                    .oracle_mark_spread_pct
+                    .oracle_mark_spread_pct.i128()
                     // approximates price impact based on slippage
                     .checked_add((MAX_LIQUIDATION_SLIPPAGE.u128() as i128) * 2)
                     .ok_or_else(|| (ContractError::MathError))?
             } else {
                 oracle_status
-                    .oracle_mark_spread_pct
+                    .oracle_mark_spread_pct.i128()
                     // approximates price impact based on slippage
                     .checked_sub((MAX_LIQUIDATION_SLIPPAGE.u128() as i128) * 2)
                     .ok_or_else(|| (ContractError::MathError))?
@@ -949,7 +950,7 @@ pub fn try_liquidate(
             // if closing pushes outside the oracle mark threshold, don't liquidate
             if oracle_is_valid && oracle_mark_too_divergent_after_close {
                 // but only skip the liquidation if it makes the divergence worse
-                if oracle_status.oracle_mark_spread_pct.unsigned_abs()
+                if oracle_status.oracle_mark_spread_pct.i128().unsigned_abs()
                     < oracle_mark_divergence_after_close.unsigned_abs()
                 {
                     let market_index = market_position.market_index;
@@ -962,7 +963,7 @@ pub fn try_liquidate(
             }
 
             let direction_to_close =
-                helpers::position::direction_to_close_position(market_position.base_asset_amount);
+                helpers::position::direction_to_close_position(market_position.base_asset_amount.i128());
 
             // just reduce position if position is too big
             let (quote_asset_amount, base_asset_amount) = if close_slippage_pct_too_large {
@@ -1097,7 +1098,7 @@ pub fn try_liquidate(
                 Some(close_position_slippage) => close_position_slippage.div(4),
                 None => helpers::slippage::calculate_slippage(
                     market_status.base_asset_value,
-                    Uint128::from(market_position.base_asset_amount.unsigned_abs()),
+                    Uint128::from(market_position.base_asset_amount.i128().unsigned_abs()),
                     mark_price_before_i128,
                 )?
                 .div(4),
@@ -1119,18 +1120,18 @@ pub fn try_liquidate(
 
             let oracle_mark_divergence_after_reduce = if !reduce_slippage_pct_too_large {
                 oracle_status
-                    .oracle_mark_spread_pct
+                    .oracle_mark_spread_pct.i128()
                     .checked_add(reduce_position_slippage_pct)
                     .ok_or_else(|| (ContractError::MathError))?
             } else if reduce_position_slippage_pct > 0 {
                 oracle_status
-                    .oracle_mark_spread_pct
+                    .oracle_mark_spread_pct.i128()
                     // approximates price impact based on slippage
                     .checked_add((MAX_LIQUIDATION_SLIPPAGE.u128() as i128) * 2)
                     .ok_or_else(|| (ContractError::MathError))?
             } else {
                 oracle_status
-                    .oracle_mark_spread_pct
+                    .oracle_mark_spread_pct.i128()
                     // approximates price impact based on slippage
                     .checked_sub((MAX_LIQUIDATION_SLIPPAGE.u128() as i128) * 2)
                     .ok_or_else(|| (ContractError::MathError))?
@@ -1145,7 +1146,7 @@ pub fn try_liquidate(
             // if reducing pushes outside the oracle mark threshold, don't liquidate
             if oracle_is_valid && oracle_mark_too_divergent_after_reduce {
                 // but only skip the liquidation if it makes the divergence worse
-                if oracle_status.oracle_mark_spread_pct.unsigned_abs()
+                if oracle_status.oracle_mark_spread_pct.i128().unsigned_abs()
                     < oracle_mark_divergence_after_reduce.unsigned_abs()
                 {
                     res.clone().add_attribute(
@@ -1166,7 +1167,7 @@ pub fn try_liquidate(
                 .checked_add(quote_asset_amount)?;
 
             let direction_to_reduce =
-                helpers::position::direction_to_close_position(market_position.base_asset_amount);
+                helpers::position::direction_to_close_position(market_position.base_asset_amount.i128());
 
             let base_asset_amount = controller::position::reduce(
                 &mut deps,
@@ -1319,7 +1320,7 @@ pub fn try_liquidate(
             liquidator: info.sender.clone(),
             total_collateral,
             collateral,
-            unrealized_pnl,
+            unrealized_pnl: Number128::new(unrealized_pnl),
             margin_ratio,
             fee_to_liquidator: fee_to_liquidator.u128() as u64,
             fee_to_insurance_fund: fee_to_insurance_fund.u128() as u64,
@@ -1480,13 +1481,13 @@ pub fn try_repeg_amm_curve(
             base_asset_reserve_after,
             quote_asset_reserve_after,
             sqrt_k_after,
-            base_asset_amount_long: Uint128::from(market.base_asset_amount_long.unsigned_abs()),
-            base_asset_amount_short: Uint128::from(market.base_asset_amount_short.unsigned_abs()),
+            base_asset_amount_long: Uint128::from(market.base_asset_amount_long.i128().unsigned_abs()),
+            base_asset_amount_short: Uint128::from(market.base_asset_amount_short.i128().unsigned_abs()),
             base_asset_amount: market.base_asset_amount,
             open_interest: market.open_interest,
             total_fee: market.amm.total_fee,
             total_fee_minus_distributions: market.amm.total_fee_minus_distributions,
-            adjustment_cost,
+            adjustment_cost: Number128::new(adjustment_cost),
             oracle_price,
             trade_record: Uint128::zero(),
         },
@@ -1508,7 +1509,7 @@ pub fn try_update_amm_oracle_twap(
 
     if let Some(oracle_twap) = oracle_twap {
         let oracle_mark_gap_before = (market.amm.last_mark_price_twap.u128() as i128)
-            .checked_sub(market.amm.last_oracle_price_twap)
+            .checked_sub(market.amm.last_oracle_price_twap.i128())
             .ok_or_else(|| (ContractError::MathError))?;
 
         let oracle_mark_gap_after = (market.amm.last_mark_price_twap.u128() as i128)
@@ -1518,10 +1519,10 @@ pub fn try_update_amm_oracle_twap(
         if (oracle_mark_gap_after > 0 && oracle_mark_gap_before < 0)
             || (oracle_mark_gap_after < 0 && oracle_mark_gap_before > 0)
         {
-            market.amm.last_oracle_price_twap = market.amm.last_mark_price_twap.u128() as i128;
+            market.amm.last_oracle_price_twap = Number128::new(market.amm.last_mark_price_twap.u128() as i128);
             market.amm.last_oracle_price_twap_ts = now;
         } else if oracle_mark_gap_after.unsigned_abs() <= oracle_mark_gap_before.unsigned_abs() {
-            market.amm.last_oracle_price_twap = oracle_twap;
+            market.amm.last_oracle_price_twap = Number128::new(oracle_twap);
             market.amm.last_oracle_price_twap_ts = now;
         } else {
             return Err(ContractError::OracleMarkSpreadLimit.into());
@@ -1554,7 +1555,7 @@ pub fn try_reset_amm_oracle_twap(
         helpers::amm::is_oracle_valid(&market.amm, &oracle_price_data, &oracle_guard_rails)?;
 
     if !is_oracle_valid {
-        market.amm.last_oracle_price_twap = market.amm.last_mark_price_twap.u128() as i128;
+        market.amm.last_oracle_price_twap = Number128::new(market.amm.last_mark_price_twap.u128() as i128);
         market.amm.last_oracle_price_twap_ts = now;
     }
     MARKETS.update(
@@ -1604,10 +1605,10 @@ pub fn try_update_k(
     let now = env.block.time.seconds();
     let mut market = MARKETS.load(deps.storage, market_index)?;
 
-    let base_asset_amount_long = Uint128::from(market.base_asset_amount_long.unsigned_abs());
-    let base_asset_amount_short = Uint128::from(market.base_asset_amount_short.unsigned_abs());
-    let base_asset_amount = market.base_asset_amount;
-    let open_interest = market.open_interest;
+    let base_asset_amount_long = Uint128::from(market.base_asset_amount_long.i128().unsigned_abs());
+    let base_asset_amount_short = Uint128::from(market.base_asset_amount_short.i128().unsigned_abs());
+    let base_asset_amount = market.base_asset_amount.i128().clone();
+    let open_interest = market.open_interest.clone();
 
     let price_before = helpers::amm::calculate_price(
         market.amm.quote_asset_reserve,
@@ -1702,9 +1703,9 @@ pub fn try_update_k(
             sqrt_k_after,
             base_asset_amount_long,
             base_asset_amount_short,
-            base_asset_amount,
+            base_asset_amount : Number128::new(base_asset_amount),
             open_interest,
-            adjustment_cost,
+            adjustment_cost : Number128::new(adjustment_cost),
             total_fee,
             total_fee_minus_distributions,
             oracle_price,
@@ -1714,7 +1715,7 @@ pub fn try_update_k(
     MARKETS.update(
         deps.storage,
         market_index,
-        |_m| -> Result<Market, ContractError> { Ok(market) },
+        |_m| -> Result<Market, ContractError>{ Ok(market) },
     )?;
     Ok(Response::new().add_attribute("method", "try_update_k"))
 }
@@ -1910,7 +1911,7 @@ pub fn try_update_oracle_guard_rails(
         mark_oracle_divergence,
         slots_before_stale,
         confidence_interval_max_size,
-        too_volatile_ratio,
+        too_volatile_ratio : Number128::new(too_volatile_ratio),
     };
     ORACLEGUARDRAILS.update(deps.storage, |mut o| -> Result<OracleGuardRails, ContractError> {
         Ok(oracle_gr)
@@ -2030,7 +2031,10 @@ pub fn try_feeding_price(
 ) -> Result<Response, ContractError> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let mut market = MARKETS.load(deps.storage, market_index)?;
-    market.amm.last_oracle_price = price;
-    market.amm.last_oracle_price_twap = price;
+    market.amm.last_oracle_price = Number128::new(price);
+    market.amm.last_oracle_price_twap = Number128::new(price);
+    MARKETS.update(deps.storage, market_index, |m| -> Result<Market, ContractError> {
+        Ok(market)
+    })?;
     Ok(Response::new().add_attribute("method", "try_update_oracle_address"))
 }

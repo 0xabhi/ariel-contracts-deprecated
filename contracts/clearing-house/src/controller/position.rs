@@ -1,3 +1,4 @@
+use ariel::number::Number128;
 use cosmwasm_std::{DepsMut, Addr, Uint128};
 
 use ariel::types::{SwapDirection, PositionDirection};
@@ -32,7 +33,7 @@ pub fn increase(
     }
 
     // Update funding rate if this is a new position
-    if market_position.base_asset_amount == 0 {
+    if market_position.base_asset_amount.i128() == 0 {
         market_position.last_cumulative_funding_rate = match direction {
             PositionDirection::Long => market.amm.cumulative_funding_rate_long,
             PositionDirection::Short => market.amm.cumulative_funding_rate_short,
@@ -62,25 +63,25 @@ pub fn increase(
     )?;
 
     // update the position size on market and user
-    market_position.base_asset_amount = market_position
-        .base_asset_amount
+    market_position.base_asset_amount = Number128::new(market_position
+        .base_asset_amount.i128()
         .checked_add(base_asset_acquired)
-        .ok_or_else(|| (ContractError::MathError))?;
-    market.base_asset_amount = market
-        .base_asset_amount
+        .ok_or_else(|| (ContractError::MathError))?);
+    market.base_asset_amount = Number128::new(market
+        .base_asset_amount.i128()
         .checked_add(base_asset_acquired)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .ok_or_else(|| (ContractError::MathError))?);
 
-    if market_position.base_asset_amount > 0 {
-        market.base_asset_amount_long = market
-            .base_asset_amount_long
+    if market_position.base_asset_amount.i128() > 0 {
+        market.base_asset_amount_long = Number128::new(market
+            .base_asset_amount_long.i128()
             .checked_add(base_asset_acquired)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .ok_or_else(|| (ContractError::MathError))?);
     } else {
-        market.base_asset_amount_short = market
-            .base_asset_amount_short
+        market.base_asset_amount_short = Number128::new(market
+            .base_asset_amount_short.i128()
             .checked_add(base_asset_acquired)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .ok_or_else(|| (ContractError::MathError))?);
     }
 
     MARKETS.update(deps.storage, market_index, |_m| ->  Result<Market, ContractError>{
@@ -123,47 +124,47 @@ pub fn reduce(
     )?;
 
     let base_asset_amount_before = market_position.base_asset_amount;
-    market_position.base_asset_amount = market_position
-        .base_asset_amount
+    market_position.base_asset_amount = Number128::new(market_position
+        .base_asset_amount.i128()
         .checked_add(base_asset_swapped)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .ok_or_else(|| (ContractError::MathError))?);
 
     market.open_interest = market
         .open_interest
-        .checked_sub(Uint128::from(market_position.base_asset_amount.unsigned_abs()))?;
+        .checked_sub(Uint128::from(market_position.base_asset_amount.i128().unsigned_abs()))?;
 
-    market.base_asset_amount = market
-        .base_asset_amount
+    market.base_asset_amount = Number128::new(market
+        .base_asset_amount.i128()
         .checked_add(base_asset_swapped)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .ok_or_else(|| (ContractError::MathError))?);
 
-    if market_position.base_asset_amount > 0 {
-        market.base_asset_amount_long = market
-            .base_asset_amount_long
+    if market_position.base_asset_amount.i128() > 0 {
+        market.base_asset_amount_long = Number128::new(market
+            .base_asset_amount_long.i128()
             .checked_add(base_asset_swapped)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .ok_or_else(|| (ContractError::MathError))?);
     } else {
-        market.base_asset_amount_short = market
-            .base_asset_amount_short
+        market.base_asset_amount_short = Number128::new(market
+            .base_asset_amount_short.i128()
             .checked_add(base_asset_swapped)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .ok_or_else(|| (ContractError::MathError))?);
     }
 
-    let base_asset_amount_change = base_asset_amount_before
-        .checked_sub(market_position.base_asset_amount)
+    let base_asset_amount_change = base_asset_amount_before.i128()
+        .checked_sub(market_position.base_asset_amount.i128())
         .ok_or_else(|| (ContractError::MathError))?
         .abs();
 
     let initial_quote_asset_amount_closed = market_position
         .quote_asset_amount
         .checked_mul(Uint128::from(base_asset_amount_change.unsigned_abs()))?
-        .checked_div(Uint128::from(base_asset_amount_before.unsigned_abs()))?;
+        .checked_div(Uint128::from(base_asset_amount_before.i128().unsigned_abs()))?;
 
     market_position.quote_asset_amount = market_position
         .quote_asset_amount
         .checked_sub(initial_quote_asset_amount_closed)?;
 
-    let pnl = if market_position.base_asset_amount > 0 {
+    let pnl = if market_position.base_asset_amount.i128() > 0 {
         (quote_asset_swap_amount.u128() as i128)
             .checked_sub(initial_quote_asset_amount_closed.u128() as i128)
             .ok_or_else(|| (ContractError::MathError))?
@@ -203,11 +204,11 @@ pub fn close(
     let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
     
     // If user has no base asset, return early
-    if market_position.base_asset_amount == 0 {
+    if market_position.base_asset_amount.i128() == 0 {
         return Ok((Uint128::zero(), 0, Uint128::zero()));
     }
 
-    let swap_direction = if market_position.base_asset_amount > 0 {
+    let swap_direction = if market_position.base_asset_amount.i128() > 0 {
         SwapDirection::Add
     } else {
         SwapDirection::Remove
@@ -216,7 +217,7 @@ pub fn close(
     let quote_asset_swapped = amm::swap_base_asset(
         deps, 
         market_index,
-        Uint128::from(market_position.base_asset_amount.unsigned_abs()),
+        Uint128::from(market_position.base_asset_amount.i128().unsigned_abs()),
         swap_direction,
         now,
         precomputed_mark_price
@@ -226,7 +227,7 @@ pub fn close(
         Some(limit_price) => calculate_quote_asset_amount_surplus(	
             swap_direction,	
             quote_asset_swapped,	
-            Uint128::from(market_position.base_asset_amount.unsigned_abs()),	
+            Uint128::from(market_position.base_asset_amount.i128().unsigned_abs()),	
             limit_price,	
         )?,	
         None => (quote_asset_swapped, Uint128::zero()),	
@@ -239,7 +240,7 @@ pub fn close(
     )?;
 
     user.collateral = calculate_updated_collateral(user.collateral, pnl)?;
-    market_position.last_cumulative_funding_rate = 0;
+    market_position.last_cumulative_funding_rate = Number128::zero();
     market_position.last_funding_rate_ts = 0;
 
     market.open_interest = market
@@ -248,25 +249,25 @@ pub fn close(
 
     market_position.quote_asset_amount = Uint128::zero();
 
-    market.base_asset_amount = market
-        .base_asset_amount
-        .checked_sub(market_position.base_asset_amount)
-        .ok_or_else(|| (ContractError::MathError))?;
+    market.base_asset_amount = Number128::new(market
+        .base_asset_amount.i128()
+        .checked_sub(market_position.base_asset_amount.i128())
+        .ok_or_else(|| (ContractError::MathError))?);
 
-    if market_position.base_asset_amount > 0 {
-        market.base_asset_amount_long = market
-            .base_asset_amount_long
-            .checked_sub(market_position.base_asset_amount)
-            .ok_or_else(|| (ContractError::MathError))?;
+    if market_position.base_asset_amount.i128() > 0 {
+        market.base_asset_amount_long = Number128::new(market
+            .base_asset_amount_long.i128()
+            .checked_sub(market_position.base_asset_amount.i128())
+            .ok_or_else(|| (ContractError::MathError))?);
     } else {
-        market.base_asset_amount_short = market
-            .base_asset_amount_short
-            .checked_sub(market_position.base_asset_amount)
-            .ok_or_else(|| (ContractError::MathError))?;
+        market.base_asset_amount_short = Number128::new(market
+            .base_asset_amount_short.i128()
+            .checked_sub(market_position.base_asset_amount.i128())
+            .ok_or_else(|| (ContractError::MathError))?);
     }
 
-    let base_asset_amount = market_position.base_asset_amount;
-    market_position.base_asset_amount = 0;
+    let base_asset_amount = market_position.base_asset_amount.i128();
+    market_position.base_asset_amount = Number128::zero();
 
     MARKETS.update(deps.storage, market_index, |_m| ->  Result<Market, ContractError>{
         Ok(market)
@@ -300,9 +301,9 @@ pub fn add_new_position(
 
     let new_market_position = Position {
         market_index,
-        base_asset_amount: 0,
+        base_asset_amount: Number128::zero(),
         quote_asset_amount: Uint128::zero(),
-        last_cumulative_funding_rate: 0,
+        last_cumulative_funding_rate: Number128::zero(),
         last_cumulative_repeg_rebate: Uint128::zero(),
         last_funding_rate_ts: 0,
         order_length: 0,
@@ -344,7 +345,7 @@ pub fn increase_with_base_asset_amount(
     let mut market = MARKETS.load(deps.storage, market_index)?;
     
     // Update funding rate if this is a new position
-    if market_position.base_asset_amount == 0 {
+    if market_position.base_asset_amount.i128() == 0 {
         market_position.last_cumulative_funding_rate = match direction {
             PositionDirection::Long => market.amm.cumulative_funding_rate_long,
             PositionDirection::Short => market.amm.cumulative_funding_rate_short,
@@ -388,25 +389,25 @@ pub fn increase_with_base_asset_amount(
         PositionDirection::Short => -(base_asset_amount.u128() as i128),
     };
 
-    market_position.base_asset_amount = market_position
-        .base_asset_amount
+    market_position.base_asset_amount = Number128::new(market_position
+        .base_asset_amount.i128()
         .checked_add(base_asset_amount)
-        .ok_or_else(|| (ContractError::MathError))?;
-    market.base_asset_amount = market
-        .base_asset_amount
+        .ok_or_else(|| (ContractError::MathError))?);
+    market.base_asset_amount = Number128::new(market
+        .base_asset_amount.i128()
         .checked_add(base_asset_amount)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .ok_or_else(|| (ContractError::MathError))?);
 
-    if market_position.base_asset_amount > 0 {
-        market.base_asset_amount_long = market
-            .base_asset_amount_long
+    if market_position.base_asset_amount.i128() > 0 {
+        market.base_asset_amount_long = Number128::new(market
+            .base_asset_amount_long.i128()
             .checked_add(base_asset_amount)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .ok_or_else(|| (ContractError::MathError))?);
     } else {
-        market.base_asset_amount_short = market
-            .base_asset_amount_short
+        market.base_asset_amount_short = Number128::new(market
+            .base_asset_amount_short.i128()
             .checked_add(base_asset_amount)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .ok_or_else(|| (ContractError::MathError))?);
     }
 
     MARKETS.update(deps.storage, market_index, |_m| ->  Result<Market, ContractError>{
@@ -471,34 +472,34 @@ pub fn reduce_with_base_asset_amount(
         PositionDirection::Short => -(base_asset_amount.u128() as i128),
     };
 
-    let base_asset_amount_before = market_position.base_asset_amount;
-    market_position.base_asset_amount = market_position
-        .base_asset_amount
+    let base_asset_amount_before = market_position.base_asset_amount.i128();
+    market_position.base_asset_amount = Number128::new(market_position
+        .base_asset_amount.i128()
         .checked_add(base_asset_amount)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .ok_or_else(|| (ContractError::MathError))?);
 
     market.open_interest = market
         .open_interest
-        .checked_sub(Uint128::from(market_position.base_asset_amount.unsigned_abs()))?;
-    market.base_asset_amount = market
-        .base_asset_amount
+        .checked_sub(Uint128::from(market_position.base_asset_amount.i128().unsigned_abs()))?;
+    market.base_asset_amount = Number128::new(market
+        .base_asset_amount.i128()
         .checked_add(base_asset_amount)
-        .ok_or_else(|| (ContractError::MathError))?;
+        .ok_or_else(|| (ContractError::MathError))?);
 
-    if market_position.base_asset_amount > 0 {
-        market.base_asset_amount_long = market
-            .base_asset_amount_long
+    if market_position.base_asset_amount.i128() > 0 {
+        market.base_asset_amount_long = Number128::new(market
+            .base_asset_amount_long.i128()
             .checked_add(base_asset_amount)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .ok_or_else(|| (ContractError::MathError))?);
     } else {
-        market.base_asset_amount_short = market
-            .base_asset_amount_short
+        market.base_asset_amount_short = Number128::new(market
+            .base_asset_amount_short.i128()
             .checked_add(base_asset_amount)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .ok_or_else(|| (ContractError::MathError))?);
     }
 
     let base_asset_amount_change = base_asset_amount_before
-        .checked_sub(market_position.base_asset_amount)
+        .checked_sub(market_position.base_asset_amount.i128())
         .ok_or_else(|| (ContractError::MathError))?
         .abs();
 
@@ -567,9 +568,9 @@ pub fn update_position_with_base_asset_amount(
     // 2) the trade is in the same direction as the user's existing position
     let quote_asset_amount;
     let quote_asset_amount_surplus;
-    let increase_position = market_position.base_asset_amount == 0
-        || market_position.base_asset_amount > 0 && direction == PositionDirection::Long
-        || market_position.base_asset_amount < 0 && direction == PositionDirection::Short;
+    let increase_position = market_position.base_asset_amount.i128() == 0
+        || market_position.base_asset_amount.i128() > 0 && direction == PositionDirection::Long
+        || market_position.base_asset_amount.i128() < 0 && direction == PositionDirection::Short;
     if increase_position {
         let (_quote_asset_amount, _quote_asset_amount_surplus) = increase_with_base_asset_amount(
             deps,
@@ -583,7 +584,7 @@ pub fn update_position_with_base_asset_amount(
         )?;
         quote_asset_amount = _quote_asset_amount;
         quote_asset_amount_surplus = _quote_asset_amount_surplus;
-    } else if market_position.base_asset_amount.unsigned_abs() > base_asset_amount.u128() {
+    } else if market_position.base_asset_amount.i128().unsigned_abs() > base_asset_amount.u128() {
         let (_quote_asset_amount, _quote_asset_amount_surplus) = reduce_with_base_asset_amount(
             deps,
             direction,
@@ -602,10 +603,10 @@ pub fn update_position_with_base_asset_amount(
     } else {
         // after closing existing position, how large should trade be in opposite direction
         let base_asset_amount_after_close = base_asset_amount
-            .checked_sub(Uint128::from(market_position.base_asset_amount.unsigned_abs()))?;
+            .checked_sub(Uint128::from(market_position.base_asset_amount.i128().unsigned_abs()))?;
 
         // If the value of the new position is less than value of the old position, consider it risk decreasing
-        if base_asset_amount_after_close.u128() < market_position.base_asset_amount.unsigned_abs() {
+        if base_asset_amount_after_close.u128() < market_position.base_asset_amount.i128().unsigned_abs() {
             potentially_risk_increasing = false;
         }
 
@@ -682,9 +683,9 @@ pub fn update_position_with_quote_asset_amount(
     // The trade increases the the user position if
     // 1) the user does not have a position
     // 2) the trade is in the same direction as the user's existing position
-    let increase_position = market_position.base_asset_amount == 0
-        || market_position.base_asset_amount > 0 && direction == PositionDirection::Long
-        || market_position.base_asset_amount < 0 && direction == PositionDirection::Short;
+    let increase_position = market_position.base_asset_amount.i128() == 0
+        || market_position.base_asset_amount.i128() > 0 && direction == PositionDirection::Long
+        || market_position.base_asset_amount.i128() < 0 && direction == PositionDirection::Short;
     if increase_position {
         base_asset_amount = increase(
             deps,

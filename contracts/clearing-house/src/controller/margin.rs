@@ -28,7 +28,7 @@ pub fn meets_initial_margin_requirement(
     if user.positions_length > 0 {
         for n in 1..user.positions_length {
             let market_position = POSITIONS.load(deps.storage, (user_addr, n))?;
-            if market_position.base_asset_amount == 0 {
+            if market_position.base_asset_amount.i128() == 0 {
                 continue;
             }
             let market = MARKETS.load(deps.storage, market_position.market_index)?;
@@ -67,7 +67,7 @@ pub fn meets_partial_margin_requirement(
     if user.positions_length > 0 {
         for n in 1..user.positions_length {
             let market_position = POSITIONS.load(deps.storage, (user_addr, n))?;
-            if market_position.base_asset_amount == 0 {
+            if market_position.base_asset_amount.i128() == 0 {
                 continue;
             }
             let market = MARKETS.load(deps.storage, market_position.market_index)?;
@@ -109,7 +109,7 @@ pub fn calculate_free_collateral(
     if user.positions_length > 0 {
         for n in 1..user.positions_length {
             let market_position = POSITIONS.load(deps.storage, (user_addr, n))?;
-            if market_position.base_asset_amount == 0 {
+            if market_position.base_asset_amount.i128() == 0 {
                 continue;
             }
 
@@ -168,7 +168,7 @@ pub fn calculate_liquidation_status(
     if user.positions_length > 0 {
         for n in 1..user.positions_length {
             let market_position = POSITIONS.load(deps.storage, (user_addr, n))?;
-            if market_position.base_asset_amount == 0 {
+            if market_position.base_asset_amount.i128() == 0 {
                 continue;
             }
 
@@ -197,20 +197,20 @@ pub fn calculate_liquidation_status(
             let mut close_position_slippage = None;
             if oracle_status.is_valid
                 && use_oracle_price_for_margin_calculation(
-                    oracle_status.oracle_mark_spread_pct,
+                    oracle_status.oracle_mark_spread_pct.i128(),
                     &oracle_guard_rails,
                 )?
             {
                 let exit_slippage = calculate_slippage(
                     amm_position_base_asset_value,
-                    Uint128::from( market_position.base_asset_amount.unsigned_abs()),
+                    Uint128::from( market_position.base_asset_amount.i128().unsigned_abs()),
                     mark_price_before.u128() as i128,
                 )?;
                 close_position_slippage = Some(exit_slippage);
 
                 let oracle_exit_price = oracle_status
                     .price_data
-                    .price
+                    .price.i128()
                     .checked_add(exit_slippage)
                     .ok_or_else(|| (ContractError::HelpersError))?;
 

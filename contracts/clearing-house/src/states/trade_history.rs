@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Map, Item};
 
-use ariel::types::PositionDirection;
+use ariel::{types::PositionDirection, number::Number128};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TradeRecord {
@@ -21,7 +21,7 @@ pub struct TradeRecord {
     pub token_discount: Uint128,
     pub liquidation: bool,
     pub market_index: u64,
-    pub oracle_price: i128,
+    pub oracle_price: Number128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

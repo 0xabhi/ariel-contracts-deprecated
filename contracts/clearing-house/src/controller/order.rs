@@ -10,6 +10,7 @@ use crate::states::state::{STATE, ORDERSTATE, FEESTRUCTURE, ORACLEGUARDRAILS};
 use crate::helpers::order::get_valid_oracle_price;
 use crate::states::trade_history::{TRADE_HISTORY_INFO, TradeInfo, TRADE_HISTORY, TradeRecord};
 use std::cmp::min;
+use ariel::number::Number128;
 use ariel::types::{Order, OrderType, PositionDirection, SwapDirection, OrderStatus, OrderParams};
 use cosmwasm_std::{DepsMut, Addr, Uint128};
 
@@ -98,9 +99,9 @@ pub fn calculate_available_quote_asset_user_can_execute(
                 .checked_add(Uint128::from(1 as u64))?,
         )?;
 
-    let risk_increasing_in_same_direction = market_position.base_asset_amount == 0
-        || market_position.base_asset_amount > 0 && order.direction == PositionDirection::Long
-        || market_position.base_asset_amount < 0 && order.direction == PositionDirection::Short;
+    let risk_increasing_in_same_direction = market_position.base_asset_amount.i128() == 0
+        || market_position.base_asset_amount.i128() > 0 && order.direction == PositionDirection::Long
+        || market_position.base_asset_amount.i128() < 0 && order.direction == PositionDirection::Short;
 
     let available_quote_asset_for_order = if risk_increasing_in_same_direction {
         let (free_collateral, _) = calculate_free_collateral(
@@ -474,7 +475,7 @@ pub fn fill_order(
             oracle_price_data,
             Some(mark_price_before),
         )?;
-        oracle_price = oracle_price_data.price;
+        oracle_price = oracle_price_data.price.i128();
         let normalised_price =
             normalise_oracle_price(&market.amm, oracle_price_data, Some(mark_price_before))?;
         is_oracle_valid = amm::is_oracle_valid(
@@ -527,7 +528,7 @@ pub fn fill_order(
             oracle_price_data,
             Some(mark_price_after),
         )?;
-        oracle_price_after = oracle_price_data.price;
+        oracle_price_after = oracle_price_data.price.i128();
     }
 
     let is_oracle_mark_too_divergent_before = amm::is_oracle_mark_too_divergent(
@@ -659,7 +660,7 @@ pub fn fill_order(
         referee_discount,
         liquidation: false,
         market_index,
-        oracle_price: oracle_price_after,
+        oracle_price: Number128::new(oracle_price_after),
     })?;
     
 

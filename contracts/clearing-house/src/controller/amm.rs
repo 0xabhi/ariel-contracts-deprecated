@@ -1,4 +1,5 @@
 use std::ops::Mul;
+use ariel::number::Number128;
 use num::integer::Roots;
 use cosmwasm_std::{DepsMut, Uint128};
 
@@ -39,7 +40,7 @@ pub fn update_oracle_price_twap(
     let mut market = MARKETS.load(deps.storage, market_index)?;
     let mut a = market.amm.clone();
     let new_oracle_price_spread = oracle_price
-        .checked_sub(a.last_oracle_price_twap)
+        .checked_sub(a.last_oracle_price_twap.i128())
         .ok_or_else(|| (ContractError::MathError))?;
 
     // cap new oracle update to 33% delta from twap
@@ -47,12 +48,12 @@ pub fn update_oracle_price_twap(
 
     let capped_oracle_update_price =
         if new_oracle_price_spread.unsigned_abs() > oracle_price_33pct.unsigned_abs() {
-            if oracle_price > a.last_oracle_price_twap {
-                a.last_oracle_price_twap
+            if oracle_price > a.last_oracle_price_twap.i128() {
+                a.last_oracle_price_twap.i128()
                     .checked_add(oracle_price_33pct)
                     .ok_or_else(|| (ContractError::MathError))?
             } else {
-                a.last_oracle_price_twap
+                a.last_oracle_price_twap.i128()
                     .checked_sub(oracle_price_33pct)
                     .ok_or_else(|| (ContractError::MathError))?
             }
@@ -64,11 +65,11 @@ pub fn update_oracle_price_twap(
     let oracle_price_twap: i128;
     if capped_oracle_update_price > 0 && oracle_price > 0 {
         oracle_price_twap = calculate_new_oracle_price_twap(&a, now, capped_oracle_update_price)?;
-        a.last_oracle_price = capped_oracle_update_price;
-        a.last_oracle_price_twap = oracle_price_twap;
+        a.last_oracle_price = Number128::new(capped_oracle_update_price);
+        a.last_oracle_price_twap = Number128::new(oracle_price_twap);
         a.last_oracle_price_twap_ts = now;
     } else {
-        oracle_price_twap = a.last_oracle_price_twap
+        oracle_price_twap = a.last_oracle_price_twap.i128()
     }
 
     market.amm = a;
@@ -86,7 +87,7 @@ pub fn adjust_k_cost(deps: &mut DepsMut, market_index: u64, new_sqrt_k: Uint128)
     let mut market = MARKETS.load(deps.storage, market_index)?;
     // Find the net market value before adjusting k
     let (current_net_market_value, _) =
-        _calculate_base_asset_value_and_pnl(market.base_asset_amount, Uint128::zero(), &market.amm)?;
+        _calculate_base_asset_value_and_pnl(market.base_asset_amount.i128(), Uint128::zero(), &market.amm)?;
 
     let ratio_scalar = MARK_PRICE_PRECISION;
 
@@ -116,7 +117,7 @@ pub fn adjust_k_cost(deps: &mut DepsMut, market_index: u64, new_sqrt_k: Uint128)
     market.amm.quote_asset_reserve = new_quote_asset_reserve;
 
     let (_new_net_market_value, cost) = _calculate_base_asset_value_and_pnl(
-        market.base_asset_amount,
+        market.base_asset_amount.i128(),
         current_net_market_value,
         &market.amm,
     )?;

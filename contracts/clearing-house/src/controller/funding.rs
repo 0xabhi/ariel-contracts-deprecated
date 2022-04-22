@@ -1,5 +1,6 @@
 use std::cmp::max;
 
+use ariel::number::Number128;
 use cosmwasm_std::Addr;
 use cosmwasm_std::DepsMut;
 use cosmwasm_std::Uint128;
@@ -38,16 +39,16 @@ pub fn settle_funding_payment(
     if user.positions_length > 0 {
         for n in 1..user.positions_length {
             let mut market_position = POSITIONS.load(deps.storage, (user_addr, n))?;
-            if market_position.base_asset_amount == 0 {
+            if market_position.base_asset_amount.i128() == 0 {
                 continue;
             }
             let market = MARKETS.load(deps.storage, market_position.market_index)?;
-            let amm_cumulative_funding_rate = if market_position.base_asset_amount > 0 {
-                market.amm.cumulative_funding_rate_long
+            let amm_cumulative_funding_rate = if market_position.base_asset_amount.i128() > 0 {
+                market.amm.cumulative_funding_rate_long.i128()
             } else {
-                market.amm.cumulative_funding_rate_short
+                market.amm.cumulative_funding_rate_short.i128()
             };
-            if amm_cumulative_funding_rate != market_position.last_cumulative_funding_rate {
+            if amm_cumulative_funding_rate != market_position.last_cumulative_funding_rate.i128() {
                 let market_funding_rate_payment =
                     calculate_funding_payment(amm_cumulative_funding_rate, &market_position)?;
                 let funding_payment_history_info_length = FUNDING_PAYMENT_HISTORY_INFO
@@ -70,7 +71,7 @@ pub fn settle_funding_payment(
                         record_id: funding_payment_history_info_length,
                         user: user_addr.clone(),
                         market_index: market_position.market_index,
-                        funding_payment: market_funding_rate_payment, //10e13
+                        funding_payment: Number128::new(market_funding_rate_payment), //10e13
                         user_last_cumulative_funding: market_position.last_cumulative_funding_rate, //10e14
                         user_last_funding_rate_ts: market_position.last_funding_rate_ts,
                         amm_cumulative_funding_long: market.amm.cumulative_funding_rate_long, //10e14
@@ -82,7 +83,7 @@ pub fn settle_funding_payment(
                     .checked_add(market_funding_rate_payment)
                     .ok_or_else(|| (ContractError::MathError))?;
 
-                market_position.last_cumulative_funding_rate = amm_cumulative_funding_rate;
+                market_position.last_cumulative_funding_rate = Number128::new(amm_cumulative_funding_rate);
                 market_position.last_funding_rate_ts = market.amm.last_funding_rate_ts;
 
                 POSITIONS.update(
@@ -196,19 +197,19 @@ pub fn update_funding_rate(
 
         market.amm.total_fee_minus_distributions = new_total_fee_minus_distributions;
 
-        market.amm.cumulative_funding_rate_long = market
+        market.amm.cumulative_funding_rate_long = Number128::new(market
             .amm
-            .cumulative_funding_rate_long
+            .cumulative_funding_rate_long.i128()
             .checked_add(funding_rate_long)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .ok_or_else(|| (ContractError::MathError))?);
 
-        market.amm.cumulative_funding_rate_short = market
+        market.amm.cumulative_funding_rate_short = Number128::new(market
             .amm
-            .cumulative_funding_rate_short
+            .cumulative_funding_rate_short.i128()
             .checked_add(funding_rate_short)
-            .ok_or_else(|| (ContractError::MathError))?;
+            .ok_or_else(|| (ContractError::MathError))?);
 
-        market.amm.last_funding_rate = funding_rate;
+        market.amm.last_funding_rate = Number128::new(funding_rate);
         market.amm.last_funding_rate_ts = now;
 
         MARKETS.update(
@@ -236,11 +237,11 @@ pub fn update_funding_rate(
                 ts: now,
                 record_id: funding_rate_history_info_length,
                 market_index,
-                funding_rate,
+                funding_rate: Number128::new(funding_rate),
                 cumulative_funding_rate_long: market.amm.cumulative_funding_rate_long,
                 cumulative_funding_rate_short: market.amm.cumulative_funding_rate_short,
                 mark_price_twap,
-                oracle_price_twap,
+                oracle_price_twap: Number128::new(oracle_price_twap),
             },
         )?;
     };

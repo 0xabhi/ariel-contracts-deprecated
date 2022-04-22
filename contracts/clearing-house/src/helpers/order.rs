@@ -194,7 +194,7 @@ pub fn get_valid_oracle_price(
         let oracle_data = market.amm.get_oracle_price()?;
         let is_oracle_valid = is_oracle_valid(&market.amm, &oracle_data, validity_guardrails)?;
         if is_oracle_valid {
-            Some(oracle_data.price)
+            Some(oracle_data.price.i128())
         } else if has_oracle_price_offset(order) {
             // msg!("Invalid oracle for order with oracle price offset");
             return Err(ContractError::InvalidOracle);

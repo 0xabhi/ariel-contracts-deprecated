@@ -1,3 +1,4 @@
+use ariel::number::Number128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +19,7 @@ pub struct LiquidationRecord {
     pub liquidator: Addr,
     pub total_collateral: Uint128,
     pub collateral: Uint128,
-    pub unrealized_pnl: i128,
+    pub unrealized_pnl: Number128,
     pub margin_ratio: Uint128,
 }
 

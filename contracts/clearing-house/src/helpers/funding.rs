@@ -21,7 +21,7 @@ pub fn calculate_funding_rate_long_short(
 ) -> Result<(i128, i128, Uint128), ContractError> {
     // Calculate the funding payment owed by the net_market_position if funding is not capped
     // If the net market position owes funding payment, the clearing house receives payment
-    let net_market_position = market.base_asset_amount;
+    let net_market_position = market.base_asset_amount.i128().clone();
     let net_market_position_funding_payment =
         calculate_funding_payment_in_quote_precision(funding_rate, net_market_position)?;
     let uncapped_funding_pnl = -net_market_position_funding_payment;
@@ -106,12 +106,12 @@ fn calculate_capped_funding_rate(
         let funding_payment_from_users = if funding_rate > 0 {
             calculate_funding_payment_in_quote_precision(
                 funding_rate,
-                market.base_asset_amount_long,
+                market.base_asset_amount_long.i128(),
             )
         } else {
             calculate_funding_payment_in_quote_precision(
                 funding_rate,
-                market.base_asset_amount_short,
+                market.base_asset_amount_short.i128(),
             )
         }?;
 
@@ -125,13 +125,13 @@ fn calculate_capped_funding_rate(
             // longs receive
             calculate_funding_rate_from_pnl_limit(
                 funding_rate_pnl_limit,
-                market.base_asset_amount_long,
+                market.base_asset_amount_long.i128(),
             )?
         } else {
             // shorts receive
             calculate_funding_rate_from_pnl_limit(
                 funding_rate_pnl_limit,
-                market.base_asset_amount_short,
+                market.base_asset_amount_short.i128(),
             )?
         }
     } else {
@@ -146,11 +146,11 @@ pub fn calculate_funding_payment(
     market_position: &Position,
 ) -> Result<i128, ContractError> {
     let funding_rate_delta = amm_cumulative_funding_rate
-        .checked_sub(market_position.last_cumulative_funding_rate)
+        .checked_sub(market_position.last_cumulative_funding_rate.i128())
         .ok_or_else(|| (ContractError::MathError))?;
 
     let funding_rate_payment =
-        _calculate_funding_payment(funding_rate_delta, market_position.base_asset_amount)?;
+        _calculate_funding_payment(funding_rate_delta, market_position.base_asset_amount.i128())?;
 
     return Ok(funding_rate_payment);
 }

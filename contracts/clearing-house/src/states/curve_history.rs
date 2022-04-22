@@ -1,3 +1,4 @@
+use ariel::number::Number128;
 use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -33,12 +34,12 @@ pub struct CurveRecord {
     pub sqrt_k_after: Uint128,
     pub base_asset_amount_long: Uint128,
     pub base_asset_amount_short: Uint128,
-    pub base_asset_amount: i128,
+    pub base_asset_amount: Number128,
     pub open_interest: Uint128,
     pub total_fee: Uint128,
     pub total_fee_minus_distributions: Uint128,
-    pub adjustment_cost: i128,
-    pub oracle_price: i128,
+    pub adjustment_cost: Number128,
+    pub oracle_price: Number128,
     pub trade_record: Uint128,
 }
 

@@ -26,7 +26,7 @@ pub const ORDERS: Map<((&Addr, u64), u64), Order> = Map::new("orders");
 pub const ORDERS_INFO: Item<OrderInfo> = Item::new("order_info");
 
 pub fn has_oracle_price_offset(oo: &Order) -> bool {
-    oo.oracle_price_offset != 0
+    oo.oracle_price_offset.i128() != 0
 }
 
 pub fn get_limit_price(
@@ -37,7 +37,7 @@ pub fn get_limit_price(
     let price = if has_oracle_price_offset(oo) {
         if let Some(oracle_price) = valid_oracle_price {
             let limit_price = oracle_price
-                .checked_add(oo.oracle_price_offset)
+                .checked_add(oo.oracle_price_offset.i128())
                 .ok_or_else(|| (ContractError::MathError))?;
 
             if limit_price <= 0 {

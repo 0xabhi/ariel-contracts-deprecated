@@ -33,7 +33,7 @@ pub fn repeg(
     market.amm.peg_multiplier = new_peg_candidate;
 
     let oracle_price_data = market.amm.get_oracle_price()?;	
-    let oracle_price = oracle_price_data.price;	
+    let oracle_price = oracle_price_data.price.i128();	
     let oracle_conf = oracle_price_data.confidence;
     let oracle_is_valid =	
         amm::is_oracle_valid(&market.amm, &oracle_price_data, &oracle_guard_rails)?;	
@@ -125,12 +125,12 @@ pub fn repeg(
 pub fn adjust_peg_cost(market: &mut Market, new_peg: Uint128) -> Result<i128, ContractError> {
     // Find the net market value before adjusting peg
     let (current_net_market_value, _) =
-        _calculate_base_asset_value_and_pnl(market.base_asset_amount, Uint128::zero(), &market.amm)?;
+        _calculate_base_asset_value_and_pnl(market.base_asset_amount.i128(), Uint128::zero(), &market.amm)?;
 
     market.amm.peg_multiplier = new_peg;
 
     let (_new_net_market_value, cost) = _calculate_base_asset_value_and_pnl(
-        market.base_asset_amount,
+        market.base_asset_amount.i128(),
         current_net_market_value,
         &market.amm,
     )?;

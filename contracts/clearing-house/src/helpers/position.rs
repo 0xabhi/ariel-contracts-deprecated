@@ -17,7 +17,7 @@ pub fn calculate_base_asset_value_and_pnl(
     a: &Amm,
 ) -> Result<(Uint128, i128), ContractError> {
     return _calculate_base_asset_value_and_pnl(
-        market_position.base_asset_amount,
+        market_position.base_asset_amount.i128(),
         market_position.quote_asset_amount,
         a,
     );
@@ -57,11 +57,11 @@ pub fn calculate_base_asset_value_and_pnl_with_oracle_price(
     market_position: &Position,
     oracle_price: i128,
 ) -> Result<(Uint128, i128), ContractError> {
-    if market_position.base_asset_amount == 0 {
+    if market_position.base_asset_amount.i128() == 0 {
         return Ok((Uint128::zero(), 0));
     }
 
-    let swap_direction = swap_direction_to_close_position(market_position.base_asset_amount);
+    let swap_direction = swap_direction_to_close_position(market_position.base_asset_amount.i128());
 
     let oracle_price = if oracle_price > 0 {
         Uint128::from(oracle_price.unsigned_abs())
@@ -70,7 +70,7 @@ pub fn calculate_base_asset_value_and_pnl_with_oracle_price(
     };
 
     let base_asset_value = Uint128::from(market_position
-        .base_asset_amount
+        .base_asset_amount.i128()
         .unsigned_abs())
         .checked_mul(oracle_price)?
         .checked_div(AMM_RESERVE_PRECISION * PRICE_TO_QUOTE_PRECISION_RATIO)?;

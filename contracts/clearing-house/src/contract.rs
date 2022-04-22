@@ -1,3 +1,4 @@
+use ariel::number::Number128;
 use ariel::response::MarketLengthResponse;
 use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, Decimal, Uint128
@@ -51,7 +52,7 @@ pub fn instantiate(
         mark_oracle_divergence: Decimal::percent(10),
         slots_before_stale: 1000,
         confidence_interval_max_size: Uint128::from(4u64),
-        too_volatile_ratio: 5,
+        too_volatile_ratio: Number128::new(5),
     };
 
     let orderstate = OrderState {

@@ -1,3 +1,4 @@
+use ariel::number::Number128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -10,12 +11,12 @@ pub struct FundingPaymentRecord {
     pub record_id: u64,
     pub user: Addr,
     pub market_index: u64,
-    pub funding_payment: i128,
-    pub base_asset_amount: i128,
-    pub user_last_cumulative_funding: i128,
+    pub funding_payment: Number128,
+    pub base_asset_amount: Number128,
+    pub user_last_cumulative_funding: Number128,
     pub user_last_funding_rate_ts: u64,
-    pub amm_cumulative_funding_long: i128,
-    pub amm_cumulative_funding_short: i128,
+    pub amm_cumulative_funding_long: Number128,
+    pub amm_cumulative_funding_short: Number128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -28,10 +29,10 @@ pub struct FundingRateRecord {
     pub ts: u64,
     pub record_id: u64,
     pub market_index: u64,
-    pub funding_rate: i128,
-    pub cumulative_funding_rate_long: i128,
-    pub cumulative_funding_rate_short: i128,
-    pub oracle_price_twap: i128,
+    pub funding_rate: Number128,
+    pub cumulative_funding_rate_long: Number128,
+    pub cumulative_funding_rate_short: Number128,
+    pub oracle_price_twap: Number128,
     pub mark_price_twap: Uint128,
 }
 

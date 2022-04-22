@@ -1,3 +1,4 @@
+use ariel::number::Number128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -19,9 +20,9 @@ pub struct User {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Position {
     pub market_index: u64,
-    pub base_asset_amount: i128,
+    pub base_asset_amount: Number128,
     pub quote_asset_amount: Uint128,
-    pub last_cumulative_funding_rate: i128,
+    pub last_cumulative_funding_rate: Number128,
     pub last_cumulative_repeg_rebate: Uint128,
     pub last_funding_rate_ts: u64,
     pub order_length: u64,
@@ -40,7 +41,7 @@ impl Position {
     }
 
     pub fn is_open_position(&self) -> bool {
-        self.base_asset_amount != 0
+        self.base_asset_amount.i128() != 0
     }
 
     pub fn has_open_order(&self) -> bool {

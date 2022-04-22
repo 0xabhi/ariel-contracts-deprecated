@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr, Decimal, Uint128};
 
+use crate::number::Number128;
+
 #[derive(Clone, Debug, JsonSchema, Copy, Serialize, Deserialize, PartialEq)]
 pub enum PositionDirection {
     Long,
@@ -59,14 +61,14 @@ impl Default for OracleSource {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OracleStatus {
     pub price_data: OraclePriceData,
-    pub oracle_mark_spread_pct: i128,
+    pub oracle_mark_spread_pct: Number128,
     pub is_valid: bool,
     pub mark_too_divergent: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct OraclePriceData {
-    pub price: i128,
+    pub price: Number128,
     pub confidence: Uint128,
     pub delay: i64,
     pub has_sufficient_number_of_data_points: bool,
@@ -82,7 +84,7 @@ pub struct Order {
     pub position_index : u64,
     pub market_index: u64,
     pub price: Uint128,
-    pub user_base_asset_amount: i128,
+    pub user_base_asset_amount: Number128,
     pub quote_asset_amount: Uint128,
     pub base_asset_amount: Uint128,
     pub base_asset_amount_filled: Uint128,
@@ -96,7 +98,7 @@ pub struct Order {
     pub trigger_price: Uint128,
     pub trigger_condition: OrderTriggerCondition,
     pub referrer: Addr,
-    pub oracle_price_offset: i128,
+    pub oracle_price_offset: Number128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -166,7 +168,7 @@ pub struct OracleGuardRails {
     // validity guard rails
     pub slots_before_stale: i64,
     pub confidence_interval_max_size: Uint128,
-    pub too_volatile_ratio: i128,
+    pub too_volatile_ratio: Number128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -183,5 +185,5 @@ pub struct OrderParams {
     pub trigger_price: Uint128,
     pub trigger_condition: OrderTriggerCondition,
     pub position_limit: Uint128,
-    pub oracle_price_offset: i128,
+    pub oracle_price_offset: Number128,
 }

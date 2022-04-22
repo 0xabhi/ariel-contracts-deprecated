@@ -1,5 +1,6 @@
 use crate::error::ContractError;
 
+use ariel::number::Number128;
 use ariel::types::{OracleGuardRails, OraclePriceData, OracleStatus};
 use cosmwasm_std::Uint128;
 
@@ -40,7 +41,7 @@ pub fn get_oracle_status(
 
     Ok(OracleStatus {
         price_data: oracle_price_data,
-        oracle_mark_spread_pct,
+        oracle_mark_spread_pct: Number128::new(oracle_mark_spread_pct) ,
         is_valid: oracle_is_valid,
         mark_too_divergent: is_oracle_mark_too_divergent,
     })

@@ -1,3 +1,4 @@
+use ariel::number::Number128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -15,9 +16,9 @@ use crate::helpers::amm;
 pub struct Market {
     pub market_name: String,
     pub initialized: bool,
-    pub base_asset_amount_long: i128,
-    pub base_asset_amount_short: i128,
-    pub base_asset_amount: i128, // net market bias
+    pub base_asset_amount_long: Number128,
+    pub base_asset_amount_short: Number128,
+    pub base_asset_amount: Number128, // net market bias
     pub open_interest: Uint128,     // number of users in a position
     pub amm: Amm,
     pub margin_ratio_initial: u32,
@@ -33,9 +34,9 @@ pub struct Amm {
     pub quote_asset_reserve: Uint128,
     pub cumulative_repeg_rebate_long: Uint128,
     pub cumulative_repeg_rebate_short: Uint128,
-    pub cumulative_funding_rate_long: i128,
-    pub cumulative_funding_rate_short: i128,
-    pub last_funding_rate: i128,
+    pub cumulative_funding_rate_long: Number128,
+    pub cumulative_funding_rate_short: Number128,
+    pub last_funding_rate: Number128,
     pub last_funding_rate_ts: u64,
     pub funding_period: u64,
     pub sqrt_k: Uint128,
@@ -47,8 +48,8 @@ pub struct Amm {
     pub total_fee_withdrawn: Uint128,
     pub minimum_quote_asset_trade_size: Uint128,
     pub last_oracle_price_twap_ts: u64,
-    pub last_oracle_price: i128,
-    pub last_oracle_price_twap: i128,
+    pub last_oracle_price: Number128,
+    pub last_oracle_price_twap: Number128,
     pub minimum_base_asset_trade_size: Uint128,
 }
 
@@ -91,7 +92,7 @@ impl Amm {
         //     // OracleSource::Bank => Ok(Some(self.fetch_bank_twap()?)),
         // }
         if self.last_mark_price_twap.ne(&Uint128::zero()) {
-            Ok(Some(self.last_oracle_price_twap))
+            Ok(Some(self.last_oracle_price_twap.i128()))
         } else {
             Ok(None)
         }

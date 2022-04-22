@@ -28,13 +28,13 @@ pub fn calculate_price(
 }
 
 pub fn calculate_terminal_price(market: &mut Market) -> Result<Uint128, ContractError> {
-    let swap_direction = if market.base_asset_amount > 0 {
+    let swap_direction = if market.base_asset_amount.i128() > 0 {
         SwapDirection::Add
     } else {
         SwapDirection::Remove
     };
     let (new_quote_asset_amount, new_base_asset_amount) = calculate_swap_output(
-        Uint128::from(market.base_asset_amount.unsigned_abs()),
+        Uint128::from(market.base_asset_amount.i128().unsigned_abs()),
         market.amm.base_asset_reserve,
         swap_direction,
         market.amm.sqrt_k,
@@ -124,7 +124,7 @@ pub fn calculate_new_oracle_price_twap(
 
     let new_twap = calculate_twap(
         oracle_price,
-        a.last_oracle_price_twap,
+        a.last_oracle_price_twap.i128(),
         since_last as i128,
         from_start as i128,
     )?;
@@ -229,15 +229,15 @@ pub fn normalise_oracle_price(
     //  if mark above oracle: use oracle+conf unless it exceeds .9999 * mark price
     //  if mark below oracle: use oracle-conf unless it less than 1.0001 * mark price
     //  (this guarantees more reasonable funding rates in volatile periods)
-    let normalised_price = if mark_price > oracle_price {
+    let normalised_price = if mark_price > oracle_price.i128() {
         min(
             max(
                 mark_price
                     .checked_sub(mark_price_1bp)
                     .ok_or_else(|| (ContractError::MathError))?,
-                oracle_price,
+                oracle_price.i128(),
             ),
-            oracle_price
+            oracle_price.i128()
                 .checked_add(conf_int)
                 .ok_or_else(|| (ContractError::MathError))?,
         )
@@ -247,9 +247,9 @@ pub fn normalise_oracle_price(
                 mark_price
                     .checked_add(mark_price_1bp)
                     .ok_or_else(|| (ContractError::MathError))?,
-                oracle_price,
+                oracle_price.i128(),
             ),
-            oracle_price
+            oracle_price.i128()
                 .checked_sub(conf_int)
                 .ok_or_else(|| (ContractError::MathError))?,
         )
@@ -269,7 +269,7 @@ pub fn calculate_oracle_mark_spread(
         None => a.mark_price()?.u128() as i128,
     };
 
-    let oracle_price = oracle_price_data.price;
+    let oracle_price = oracle_price_data.price.i128();
 
     let price_spread = mark_price
         .checked_sub(oracle_price)
@@ -350,19 +350,19 @@ pub fn is_oracle_valid(
         ..
     } = *oracle_price_data;
 
-    let is_oracle_price_nonpositive = oracle_price <= 0;
+    let is_oracle_price_nonpositive = oracle_price.i128() <= 0;
 
-    let is_oracle_price_too_volatile = ((oracle_price
-        .checked_div(max(1, a.last_oracle_price_twap))
+    let is_oracle_price_too_volatile = ((oracle_price.i128()
+        .checked_div(max(1, a.last_oracle_price_twap.i128()))
         .ok_or_else(|| (ContractError::MathError))?)
-    .gt(&valid_oracle_guard_rails.too_volatile_ratio))
+    .gt(&valid_oracle_guard_rails.too_volatile_ratio.i128()))
         || ((a
-            .last_oracle_price_twap
-            .checked_div(max(1, oracle_price))
+            .last_oracle_price_twap.i128()
+            .checked_div(max(1, oracle_price.i128()))
             .ok_or_else(|| (ContractError::MathError))?)
-        .gt(&valid_oracle_guard_rails.too_volatile_ratio));
+        .gt(&valid_oracle_guard_rails.too_volatile_ratio.i128()));
 
-    let conf_denom_of_price = Uint128::from(oracle_price.unsigned_abs())
+    let conf_denom_of_price = Uint128::from(oracle_price.i128().unsigned_abs())
         .checked_div(Uint128::from(max(1 as u128, oracle_conf.u128())))?;
 
     let is_conf_too_large =
