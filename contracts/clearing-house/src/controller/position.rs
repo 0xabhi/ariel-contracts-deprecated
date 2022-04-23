@@ -129,9 +129,11 @@ pub fn reduce(
         .checked_add(base_asset_swapped)
         .ok_or_else(|| (ContractError::MathError))?);
 
-    market.open_interest = market
+    if market_position.base_asset_amount.i128() == 0 {
+        market.open_interest = market
         .open_interest
-        .checked_sub(Uint128::from(market_position.base_asset_amount.i128().unsigned_abs()))?;
+        .checked_sub(Uint128::from(1 as u128))?;
+    }
 
     market.base_asset_amount = Number128::new(market
         .base_asset_amount.i128()
@@ -478,9 +480,12 @@ pub fn reduce_with_base_asset_amount(
         .checked_add(base_asset_amount)
         .ok_or_else(|| (ContractError::MathError))?);
 
-    market.open_interest = market
+    if market_position.base_asset_amount.i128() == 0 {
+        market.open_interest = market
         .open_interest
-        .checked_sub(Uint128::from(market_position.base_asset_amount.i128().unsigned_abs()))?;
+        .checked_sub(Uint128::from(1 as u128))?;
+    }
+
     market.base_asset_amount = Number128::new(market
         .base_asset_amount.i128()
         .checked_add(base_asset_amount)

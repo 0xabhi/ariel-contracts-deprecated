@@ -23,7 +23,6 @@ mod tests {
         assert_eq!("creator", value.owner);
     }
 
-
     // #[test]
     // fn feed_and_read() {
     //     let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
