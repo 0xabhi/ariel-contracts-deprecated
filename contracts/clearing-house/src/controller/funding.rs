@@ -119,14 +119,12 @@ pub fn settle_funding_payment(
 pub fn update_funding_rate(
     deps: &mut DepsMut,
     market_index: u64,
-    price_oracle: Addr,
     now: u64,
     funding_paused: bool,
     precomputed_mark_price: Option<Uint128>,
 ) -> Result<(), ContractError> {
     let mut market = MARKETS.load(deps.storage, market_index)?;
     let guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
-    let price_oracle = market.amm.oracle.clone();
 
     let time_since_last_update = now
         .checked_sub(market.amm.last_funding_rate_ts)

@@ -133,7 +133,6 @@ pub fn place_order(
     oracle: &Addr,
 ) -> Result<bool, ContractError> {
 
-    let state = STATE.load(deps.storage)?;
     let order_state = ORDERSTATE.load(deps.storage)?;
     let fee_structure = FEESTRUCTURE.load(deps.storage)?;
     let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
@@ -241,7 +240,6 @@ pub fn cancel_order(
     now: u64
 ) -> Result<bool, ContractError> {
 
-    let state = STATE.load(deps.storage)?;
     let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
     let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
 
@@ -730,7 +728,6 @@ pub fn fill_order(
         update_funding_rate(
             deps,
             market_index,
-            market.amm.oracle,
             now,
             state.funding_paused,
             Some(mark_price_before),

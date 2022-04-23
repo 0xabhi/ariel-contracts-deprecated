@@ -3,7 +3,7 @@ use cosmwasm_std::{DepsMut, Uint128};
 use crate::error::ContractError;
 
 use crate::states::market::{MARKETS, Market};
-use crate::states::state::{STATE, ORACLEGUARDRAILS};
+use crate::states::state::ORACLEGUARDRAILS;
 
 use crate::helpers::{amm};
 use crate::helpers::constants::{
@@ -19,7 +19,6 @@ pub fn repeg(
 
     let mut market = MARKETS.load(deps.storage, market_index)?;
 
-    let state = STATE.load(deps.storage)?;
     let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
 
     if new_peg_candidate == market.amm.peg_multiplier {

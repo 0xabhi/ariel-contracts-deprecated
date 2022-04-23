@@ -38,7 +38,6 @@ use ariel::types::OrderType;
 use ariel::types::{
     DepositDirection, FeeStructure, OracleGuardRails, OracleSource, OrderParams, PositionDirection,
 };
-use cosmwasm_std::Addr;
 use cosmwasm_std::{
     coins, to_binary, CosmosMsg, Decimal, DepsMut, Env, Fraction, MessageInfo, Response, Uint128,
     WasmMsg,
@@ -47,7 +46,7 @@ use cosmwasm_std::{
 pub fn try_initialize_market(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
     market_index: u64,
     market_name: String,
     amm_base_asset_reserve: Uint128,
@@ -108,11 +107,11 @@ pub fn try_initialize_market(
     let _k = amm_base_asset_reserve.checked_mul(amm_quote_asset_reserve)?;
 
     let OraclePriceData {
-        price: oracle_price,
+        // price: oracle_price,
         ..
     } = a.get_oracle_price()?;
 
-    let last_oracle_price_twap = a.get_oracle_twap()?;
+    // let last_oracle_price_twap = a.get_oracle_twap()?;
 
     helpers::margin_validation::validate_margin(
         margin_ratio_initial,
@@ -557,11 +556,9 @@ pub fn try_open_position(
     }
 
     {
-        let price_oracle = state.oracle;
         controller::funding::update_funding_rate(
             &mut deps,
             market_index,
-            price_oracle,
             now,
             state.funding_paused,
             Some(mark_price_before),
@@ -654,7 +651,6 @@ pub fn try_close_position(
     }
 
     let mark_price_after = market.amm.mark_price()?;
-    let price_oracle = state.oracle;
 
     let oracle_mark_spread_pct_after = helpers::amm::calculate_oracle_mark_spread_pct(
         &market.amm,
@@ -729,7 +725,6 @@ pub fn try_close_position(
     controller::funding::update_funding_rate(
         &mut deps,
         market_index,
-        price_oracle,
         now,
         state.funding_paused,
         Some(mark_price_before),
@@ -857,7 +852,6 @@ pub fn try_liquidate(
         &mut deps,
         &user_address,
         &oracle_guard_rails,
-        &state.oracle,
     )?;
 
     let res: Response = Response::new().add_attribute("method", "try_liquidate");
@@ -966,7 +960,6 @@ pub fn try_liquidate(
                 if oracle_status.oracle_mark_spread_pct.i128().unsigned_abs()
                     < oracle_mark_divergence_after_close.unsigned_abs()
                 {
-                    let market_index = market_position.market_index;
                     res.clone().add_attribute(
                         "oracle_mark_divergence_after_close ",
                         oracle_mark_divergence_after_close.to_string(),
@@ -1456,8 +1449,7 @@ pub fn try_repeg_amm_curve(
     let quote_asset_reserve_before = market.amm.quote_asset_reserve;
     let sqrt_k_before = market.amm.sqrt_k;
 
-    let state = STATE.load(deps.storage)?;
-    let price_oracle = state.oracle;
+    // let price_oracle = state.oracle;
 
     let adjustment_cost =
         controller::repeg::repeg(&mut deps, market_index, new_peg_candidate).unwrap();
@@ -1519,8 +1511,6 @@ pub fn try_update_amm_oracle_twap(
 ) -> Result<Response, ContractError> {
     let now = env.block.time.seconds();
     let mut market = MARKETS.load(deps.storage, market_index)?;
-    let state = STATE.load(deps.storage)?;
-    let price_oracle = state.oracle;
     // todo get_oracle_twap is not defined yet
     let oracle_twap = market.amm.get_oracle_twap()?;
 
@@ -1565,7 +1555,6 @@ pub fn try_reset_amm_oracle_twap(
 ) -> Result<Response, ContractError> {
     let now = env.block.time.seconds();
     let mut market = MARKETS.load(deps.storage, market_index)?;
-    let state = STATE.load(deps.storage)?;
     let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
     let oracle_price_data = market.amm.get_oracle_price()?;
 
@@ -1602,12 +1591,10 @@ pub fn try_update_funding_rate(
     market_index: u64,
 ) -> Result<Response, ContractError> {
     let now = env.block.time.seconds();
-    let price_oracle = STATE.load(deps.storage).unwrap().oracle;
     let funding_paused = STATE.load(deps.storage).unwrap().funding_paused;
     controller::funding::update_funding_rate(
         &mut deps,
         market_index,
-        price_oracle,
         now,
         funding_paused,
         None,
@@ -1873,7 +1860,7 @@ pub fn try_update_fee(
     };
     FEESTRUCTURE.update(
         deps.storage,
-        |mut f| -> Result<FeeStructure, ContractError> { Ok(fee_structure) },
+        |mut _f| -> Result<FeeStructure, ContractError> { Ok(fee_structure) },
     )?;
     Ok(Response::new().add_attribute("method", "try_update_fee"))
 }
@@ -1891,7 +1878,7 @@ pub fn try_update_order_state_structure(
         reward,
         time_based_reward_lower_bound,
     };
-    ORDERSTATE.update(deps.storage, |mut s| -> Result<OrderState, ContractError> {
+    ORDERSTATE.update(deps.storage, |mut _s| -> Result<OrderState, ContractError> {
         Ok(order_state)
     })?;
     Ok(Response::new().add_attribute("method", "try_update_order_filler_reward_structure"))
@@ -1935,7 +1922,7 @@ pub fn try_update_oracle_guard_rails(
     };
     ORACLEGUARDRAILS.update(
         deps.storage,
-        |mut o| -> Result<OracleGuardRails, ContractError> { Ok(oracle_gr) },
+        |mut _o| -> Result<OracleGuardRails, ContractError> { Ok(oracle_gr) },
     )?;
 
     Ok(Response::new().add_attribute("method", "try_update_oracle_guard_rails"))
@@ -2056,7 +2043,7 @@ pub fn try_feeding_price(
     MARKETS.update(
         deps.storage,
         market_index,
-        |m| -> Result<Market, ContractError> { Ok(market) },
+        |_m| -> Result<Market, ContractError> { Ok(market) },
     )?;
     Ok(Response::new().add_attribute("method", "try_update_oracle_address"))
 }

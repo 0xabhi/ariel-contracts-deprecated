@@ -1,4 +1,4 @@
-use cosmwasm_std::{Uint128, Decimal};
+use cosmwasm_std::Uint128;
 
 // PRECISIONS
 pub const AMM_RESERVE_PRECISION: Uint128 = Uint128::new(10_000_000_000_000); //expo = -13;
