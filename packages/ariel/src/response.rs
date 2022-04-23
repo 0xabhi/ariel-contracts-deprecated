@@ -167,8 +167,7 @@ pub struct CurveHistoryResponse {
     pub total_fee: Uint128,
     pub total_fee_minus_distributions: Uint128,
     pub adjustment_cost: Number128,
-    pub oracle_price: Number128,
-    pub trade_record: Uint128,
+    pub oracle_price: Number128
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

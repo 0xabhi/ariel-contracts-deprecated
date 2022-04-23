@@ -281,7 +281,6 @@ pub fn get_curve_history(
                     total_fee_minus_distributions: curve.1.total_fee_minus_distributions,
                     adjustment_cost: curve.1.adjustment_cost,
                     oracle_price: curve.1.oracle_price,
-                    trade_record: curve.1.trade_record,
                 })
             })
             .take(limit)

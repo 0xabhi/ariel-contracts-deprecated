@@ -1497,8 +1497,7 @@ pub fn try_repeg_amm_curve(
             total_fee: market.amm.total_fee,
             total_fee_minus_distributions: market.amm.total_fee_minus_distributions,
             adjustment_cost: Number128::new(adjustment_cost),
-            oracle_price,
-            trade_record: Uint128::zero(),
+            oracle_price
         },
     )?;
     Ok(Response::new().add_attribute("method", "try_repeg_amm_curve"))
@@ -1714,8 +1713,7 @@ pub fn try_update_k(
             adjustment_cost: Number128::new(adjustment_cost),
             total_fee,
             total_fee_minus_distributions,
-            oracle_price,
-            trade_record: Uint128::zero(),
+            oracle_price
         },
     )?;
     MARKETS.update(
