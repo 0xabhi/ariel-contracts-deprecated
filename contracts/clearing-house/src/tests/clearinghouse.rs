@@ -1,16 +1,20 @@
 use crate::contract::{execute, instantiate, query};
-use crate::helpers::constants::{
-    DEFAULT_FEE_NUMERATOR, DEFAULT_FEE_DENOMINATOR,
+use crate::helpers::constants::{DEFAULT_FEE_DENOMINATOR, DEFAULT_FEE_NUMERATOR};
+use crate::views::execute::{
+    try_deposit_collateral, try_initialize_market, try_withdraw_collateral,
 };
 
-use ariel::execute::{InstantiateMsg};
+use ariel::execute::InstantiateMsg;
 use ariel::queries::QueryMsg;
 use ariel::response::*;
 
+use ariel::types::{DepositDirection, OracleSource};
 use cosmwasm_std::testing::{
-    mock_dependencies, mock_env, mock_info, MOCK_CONTRACT_ADDR,
+    mock_dependencies, mock_env, mock_info, MockQuerier, MOCK_CONTRACT_ADDR,
 };
-use cosmwasm_std::{coins, from_binary, Uint128, Decimal};
+use cosmwasm_std::{
+    coins, from_binary, Addr, BalanceResponse, BankQuery, Decimal, QueryRequest, StdResult, Uint128,
+};
 
 const ADMIN_ACCOUNT: &str = "admin_account";
 
@@ -103,7 +107,6 @@ pub fn test_initialize_state() {
     let value: PartialLiquidationClosePercentageResponse = from_binary(&res).unwrap();
     // 25/100
     assert_eq!(Decimal::percent(25), value.value);
-    
 
     //query partial liq penalty
     //query full liq penalty
@@ -117,5 +120,144 @@ pub fn test_initialize_state() {
     // query fee structure
     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetFeeStructure {}).unwrap();
     let value: FeeStructureResponse = from_binary(&res).unwrap();
-    assert_eq!(Decimal::from_ratio(DEFAULT_FEE_NUMERATOR, DEFAULT_FEE_DENOMINATOR), value.fee); 
+    assert_eq!(
+        Decimal::from_ratio(DEFAULT_FEE_NUMERATOR, DEFAULT_FEE_DENOMINATOR),
+        value.fee
+    );
+}
+
+#[test]
+pub fn test_deposit_withdraw() {
+    let mut deps = mock_dependencies();
+
+    let msg = InstantiateMsg {
+        collateral_vault: String::from("collateral_vault"),
+        insurance_vault: String::from("insurance_vault"),
+        admin_controls_prices: true,
+        oracle: String::from(MOCK_CONTRACT_ADDR),
+    };
+
+    let info = mock_info(ADMIN_ACCOUNT, &coins(0, "earth"));
+
+    // we can just call .unwrap() to assert this was a success
+    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+    // intialize market
+    let market_init_info = mock_info(ADMIN_ACCOUNT, &coins(0, "earth"));
+    let amm_base_asset_reserve = Uint128::from(5000_000_000u128);
+    let amm_quote_asset_reserve = Uint128::from(5000_000_000u128);
+    let amm_periodicity = 10;
+    let oracle_source = OracleSource::Oracle;
+    let amm_peg_multiplier = Uint128::from(92_19_0000u128);
+    let margin_ratio_initial = 2000;
+    let margin_ratio_partial = 625;
+    let margin_ratio_maintenance = 500;
+    let err = try_initialize_market(
+        deps.as_mut(),
+        mock_env(),
+        market_init_info,
+        1,
+        "LUNA-UST".to_string(),
+        amm_base_asset_reserve,
+        amm_quote_asset_reserve,
+        amm_periodicity,
+        amm_peg_multiplier,
+        oracle_source,
+        margin_ratio_initial,
+        margin_ratio_partial,
+        margin_ratio_maintenance,
+    )
+    .unwrap();
+
+    // println!("{} contract error", err);
+    //test market params
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetMarketInfo { market_index: 1 },
+    )
+    .unwrap();
+    let value: MarketInfoResponse = from_binary(&res).unwrap();
+    assert_eq!("LUNA-UST".to_string(), value.market_name);
+    assert_eq!(amm_base_asset_reserve, value.sqrt_k);
+
+    let res = query(deps.as_ref(), mock_env(), QueryMsg::GetMarketLength {}).unwrap();
+    let value: MarketLengthResponse = from_binary(&res).unwrap();
+    assert_eq!(1, value.length);
+
+    let deposit_info = mock_info("geekybot", &coins(100_000_000, "uusd"));
+
+    try_deposit_collateral(deps.as_mut(), mock_env(), deposit_info, 100_000_000, None).unwrap();
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetUser {
+            user_address: "geekybot".to_string(),
+        },
+    )
+    .unwrap();
+    let value: UserResponse = from_binary(&res).unwrap();
+    assert_eq!(Uint128::from(100_000_000u128), value.collateral);
+    assert_eq!(Uint128::zero(), value.total_fee_paid);
+
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetDepositHistoryLength {},
+    )
+    .unwrap();
+    let value: DepositHistoryLengthResponse = from_binary(&res).unwrap();
+    assert_eq!(1, value.length);
+
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetDepositHistory {
+            user_address: "geekybot".to_string(),
+            start_after: None,
+            limit: None,
+        },
+    )
+    .unwrap();
+    let value: Vec<DepositHistoryResponse> = from_binary(&res).unwrap();
+    assert_eq!(100000000, value[0].amount);
+    assert_eq!(DepositDirection::DEPOSIT, value[0].direction);
+
+    //test withdraw
+    let withdraw_info = mock_info("geekybot", &coins(0, "uusd"));
+    try_withdraw_collateral(deps.as_mut(), mock_env(), withdraw_info, 100_000_000).unwrap();
+
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetUser {
+            user_address: "geekybot".to_string(),
+        },
+    )
+    .unwrap();
+    let value: UserResponse = from_binary(&res).unwrap();
+    assert_eq!(Uint128::from(100_000_000u128), value.collateral);
+    assert_eq!(Uint128::zero(), value.total_fee_paid);
+
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetDepositHistoryLength {},
+    )
+    .unwrap();
+    let value: DepositHistoryLengthResponse = from_binary(&res).unwrap();
+    assert_eq!(1, value.length);
+
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetDepositHistory {
+            user_address: "geekybot".to_string(),
+            start_after: None,
+            limit: None,
+        },
+    )
+    .unwrap();
+    let value: Vec<DepositHistoryResponse> = from_binary(&res).unwrap();
+    assert_eq!(100000000, value[0].amount);
+    assert_eq!(DepositDirection::DEPOSIT, value[0].direction);
 }

@@ -33,9 +33,15 @@ pub fn settle_funding_payment(
     user_addr: &Addr,
     now: u64,
 ) -> Result<(), ContractError> {
-    let mut user = USERS.load(deps.storage, &user_addr.clone())?;
+    let existing_user = USERS.may_load(deps.storage, &user_addr.clone())?;
     let mut funding_payment: i128 = 0;
-
+    let mut user;
+    if existing_user.is_some(){
+        user = existing_user.unwrap();
+    }
+    else{
+        return Ok(());
+    }
     if user.positions_length > 0 {
         for n in 1..user.positions_length {
             let mut market_position = POSITIONS.load(deps.storage, (user_addr, n))?;

@@ -14,6 +14,10 @@ pub enum ContractError {
     InvalidCollateralAccountAuthority,
     #[error("Clearing house cannot call insurance contract")]
     InvalidInsuranceAccountAuthority,
+    #[error("The User does not exist")]
+    UserDoesNotExist,
+    #[error("The state is not saved prior to this action")]
+    ObjectDoesNotExist,
     #[error("Insufficient deposit")]
     InsufficientDeposit,
     #[error("Insufficient collateral")]
