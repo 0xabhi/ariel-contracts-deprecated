@@ -11,6 +11,7 @@ use crate::helpers::constants::*;
 use crate::states::deposit_history::{DEPOSIT_HISTORY_INFO, DepositInfo};
 use crate::states::order::OrderState;
 use crate::states::state::{State, ADMIN, FEESTRUCTURE, ORACLEGUARDRAILS, ORDERSTATE, STATE};
+use crate::states::trade_history::{TRADE_HISTORY_INFO, TradeInfo};
 
 use ariel::execute::{ExecuteMsg, InstantiateMsg};
 use ariel::helper::addr_validate_to_lower;
@@ -28,7 +29,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -98,7 +99,7 @@ pub fn instantiate(
         partial_liquidation_liquidator_share_denominator: 1u64,
     };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    // ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
+    ADMIN.set(deps.branch(), Some(info.sender.clone()))?;
     STATE.save(deps.storage, &state)?;
     // STATE.load(deps.storage)?;
 
@@ -108,6 +109,10 @@ pub fn instantiate(
     DEPOSIT_HISTORY_INFO.save(
         deps.storage,
         &DepositInfo{ len: 0}
+    )?;
+    TRADE_HISTORY_INFO.save(
+        deps.storage,
+        &TradeInfo{ len: 0}
     )?;
     Ok(Response::new()
         .add_attribute("method", "instantiate")

@@ -14,7 +14,7 @@ use crate::ContractError;
 use crate::states::curve_history::*;
 use crate::states::liquidation_history::{LIQUIDATION_HISTORY, LIQUIDATION_HISTORY_INFO};
 use crate::states::market::{LiquidationStatus, LiquidationType, MarketStatus, MARKETS};
-use crate::states::state::{ADMIN, STATE, ORACLEGUARDRAILS, ORDERSTATE, FEESTRUCTURE};
+use crate::states::state::{ADMIN, FEESTRUCTURE, ORACLEGUARDRAILS, ORDERSTATE, STATE};
 use crate::states::trade_history::{TRADE_HISTORY, TRADE_HISTORY_INFO};
 use crate::states::user::{POSITIONS, USERS};
 use crate::states::{deposit_history::*, funding_history::*};
@@ -24,7 +24,7 @@ use ariel::helper::addr_validate_to_lower;
 use ariel::number::Number128;
 use ariel::response::*;
 
-use ariel::types::OracleGuardRails;
+use ariel::types::{OracleGuardRails, PositionDirection};
 use cosmwasm_std::{Addr, Deps, Order, Uint128};
 use cw_storage_plus::{Bound, PrimaryKey};
 
@@ -192,7 +192,7 @@ pub fn get_market_length(deps: Deps) -> Result<MarketLengthResponse, ContractErr
     //     length: state.markets_length,
     // };
     Ok(MarketLengthResponse {
-        length: state.markets_length
+        length: state.markets_length,
     })
 }
 
@@ -200,9 +200,7 @@ pub fn get_oracle_guard_rails(deps: Deps) -> Result<OracleGuardRailsResponse, Co
     let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
     let ogr = OracleGuardRailsResponse {
         use_for_liquidations: oracle_guard_rails.use_for_liquidations,
-        mark_oracle_divergence : 
-            oracle_guard_rails
-            .mark_oracle_divergence,
+        mark_oracle_divergence: oracle_guard_rails.mark_oracle_divergence,
         slots_before_stale: Number128::new(oracle_guard_rails.slots_before_stale as i128),
         confidence_interval_max_size: oracle_guard_rails.confidence_interval_max_size,
         too_volatile_ratio: oracle_guard_rails.too_volatile_ratio,
@@ -225,15 +223,15 @@ pub fn get_fee_structure(deps: Deps) -> Result<FeeStructureResponse, ContractErr
     let res = FeeStructureResponse {
         fee: fs.fee,
         first_tier_minimum_balance: fs.first_tier_minimum_balance,
-        first_tier_discount : fs.first_tier_discount,
+        first_tier_discount: fs.first_tier_discount,
         second_tier_minimum_balance: fs.second_tier_minimum_balance,
-        second_tier_discount : fs.second_tier_discount,
+        second_tier_discount: fs.second_tier_discount,
         third_tier_minimum_balance: fs.third_tier_minimum_balance,
-        third_tier_discount : fs.third_tier_discount,
+        third_tier_discount: fs.third_tier_discount,
         fourth_tier_minimum_balance: fs.fourth_tier_minimum_balance,
-        fourth_tier_discount : fs.fourth_tier_discount,
-        referrer_reward : fs.referrer_reward,
-        referee_discount : fs.referee_discount,
+        fourth_tier_discount: fs.fourth_tier_discount,
+        referrer_reward: fs.referrer_reward,
+        referee_discount: fs.referee_discount,
     };
     Ok(res)
 }
@@ -551,39 +549,47 @@ pub fn get_active_positions(
 ) -> Result<Vec<PositionResponse>, ContractError> {
     let user_addr = addr_validate_to_lower(deps.api, user_address.as_str())?;
     let user = USERS.load(deps.storage, &user_addr)?;
-    
-    let mut active_positions: Vec<UserPositionResponse> = vec![];
-    if user.positions_length > 0 {
-        let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-        let start = start_after
-            .map(|start| start.joined_key())
-            .map(Bound::Exclusive);
 
-        active_positions = POSITIONS
-            .prefix(&user_addr)
-            .range(deps.storage, start, None, Order::Ascending)
-            .filter_map(|positions| {
-                positions.ok().map(|position| UserPositionResponse {
-                    market_index: position.1.market_index,
-                    base_asset_amount: position.1.base_asset_amount,
-                    quote_asset_amount: position.1.quote_asset_amount,
-                    last_cumulative_funding_rate: position.1.last_cumulative_funding_rate,
-                    last_cumulative_repeg_rebate: position.1.last_cumulative_repeg_rebate,
-                    last_funding_rate_ts: position.1.last_funding_rate_ts,
-                })
+    let mut active_positions: Vec<UserPositionResponse> = vec![];
+    // if user.positions_length > 0 {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after
+        .map(|start| start.joined_key())
+        .map(Bound::Exclusive);
+
+    active_positions = POSITIONS
+        .prefix(&user_addr)
+        .range(deps.storage, start, None, Order::Ascending)
+        .filter_map(|positions| {
+            positions.ok().map(|position| UserPositionResponse {
+                market_index: position.1.market_index,
+                base_asset_amount: position.1.base_asset_amount,
+                quote_asset_amount: position.1.quote_asset_amount,
+                last_cumulative_funding_rate: position.1.last_cumulative_funding_rate,
+                last_cumulative_repeg_rebate: position.1.last_cumulative_repeg_rebate,
+                last_funding_rate_ts: position.1.last_funding_rate_ts,
             })
-            .take(limit)
-            .collect();
-    }
+        })
+        .take(limit)
+        .collect();
+    // }
 
     let mut positions: Vec<PositionResponse> = vec![];
     for position in active_positions.clone() {
         let market_index = position.market_index;
-        let direction = direction_to_close_position(position.base_asset_amount.i128());
+        let mut direction = direction_to_close_position(position.base_asset_amount.i128());
+        if direction == PositionDirection::Long {
+            direction = PositionDirection::Short;
+        }
+        else{
+            direction = PositionDirection::Long;
+        }
         let entry_price: Uint128 = (position
             .quote_asset_amount
             .checked_mul(MARK_PRICE_PRECISION * AMM_TO_QUOTE_PRECISION_RATIO))?
-        .checked_div(Uint128::from(position.base_asset_amount.i128().unsigned_abs()))?;
+        .checked_div(Uint128::from(
+            position.base_asset_amount.i128().unsigned_abs(),
+        ))?;
 
         let entry_notional = position.quote_asset_amount;
         let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
@@ -629,8 +635,7 @@ pub fn calculate_liquidation_status(
             let (amm_position_base_asset_value, amm_position_unrealized_pnl) =
                 calculate_base_asset_value_and_pnl(&market_position, a)?;
 
-            base_asset_value = base_asset_value
-                .checked_add(amm_position_base_asset_value)?;
+            base_asset_value = base_asset_value.checked_add(amm_position_base_asset_value)?;
             unrealized_pnl = unrealized_pnl
                 .checked_add(amm_position_unrealized_pnl)
                 .ok_or_else(|| (ContractError::HelpersError))?;
@@ -659,7 +664,8 @@ pub fn calculate_liquidation_status(
 
                 let oracle_exit_price = oracle_status
                     .price_data
-                    .price.i128()
+                    .price
+                    .i128()
                     .checked_add(exit_slippage)
                     .ok_or_else(|| (ContractError::HelpersError))?;
 
@@ -712,8 +718,8 @@ pub fn calculate_liquidation_status(
                 market_partial_margin_requirement = (amm_position_base_asset_value)
                     .checked_mul(market.margin_ratio_partial.into())?;
 
-                partial_margin_requirement = partial_margin_requirement
-                    .checked_add(market_partial_margin_requirement)?;
+                partial_margin_requirement =
+                    partial_margin_requirement.checked_add(market_partial_margin_requirement)?;
 
                 market_maintenance_margin_requirement = amm_position_base_asset_value
                     .checked_mul(market.margin_ratio_maintenance.into())?;
@@ -724,7 +730,8 @@ pub fn calculate_liquidation_status(
 
             market_statuses.push(MarketStatus {
                 market_index: market_position.market_index,
-                partial_margin_requirement: market_partial_margin_requirement.checked_div(MARGIN_PRECISION)?,
+                partial_margin_requirement: market_partial_margin_requirement
+                    .checked_div(MARGIN_PRECISION)?,
                 maintenance_margin_requirement: market_maintenance_margin_requirement
                     .checked_div(MARGIN_PRECISION)?,
                 base_asset_value: amm_position_base_asset_value,
@@ -735,11 +742,10 @@ pub fn calculate_liquidation_status(
         }
     }
 
-    partial_margin_requirement = partial_margin_requirement
-        .checked_div(MARGIN_PRECISION)?;
+    partial_margin_requirement = partial_margin_requirement.checked_div(MARGIN_PRECISION)?;
 
-    maintenance_margin_requirement = maintenance_margin_requirement
-        .checked_div(MARGIN_PRECISION)?;
+    maintenance_margin_requirement =
+        maintenance_margin_requirement.checked_div(MARGIN_PRECISION)?;
 
     let total_collateral = calculate_updated_collateral(user.collateral, unrealized_pnl)?;
     let adjusted_total_collateral =

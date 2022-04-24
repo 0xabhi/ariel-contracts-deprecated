@@ -1,14 +1,17 @@
 use crate::contract::{execute, instantiate, query};
 use crate::helpers::constants::{DEFAULT_FEE_DENOMINATOR, DEFAULT_FEE_NUMERATOR};
 use crate::views::execute::{
-    try_deposit_collateral, try_initialize_market, try_withdraw_collateral,
+    try_deposit_collateral, try_feeding_price, try_initialize_market, try_open_position,
+    try_withdraw_collateral,
 };
+use crate::views::query;
 
 use ariel::execute::InstantiateMsg;
+use ariel::number::Number128;
 use ariel::queries::QueryMsg;
 use ariel::response::*;
 
-use ariel::types::{DepositDirection, OracleSource};
+use ariel::types::{DepositDirection, OracleSource, PositionDirection};
 use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockQuerier, MOCK_CONTRACT_ADDR,
 };
@@ -151,7 +154,7 @@ pub fn test_deposit_withdraw() {
     let margin_ratio_initial = 2000;
     let margin_ratio_partial = 625;
     let margin_ratio_maintenance = 500;
-    let err = try_initialize_market(
+    try_initialize_market(
         deps.as_mut(),
         mock_env(),
         market_init_info,
@@ -245,7 +248,7 @@ pub fn test_deposit_withdraw() {
     )
     .unwrap();
     let value: DepositHistoryLengthResponse = from_binary(&res).unwrap();
-    assert_eq!(1, value.length);
+    assert_eq!(2, value.length);
 
     let res = query(
         deps.as_ref(),
@@ -258,6 +261,275 @@ pub fn test_deposit_withdraw() {
     )
     .unwrap();
     let value: Vec<DepositHistoryResponse> = from_binary(&res).unwrap();
-    assert_eq!(100000000, value[0].amount);
-    assert_eq!(DepositDirection::DEPOSIT, value[0].direction);
+    assert_eq!(100000000, value[1].amount);
+    assert_eq!(0, value[0].amount);
+    assert_eq!(DepositDirection::WITHDRAW, value[0].direction);
+}
+
+#[test]
+pub fn test_open_position() {
+    let mut deps = mock_dependencies();
+
+    let msg = InstantiateMsg {
+        collateral_vault: String::from("collateral_vault"),
+        insurance_vault: String::from("insurance_vault"),
+        admin_controls_prices: true,
+        oracle: String::from(MOCK_CONTRACT_ADDR),
+    };
+
+    let info = mock_info(ADMIN_ACCOUNT, &coins(0, "earth"));
+
+    // we can just call .unwrap() to assert this was a success
+    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+    // intialize market
+    let market_init_info = mock_info(ADMIN_ACCOUNT, &coins(0, "earth"));
+    let amm_base_asset_reserve = Uint128::from(5000_000_000u128);
+    let amm_quote_asset_reserve = Uint128::from(5000_000_000u128);
+    let amm_periodicity = 10;
+    let oracle_source = OracleSource::Oracle;
+    let amm_peg_multiplier = Uint128::from(92_19_0000u128);
+    let margin_ratio_initial = 2000;
+    let margin_ratio_partial = 625;
+    let margin_ratio_maintenance = 500;
+    try_initialize_market(
+        deps.as_mut(),
+        mock_env(),
+        market_init_info,
+        1,
+        "LUNA-UST".to_string(),
+        amm_base_asset_reserve,
+        amm_quote_asset_reserve,
+        amm_periodicity,
+        amm_peg_multiplier,
+        oracle_source,
+        margin_ratio_initial,
+        margin_ratio_partial,
+        margin_ratio_maintenance,
+    )
+    .unwrap();
+
+    try_feeding_price(
+        deps.as_mut(),
+        mock_info(ADMIN_ACCOUNT, &coins(0, "tt")),
+        1,
+        92_45_00_00,
+    )
+    .unwrap();
+    let deposit_info = mock_info("geekybot", &coins(100_000_000, "uusd"));
+
+    try_deposit_collateral(deps.as_mut(), mock_env(), deposit_info, 100_000_000, None).unwrap();
+
+    let open_position_info = mock_info("geekybot", &coins(0, "denom"));
+    let quote_asset_amount = Uint128::from(50_000_000u128);
+    let limit_price = Uint128::zero();
+    try_open_position(
+        deps.as_mut(),
+        mock_env(),
+        open_position_info,
+        PositionDirection::Long,
+        quote_asset_amount,
+        1,
+        limit_price,
+    )
+    .unwrap();
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetUser {
+            user_address: "geekybot".to_string(),
+        },
+    )
+    .unwrap();
+    let value: UserResponse = from_binary(&res).unwrap();
+    // assert_eq!(Uint128::from(90_000_000u128), value.collateral);
+    assert_eq!(Uint128::from(50_000u128), value.total_fee_paid);
+    // assert_eq!(1, value.positions_length);
+
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetUserPositions {
+            user_address: "geekybot".to_string(),
+            start_after: None,
+            limit: None,
+        },
+    )
+    .unwrap();
+    let value: Vec<PositionResponse> = from_binary(&res).unwrap();
+    assert_eq!(PositionDirection::Long, value[0].direction);
+    // println!("test {}", err);
+
+    //########## opening another position of long
+    let open_position_info = mock_info("geekybot", &coins(0, "denom"));
+    let quote_asset_amount = Uint128::from(40_000_000u128);
+    let limit_price = Uint128::zero();
+    try_open_position(
+        deps.as_mut(),
+        mock_env(),
+        open_position_info,
+        PositionDirection::Long,
+        quote_asset_amount,
+        1,
+        limit_price,
+    )
+    .unwrap();
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetUser {
+            user_address: "geekybot".to_string(),
+        },
+    )
+    .unwrap();
+    let value: UserResponse = from_binary(&res).unwrap();
+    // assert_eq!(Uint128::from(90_000_000u128), value.collateral);
+    assert_eq!(Uint128::from(90_000u128), value.total_fee_paid);
+    // assert_eq!(1, value.positions_length);
+
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetUserPositions {
+            user_address: "geekybot".to_string(),
+            start_after: None,
+            limit: None,
+        },
+    )
+    .unwrap();
+    let value: Vec<PositionResponse> = from_binary(&res).unwrap();
+    assert_eq!(PositionDirection::Long, value[0].direction);
+
+    // trying to reduce long position by opening a short of 45ust
+    let open_position_info = mock_info("geekybot", &coins(0, "denom"));
+    let quote_asset_amount = Uint128::from(45_000_000u128);
+    let limit_price = Uint128::zero();
+    try_open_position(
+        deps.as_mut(),
+        mock_env(),
+        open_position_info,
+        PositionDirection::Short,
+        quote_asset_amount,
+        1,
+        limit_price,
+    )
+    .unwrap();
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetUser {
+            user_address: "geekybot".to_string(),
+        },
+    )
+    .unwrap();
+    let value: UserResponse = from_binary(&res).unwrap();
+    // assert_eq!(Uint128::from(90_000_000u128), value.collateral);
+    assert_eq!(Uint128::from(45_000u128), value.total_fee_paid);
+    // assert_eq!(1, value.positions_length);
+
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetUserPositions {
+            user_address: "geekybot".to_string(),
+            start_after: None,
+            limit: None,
+        },
+    )
+    .unwrap();
+    let value: Vec<PositionResponse> = from_binary(&res).unwrap();
+    assert_eq!(PositionDirection::Short, value[0].direction);
+
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetTradeHistoryLength {},
+    )
+    .unwrap();
+    let value: TradeHistoryLengthResponse = from_binary(&res).unwrap();
+    assert_eq!(1, value.length);
+
+    // get trade_history
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetTradeHistory {
+            start_after: None,
+            limit: None,
+        },
+    )
+    .unwrap();
+    let value: Vec<TradeHistoryResponse> = from_binary(&res).unwrap();
+    assert_eq!(PositionDirection::Short, value[0].direction);
+    // assert_eq!(PositionDirection::Long, value[1].direction);
+    // assert_eq!(PositionDirection::Long, value[2].direction);
+
+    //###### get Position of the user
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetUserMarketPosition {
+            user_address: "geekybot".to_string(),
+            index: 1,
+        },
+    )
+    .unwrap();
+    let value: UserPositionResponse = from_binary(&res).unwrap();
+    assert_eq!(Uint128::from(45_000_000u128), value.quote_asset_amount);
+
+}
+
+pub fn init_state_market() {
+    let mut deps = mock_dependencies();
+
+    let msg = InstantiateMsg {
+        collateral_vault: String::from("collateral_vault"),
+        insurance_vault: String::from("insurance_vault"),
+        admin_controls_prices: true,
+        oracle: String::from(MOCK_CONTRACT_ADDR),
+    };
+
+    let info = mock_info(ADMIN_ACCOUNT, &coins(0, "earth"));
+
+    // we can just call .unwrap() to assert this was a success
+    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+    // intialize market
+    let market_init_info = mock_info(ADMIN_ACCOUNT, &coins(0, "earth"));
+    let amm_base_asset_reserve = Uint128::from(5000_000_000u128);
+    let amm_quote_asset_reserve = Uint128::from(5000_000_000u128);
+    let amm_periodicity = 10;
+    let oracle_source = OracleSource::Oracle;
+    let amm_peg_multiplier = Uint128::from(92_19_0000u128);
+    let margin_ratio_initial = 2000;
+    let margin_ratio_partial = 625;
+    let margin_ratio_maintenance = 500;
+    try_initialize_market(
+        deps.as_mut(),
+        mock_env(),
+        market_init_info,
+        1,
+        "LUNA-UST".to_string(),
+        amm_base_asset_reserve,
+        amm_quote_asset_reserve,
+        amm_periodicity,
+        amm_peg_multiplier,
+        oracle_source,
+        margin_ratio_initial,
+        margin_ratio_partial,
+        margin_ratio_maintenance,
+    )
+    .unwrap();
+
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetUserPositions {
+            user_address: "geekybot".to_string(),
+            start_after: None,
+            limit: None,
+        },
+    )
+    .unwrap();
+    let value: Vec<PositionResponse> = from_binary(&res).unwrap();
+    assert_eq!(PositionDirection::Long, value[1].direction);
+    // get funding rate history length to check if it's working
 }
