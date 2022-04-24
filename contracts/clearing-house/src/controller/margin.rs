@@ -2,8 +2,8 @@ use ariel::types::OracleGuardRails;
 use cosmwasm_std::{Addr, DepsMut, Uint128};
 
 use crate::error::ContractError;
-use crate::helpers::collateral::calculate_updated_collateral;
-use crate::helpers::constants::{MARGIN_PRECISION, MAXIMUM_MARGIN_RATIO, MINIMUM_MARGIN_RATIO};
+use crate::helpers::position::{calculate_updated_collateral, calculate_slippage};
+use crate::states::constants::{MARGIN_PRECISION, MAXIMUM_MARGIN_RATIO, MINIMUM_MARGIN_RATIO};
 use crate::helpers::position::{
     calculate_base_asset_value_and_pnl, calculate_base_asset_value_and_pnl_with_oracle_price,
 };
@@ -12,7 +12,6 @@ use crate::states::user::{POSITIONS, USERS};
 
 use crate::helpers::amm::use_oracle_price_for_margin_calculation;
 use crate::helpers::oracle::get_oracle_status;
-use crate::helpers::slippage::calculate_slippage;
 
 use std::ops::Div;
 

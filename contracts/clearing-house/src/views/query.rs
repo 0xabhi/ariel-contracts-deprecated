@@ -1,6 +1,6 @@
 use crate::helpers::amm::use_oracle_price_for_margin_calculation;
-use crate::helpers::collateral::calculate_updated_collateral;
-use crate::helpers::constants::{
+use crate::helpers::position::{calculate_updated_collateral, calculate_slippage};
+use crate::states::constants::{
     AMM_TO_QUOTE_PRECISION_RATIO, DEFAULT_LIMIT, MARGIN_PRECISION, MARK_PRICE_PRECISION, MAX_LIMIT,
 };
 use crate::helpers::oracle::get_oracle_status;
@@ -8,16 +8,12 @@ use crate::helpers::position::{
     calculate_base_asset_value_and_pnl, calculate_base_asset_value_and_pnl_with_oracle_price,
     direction_to_close_position,
 };
-use crate::helpers::slippage::calculate_slippage;
 use crate::ContractError;
 // use crate::helpers::casting::cast_to_i64;
-use crate::states::curve_history::*;
-use crate::states::liquidation_history::{LIQUIDATION_HISTORY, LIQUIDATION_HISTORY_INFO};
+use crate::states::history::*;
 use crate::states::market::{LiquidationStatus, LiquidationType, MarketStatus, MARKETS};
-use crate::states::state::{ADMIN, FEESTRUCTURE, ORACLEGUARDRAILS, ORDERSTATE, STATE};
-use crate::states::trade_history::{TRADE_HISTORY, TRADE_HISTORY_INFO};
+use crate::states::state::{ADMIN, STATE, ORACLEGUARDRAILS, ORDERSTATE, FEESTRUCTURE};
 use crate::states::user::{POSITIONS, USERS};
-use crate::states::{deposit_history::*, funding_history::*};
 
 use ariel::helper::addr_validate_to_lower;
 
@@ -548,16 +544,15 @@ pub fn get_active_positions(
     limit: Option<u32>,
 ) -> Result<Vec<PositionResponse>, ContractError> {
     let user_addr = addr_validate_to_lower(deps.api, user_address.as_str())?;
-    let user = USERS.load(deps.storage, &user_addr)?;
-
-    let mut active_positions: Vec<UserPositionResponse> = vec![];
+    
+    // let mut active_positions: Vec<UserPositionResponse> = vec![];
     // if user.positions_length > 0 {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after
         .map(|start| start.joined_key())
         .map(Bound::Exclusive);
 
-    active_positions = POSITIONS
+    let active_positions : Vec<UserPositionResponse> = POSITIONS
         .prefix(&user_addr)
         .range(deps.storage, start, None, Order::Ascending)
         .filter_map(|positions| {

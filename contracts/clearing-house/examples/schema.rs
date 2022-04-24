@@ -1,6 +1,7 @@
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
+use clearing_house::states::history::{CurveRecord, TradeRecord, LiquidationRecord, FundingRateRecord, FundingPaymentRecord, DepositRecord};
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
 use ariel::execute::{ExecuteMsg, InstantiateMsg};
@@ -8,6 +9,7 @@ use ariel::queries::QueryMsg;
 use ariel::response::*;
 
 use clearing_house::states::*;
+// use clearing_house::states::history;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -21,15 +23,15 @@ fn main() {
     export_schema(&schema_for!(QueryMsg), &out_dir);
 
     // state schema export
-    export_schema(&schema_for!(curve_history::CurveRecord), &out_dir);
-    export_schema(&schema_for!(deposit_history::DepositRecord), &out_dir);
-    export_schema(&schema_for!(funding_history::FundingPaymentRecord), &out_dir);
-    export_schema(&schema_for!(funding_history::FundingRateRecord), &out_dir);
-    export_schema(&schema_for!(liquidation_history::LiquidationRecord), &out_dir);
+    export_schema(&schema_for!(CurveRecord), &out_dir);
+    export_schema(&schema_for!(DepositRecord), &out_dir);
+    export_schema(&schema_for!(FundingPaymentRecord), &out_dir);
+    export_schema(&schema_for!(FundingRateRecord), &out_dir);
+    export_schema(&schema_for!(LiquidationRecord), &out_dir);
     export_schema(&schema_for!(market::Market), &out_dir);
     export_schema(&schema_for!(market::Amm), &out_dir);
     export_schema(&schema_for!(state::State), &out_dir);
-    export_schema(&schema_for!(trade_history::TradeRecord), &out_dir);
+    export_schema(&schema_for!(TradeRecord), &out_dir);
     export_schema(&schema_for!(user::User), &out_dir);
     export_schema(&schema_for!(user::Position), &out_dir);
     

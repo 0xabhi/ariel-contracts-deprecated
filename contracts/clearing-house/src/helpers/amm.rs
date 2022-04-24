@@ -10,9 +10,8 @@ use cosmwasm_std::{Fraction, Uint128};
 
 use crate::states::market::{Market, Amm};
 
-use crate::helpers::constants::{PEG_PRECISION, PRICE_TO_PEG_PRECISION_RATIO,MARK_PRICE_PRECISION, PRICE_SPREAD_PRECISION, PRICE_SPREAD_PRECISION_U128};
-use crate::helpers::markets::{get_mark_price};
-use crate::helpers::quote_asset::{reserve_to_asset_amount, asset_to_reserve_amount};
+use crate::states::constants::{PEG_PRECISION, PRICE_TO_PEG_PRECISION_RATIO,MARK_PRICE_PRECISION, PRICE_SPREAD_PRECISION, PRICE_SPREAD_PRECISION_U128};
+use crate::helpers::position::{reserve_to_asset_amount, asset_to_reserve_amount};
 
 pub fn calculate_price(
     quote_asset_reserve: Uint128,
@@ -420,4 +419,12 @@ pub fn should_round_trade(
     let quote_asset_reserve_amount = asset_to_reserve_amount(difference, a.peg_multiplier)?;
 
     Ok(quote_asset_reserve_amount < a.minimum_quote_asset_trade_size)
+}
+
+pub fn get_mark_price(a: &Amm) -> Result<Uint128, ContractError> {
+    calculate_price(
+        a.quote_asset_reserve,
+        a.base_asset_reserve,
+        a.peg_multiplier,
+    )
 }

@@ -10,10 +10,10 @@ use ariel::types::SwapDirection;
 use crate::states::market::{Market, MARKETS};
 
 use crate::helpers::amm::{calculate_quote_asset_amount_swapped, calculate_new_oracle_price_twap};
-use crate::helpers::constants::{MARK_PRICE_PRECISION};
+use crate::states::constants::MARK_PRICE_PRECISION;
 use crate::helpers::amm;
 use crate::helpers::position::_calculate_base_asset_value_and_pnl;
-use crate::helpers::quote_asset::{asset_to_reserve_amount};
+use crate::helpers::position::asset_to_reserve_amount;
 
 pub fn update_mark_twap(
     deps: &mut DepsMut,

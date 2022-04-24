@@ -5,8 +5,8 @@ use crate::error::ContractError;
 use crate::states::market::{MARKETS, Market};
 use crate::states::state::ORACLEGUARDRAILS;
 
-use crate::helpers::{amm};
-use crate::helpers::constants::{
+use crate::helpers::amm;
+use crate::states::constants::{
     SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_NUMERATOR,SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_DENOMINATOR
 };
 use crate::helpers::position::_calculate_base_asset_value_and_pnl;

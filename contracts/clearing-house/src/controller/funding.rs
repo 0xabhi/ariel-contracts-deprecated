@@ -8,7 +8,7 @@ use cosmwasm_std::Uint128;
 use crate::error::ContractError;
 
 use crate::helpers::amm::normalise_oracle_price;
-use crate::states::funding_history::{
+use crate::states::history::{
     FUNDING_PAYMENT_HISTORY, FUNDING_PAYMENT_HISTORY_INFO, FundingPaymentInfo, FundingPaymentRecord,
     FUNDING_RATE_HISTORY, FUNDING_RATE_HISTORY_INFO, FundingRateInfo, FundingRateRecord,
 };
@@ -16,8 +16,8 @@ use crate::states::market::{Market, MARKETS};
 use crate::states::state::ORACLEGUARDRAILS;
 use crate::states::user::{Position, POSITIONS, User, USERS};
 
-use crate::helpers::collateral::calculate_updated_collateral;
-use crate::helpers::constants::{
+use crate::helpers::position::calculate_updated_collateral;
+use crate::states::constants::{
     AMM_TO_QUOTE_PRECISION_RATIO_I128, FUNDING_PAYMENT_PRECISION, ONE_HOUR,
 };
 use crate::helpers::funding::{calculate_funding_payment, calculate_funding_rate_long_short};

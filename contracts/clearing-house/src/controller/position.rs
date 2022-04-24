@@ -11,8 +11,7 @@ use crate::helpers::position::calculate_base_asset_value_and_pnl;
 use crate::states::market::{Market, MARKETS};
 use crate::states::user::{Position, User, POSITIONS, USERS};
 
-use crate::helpers::collateral::calculate_updated_collateral;
-use crate::helpers::pnl::calculate_pnl;
+use crate::helpers::position::{calculate_updated_collateral, calculate_pnl};
 
 use crate::controller::amm;
 
@@ -786,7 +785,7 @@ pub fn update_position_with_quote_asset_amount(
     mark_price_before: Uint128,
     now: u64,
 ) -> Result<(bool, bool, Uint128, Uint128, Uint128), ContractError> {
-    let mut market_position;
+    let market_position;
     let existing_position = POSITIONS.may_load(deps.storage, (user_addr, position_index))?;
     if existing_position.is_some() {
         market_position = existing_position.unwrap();
