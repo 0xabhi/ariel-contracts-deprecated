@@ -11,8 +11,7 @@ use crate::helpers::position::calculate_base_asset_value_and_pnl;
 use crate::states::market::{Market, MARKETS};
 use crate::states::user::{Position, User, POSITIONS, USERS};
 
-use crate::helpers::collateral::calculate_updated_collateral;
-use crate::helpers::pnl::calculate_pnl;
+use crate::helpers::position::{calculate_updated_collateral, calculate_pnl};
 
 use crate::controller::amm;
 

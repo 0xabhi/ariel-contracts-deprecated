@@ -1,6 +1,6 @@
 use crate::helpers::amm::use_oracle_price_for_margin_calculation;
-use crate::helpers::collateral::calculate_updated_collateral;
-use crate::helpers::constants::{
+use crate::helpers::position::{calculate_updated_collateral, calculate_slippage};
+use crate::states::constants::{
     AMM_TO_QUOTE_PRECISION_RATIO, DEFAULT_LIMIT, MARGIN_PRECISION, MARK_PRICE_PRECISION, MAX_LIMIT,
 };
 use crate::helpers::oracle::get_oracle_status;
@@ -8,16 +8,12 @@ use crate::helpers::position::{
     calculate_base_asset_value_and_pnl, calculate_base_asset_value_and_pnl_with_oracle_price,
     direction_to_close_position,
 };
-use crate::helpers::slippage::calculate_slippage;
 use crate::ContractError;
 // use crate::helpers::casting::cast_to_i64;
-use crate::states::curve_history::*;
-use crate::states::liquidation_history::{LIQUIDATION_HISTORY, LIQUIDATION_HISTORY_INFO};
+use crate::states::history::*;
 use crate::states::market::{LiquidationStatus, LiquidationType, MarketStatus, MARKETS};
 use crate::states::state::{ADMIN, STATE, ORACLEGUARDRAILS, ORDERSTATE, FEESTRUCTURE};
-use crate::states::trade_history::{TRADE_HISTORY, TRADE_HISTORY_INFO};
 use crate::states::user::{POSITIONS, USERS};
-use crate::states::{deposit_history::*, funding_history::*};
 
 use ariel::helper::addr_validate_to_lower;
 

@@ -1,25 +1,23 @@
 use crate::error::ContractError;
-use crate::helpers::collateral::calculate_updated_collateral;
+use crate::helpers::position::{calculate_updated_collateral, asset_to_reserve_amount};
 use crate::helpers::fees::{calculate_order_fee_tier, calculate_fee_for_order};
 use crate::helpers::order::{validate_order, validate_order_can_be_canceled, calculate_base_asset_amount_market_can_execute, limit_price_satisfied};
 use crate::states::market::{MARKETS, Market};
 use crate::states::order::{ORDERS, get_limit_price};
-use crate::states::order_history::{OrderRecord, OrderAction, ORDER_HISTORY_INFO, ORDER_HISTORY, OrderHisInfo};
+use crate::states::history::{OrderRecord, OrderAction, ORDER_HISTORY_INFO, ORDER_HISTORY, OrderHisInfo, TRADE_HISTORY_INFO, TradeInfo, TRADE_HISTORY, TradeRecord};
 use crate::states::state::{STATE, ORDERSTATE, FEESTRUCTURE, ORACLEGUARDRAILS};
 
 use crate::helpers::order::get_valid_oracle_price;
-use crate::states::trade_history::{TRADE_HISTORY_INFO, TradeInfo, TRADE_HISTORY, TradeRecord};
 use std::cmp::min;
 use ariel::number::Number128;
 use ariel::types::{Order, OrderType, PositionDirection, SwapDirection, OrderStatus, OrderParams};
 use cosmwasm_std::{DepsMut, Addr, Uint128};
 
 use crate::helpers::amm::{calculate_swap_output, normalise_oracle_price};
-use crate::helpers::constants::{
+use crate::states::constants::{
     MARGIN_PRECISION, QUOTE_PRECISION
 };
 use crate::controller::margin::calculate_free_collateral;
-use crate::helpers::quote_asset::asset_to_reserve_amount;
 use crate::states::user::{USERS, POSITIONS, Position, User};
 use crate::helpers::{amm};
 

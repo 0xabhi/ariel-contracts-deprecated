@@ -7,7 +7,7 @@ use crate::error::ContractError;
 use crate::states::market::Market;
 use crate::states::user::Position;
 
-use crate::helpers::constants::{
+use crate::states::constants::{
     AMM_TO_QUOTE_PRECISION_RATIO, FUNDING_PAYMENT_PRECISION, MARK_PRICE_PRECISION,
     QUOTE_TO_BASE_AMT_FUNDING_PRECISION, SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_DENOMINATOR,SHARE_OF_FEES_ALLOCATED_TO_CLEARING_HOUSE_NUMERATOR
 };

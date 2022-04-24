@@ -7,8 +7,8 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_utils::maybe_addr;
 
-use crate::helpers::constants::*;
-use crate::states::deposit_history::{DEPOSIT_HISTORY_INFO, DepositInfo};
+use crate::states::constants::*;
+use crate::states::history::{DEPOSIT_HISTORY_INFO, DepositInfo};
 use crate::states::order::OrderState;
 use crate::states::state::{State, ADMIN, FEESTRUCTURE, ORACLEGUARDRAILS, ORDERSTATE, STATE};
 
@@ -20,7 +20,7 @@ use ariel::types::{FeeStructure, OracleGuardRails};
 
 use crate::error::ContractError;
 
-use crate::views::{execute::*, query::*};
+use crate::views::{execute_admin::*, execute_user::*, query::*};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:clearing-house";

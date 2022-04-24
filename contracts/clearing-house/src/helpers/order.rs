@@ -7,16 +7,15 @@ use std::ops::Div;
 use ariel::types::{Order, OrderType, OrderTriggerCondition, PositionDirection, OracleGuardRails};
 use cosmwasm_std::{Addr, Uint128};
 
-use crate::helpers::constants::{
+use crate::states::constants::{
     AMM_TO_QUOTE_PRECISION_RATIO, MARK_PRICE_PRECISION,
-    MARK_PRICE_TIMES_AMM_TO_QUOTE_PRECISION_RATIO
+    MARK_PRICE_TIMES_AMM_TO_QUOTE_PRECISION_RATIO, AMM_RESERVE_PRECISION, QUOTE_PRECISION
 };
 use crate::helpers::amm;
-use crate::helpers::quote_asset::asset_to_reserve_amount;
 
 use crate::helpers::amm::is_oracle_valid;
 
-use crate::helpers::constants::{AMM_RESERVE_PRECISION, QUOTE_PRECISION};
+use super::position::asset_to_reserve_amount;
 
 pub fn calculate_base_asset_amount_market_can_execute(
     order: &Order,
