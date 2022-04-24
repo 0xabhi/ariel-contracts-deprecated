@@ -70,4 +70,4 @@ pub const MINIMUM_MARGIN_RATIO: Uint128 =  Uint128::new(200);// MARGIN_PRECISION
 
 // iterator limits
 pub const MAX_LIMIT: u32 = 20;
-pub const DEFAULT_LIMIT: u32 = 1;
+pub const DEFAULT_LIMIT: u32 = 10;

@@ -40,7 +40,7 @@ pub fn try_initialize_market(
     margin_ratio_partial: u32,
     margin_ratio_maintenance: u32,
 ) -> Result<Response, ContractError> {
-    // ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
+    ADMIN.assert_admin(deps.as_ref(), &_info.sender.clone())?;
     let now = env.block.time.seconds();
 
     let state = STATE.load(deps.storage)?;
@@ -119,6 +119,7 @@ pub fn try_initialize_market(
     })?;
     Ok(Response::new().add_attribute("method", "try_initialize_market"))
 }
+
 
 pub fn try_move_amm_price(
     mut deps: DepsMut,

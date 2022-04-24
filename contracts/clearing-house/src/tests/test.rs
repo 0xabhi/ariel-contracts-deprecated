@@ -1,10 +1,9 @@
 use crate::contract::{instantiate, query};
 use crate::states::constants::{DEFAULT_FEE_DENOMINATOR, DEFAULT_FEE_NUMERATOR};
-use crate::views::execute_admin::{
-     try_initialize_market,
+use crate::views::execute_admin::try_initialize_market;
+use crate::views::execute_user::{
+    try_deposit_collateral, try_withdraw_collateral,
 };
-
-use crate::views::execute_user::{try_deposit_collateral, try_withdraw_collateral};
 
 use ariel::execute::InstantiateMsg;
 use ariel::queries::QueryMsg;

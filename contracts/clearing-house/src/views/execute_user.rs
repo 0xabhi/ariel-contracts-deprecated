@@ -40,20 +40,10 @@ pub fn try_deposit_collateral(
     let existing_user = USERS.may_load(deps.storage, &user_address)?;
     let now = env.block.time.seconds();
     let mut user: User;
-    if existing_user.is_some(){
+    if existing_user.is_some() {
         // user = existing_user.unwrap();
-        user = User {
-            collateral: Uint128::zero(),
-            cumulative_deposits: Uint128::zero(),
-            total_fee_paid: Uint128::zero(),
-            total_token_discount: Uint128::zero(),
-            total_referral_reward: Uint128::zero(),
-            total_referee_discount: Uint128::zero(),
-            positions_length: 0,
-            referrer: None,
-        };
-    }
-    else {
+        user = existing_user.unwrap();
+    } else {
         if referrer.is_some() {
             user = User {
                 collateral: Uint128::zero(),
@@ -77,7 +67,7 @@ pub fn try_deposit_collateral(
                 referrer: None,
             };
         }
-    } 
+    }
 
     if amount == 0 {
         return Err(ContractError::InsufficientDeposit.into());
@@ -147,10 +137,9 @@ pub fn try_withdraw_collateral(
     let existing_user = USERS.may_load(deps.storage, &user_address)?;
     let now = env.block.time.seconds();
     let mut user;
-    if existing_user.is_none(){
+    if existing_user.is_none() {
         return Err(ContractError::UserDoesNotExist);
-    }
-    else{
+    } else {
         user = existing_user.unwrap();
     }
     let collateral_before = user.collateral;
@@ -275,18 +264,18 @@ pub fn try_open_position(
     {
         let market = MARKETS.load(deps.storage, market_index)?;
         mark_price_before = market.amm.mark_price()?;
-        let oracle_price_data = &market.amm.get_oracle_price()?;
+        let oracle_price_data = market.amm.get_oracle_price()?;
         oracle_mark_spread_pct_before = helpers::amm::calculate_oracle_mark_spread_pct(
             &market.amm,
-            oracle_price_data,
+            &oracle_price_data,
             Some(mark_price_before),
         )?;
         is_oracle_valid =
-            helpers::amm::is_oracle_valid(&market.amm, oracle_price_data, &oracle_guard_rails)?;
+            helpers::amm::is_oracle_valid(&market.amm, &oracle_price_data, &oracle_guard_rails)?;
         if is_oracle_valid {
             let normalised_oracle_price = helpers::amm::normalise_oracle_price(
                 &market.amm,
-                oracle_price_data,
+                &oracle_price_data,
                 Some(mark_price_before),
             )?;
             controller::amm::update_oracle_price_twap(

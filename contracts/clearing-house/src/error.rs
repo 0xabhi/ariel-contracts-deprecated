@@ -8,7 +8,7 @@ pub enum ContractError {
     Std(#[from] StdError),
     #[error("Unauthorized")]
     Unauthorized {},
-    #[error("{0}")]
+    #[error("Not An Admin")]
     Admin(#[from] AdminError),
     #[error("Clearing house cannot call collateral contract")]
     InvalidCollateralAccountAuthority,
