@@ -20,6 +20,7 @@ use ariel::types::OraclePriceData;
 use ariel::types::{
     FeeStructure, OracleGuardRails, OracleSource, 
 };
+use cosmwasm_std::StdResult;
 use cosmwasm_std::{
     to_binary, CosmosMsg, Decimal, DepsMut, Env, MessageInfo, Response, Uint128,
     WasmMsg,
@@ -776,13 +777,20 @@ pub fn try_update_market_minimum_base_asset_trade_size(
     minimum_trade_size: Uint128,
 ) -> Result<Response, ContractError> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    // let mut market = MARKETS.load(deps.storage, market_index)?;
     MARKETS.update(
         deps.storage,
         market_index,
-        |_m| -> Result<Market, ContractError> {
-            market.amm.minimum_base_asset_trade_size = minimum_trade_size;
-            Ok(market)
+        |m| -> Result<_, ContractError> {
+            match m {
+                Some(mut mr) => {
+                    mr.amm.minimum_base_asset_trade_size = minimum_trade_size;
+                    Ok(mr)
+                },
+                None => {
+                    return Err(ContractError::UserMaxDeposit)
+                },
+            }
         },
     )?;
     Ok(Response::new().add_attribute("method", "try_update_market_minimum_base_asset_trade_size"))

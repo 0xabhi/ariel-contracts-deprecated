@@ -242,10 +242,10 @@ pub fn try_open_position(
     direction: PositionDirection,
     quote_asset_amount: Uint128,
     market_index: u64,
-    limit_price: Uint128,
+    limit_price: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     let user_address = info.sender.clone();
-    let mut user = USERS.load(deps.storage, &user_address)?;
+    
     let now = env.block.time.seconds();
     let state = STATE.load(deps.storage)?;
     let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
@@ -307,7 +307,7 @@ pub fn try_open_position(
         base_asset_amount = _base_asset_amount;
         quote_asset_amount = _quote_asset_amount;
     }
-
+    let mut user = USERS.load(deps.storage, &user_address)?;
     let mark_price_after: Uint128;
     let oracle_price_after: i128;
     let oracle_mark_spread_pct_after: i128;
@@ -424,9 +424,9 @@ pub fn try_open_position(
         },
     )?;
 
-    if !limit_price.is_zero()
+    if limit_price.is_some()
         && !helpers::order::limit_price_satisfied(
-            limit_price,
+            limit_price.unwrap(),
             quote_asset_amount,
             base_asset_amount,
             direction,

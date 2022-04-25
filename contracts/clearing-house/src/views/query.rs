@@ -63,7 +63,7 @@ pub fn get_user_position(
         quote_asset_amount: position.quote_asset_amount,
         last_cumulative_funding_rate: position.last_cumulative_funding_rate,
         last_cumulative_repeg_rebate: position.last_cumulative_repeg_rebate,
-        last_funding_rate_ts: position.last_funding_rate_ts,
+        last_funding_rate_ts: position.last_funding_rate_ts
     };
     Ok(upr)
 }
@@ -532,6 +532,8 @@ pub fn get_market_info(deps: Deps, market_index: u64) -> Result<MarketInfoRespon
         minimum_trade_size: Uint128::from(100000000 as u64),
         last_oracle_price_twap_ts: market.amm.last_oracle_price_twap_ts,
         last_oracle_price: market.amm.last_oracle_price,
+        minimum_base_asset_trade_size: market.amm.minimum_base_asset_trade_size,
+        minimum_quote_asset_trade_size: market.amm.minimum_quote_asset_trade_size
     };
     Ok(market_info)
 }
@@ -562,15 +564,18 @@ pub fn get_active_positions(
                 quote_asset_amount: position.1.quote_asset_amount,
                 last_cumulative_funding_rate: position.1.last_cumulative_funding_rate,
                 last_cumulative_repeg_rebate: position.1.last_cumulative_repeg_rebate,
-                last_funding_rate_ts: position.1.last_funding_rate_ts,
+                last_funding_rate_ts: position.1.last_funding_rate_ts
             })
         })
         .take(limit)
         .collect();
     // }
-
+        
     let mut positions: Vec<PositionResponse> = vec![];
     for position in active_positions.clone() {
+        if position.base_asset_amount.i128().unsigned_abs() == 0{
+            continue;
+        }
         let market_index = position.market_index;
         let mut direction = direction_to_close_position(position.base_asset_amount.i128());
         if direction == PositionDirection::Long {
@@ -597,6 +602,11 @@ pub fn get_active_positions(
             entry_notional: Number128::new(entry_notional.u128() as i128),
             entry_price,
             pnl: Number128::new(liq_status.unrealized_pnl),
+            base_asset_amount: position.base_asset_amount,
+            quote_asset_amount: position.quote_asset_amount,
+            last_cumulative_funding_rate: position.last_cumulative_funding_rate,
+            last_cumulative_repeg_rebate: position.last_cumulative_repeg_rebate,
+            last_funding_rate_ts: position.last_funding_rate_ts
         };
         positions.push(pr);
     }

@@ -744,36 +744,40 @@ pub fn update_position_with_quote_asset_amount(
     now: u64,
 ) -> Result<(bool, bool, Uint128, Uint128, Uint128), ContractError> {
     let market_position;
-    let existing_position = POSITIONS.may_load(deps.storage, (&user_addr.clone(), position_index))?;
-    if existing_position.is_some() {
-        market_position = existing_position.unwrap();
-        let mut user = USERS.load(deps.storage, &user_addr.clone())?;
-        user.positions_length += 1;
-        USERS.update(
-            deps.storage,
-            &user_addr.clone(),
-            |_u| -> Result<User, ContractError> { Ok(user) },
-        )?;
-    } else {
-        market_position = Position {
-            market_index: position_index,
-            base_asset_amount: Number128::zero(),
-            quote_asset_amount: Uint128::zero(),
-            last_cumulative_funding_rate: Number128::zero(),
-            last_cumulative_repeg_rebate: Uint128::zero(),
-            last_funding_rate_ts: 0,
-            order_length: 0,
-        };
-        POSITIONS.save(deps.storage, (&user_addr.clone(), position_index), &market_position)?;
-        let mut user = USERS.load(deps.storage, &user_addr.clone())?;
-        user.positions_length = user.positions_length + 1;
-        USERS.update(
-            deps.storage,
-            &user_addr.clone(),
-            |_u| -> Result<User, ContractError> {
-                Ok(user)
-            },
-        )?;
+    let existing_position =
+        POSITIONS.may_load(deps.storage, (&user_addr.clone(), position_index))?;
+    match existing_position {
+        Some(exp) => {
+            market_position = exp;
+        }
+        None => {
+            market_position = Position {
+                market_index: position_index,
+                base_asset_amount: Number128::zero(),
+                quote_asset_amount: Uint128::zero(),
+                last_cumulative_funding_rate: Number128::zero(),
+                last_cumulative_repeg_rebate: Uint128::zero(),
+                last_funding_rate_ts: 0,
+                order_length: 0,
+            };
+            POSITIONS.save(
+                deps.storage,
+                (&user_addr.clone(), position_index),
+                &market_position,
+            )?;
+            let mut user = USERS.load(deps.storage, &user_addr.clone())?;
+            user.positions_length = user.positions_length + 1;
+            USERS.update(
+                deps.storage,
+                user_addr,
+                |_u| -> Result<User, ContractError> {
+                    match _u {
+                        Some(_) => Ok(user),
+                        None => Ok(user),
+                    }
+                },
+            )?;
+        }
     }
     let market_index = market_position.market_index;
     let market = MARKETS.load(deps.storage, market_index)?;

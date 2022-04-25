@@ -41,7 +41,7 @@ pub enum ExecuteMsg {
         direction: PositionDirection,
         quote_asset_amount: Uint128,
         market_index: u64,
-        limit_price: Uint128,
+        limit_price: Option<Uint128>,
     },
     ClosePosition {
         market_index: u64,

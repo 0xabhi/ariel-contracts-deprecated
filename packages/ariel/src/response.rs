@@ -23,12 +23,18 @@ pub struct UserPositionResponse {
     pub quote_asset_amount: Uint128,
     pub last_cumulative_funding_rate: Number128,
     pub last_cumulative_repeg_rebate: Uint128,
-    pub last_funding_rate_ts: u64
+    pub last_funding_rate_ts: u64,
+    
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct PositionResponse {
     pub market_index: u64,
+    pub base_asset_amount: Number128,
+    pub quote_asset_amount: Uint128,
+    pub last_cumulative_funding_rate: Number128,
+    pub last_cumulative_repeg_rebate: Uint128,
+    pub last_funding_rate_ts: u64,
     pub direction: PositionDirection,
     pub initial_size: Uint128,
     pub entry_notional: Number128,
@@ -298,6 +304,8 @@ pub struct MarketInfoResponse {
     pub minimum_trade_size: Uint128,
     pub last_oracle_price_twap_ts: u64,
     pub last_oracle_price: Number128,
+    pub minimum_base_asset_trade_size: Uint128,
+    pub minimum_quote_asset_trade_size: Uint128
 }
 
 // #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
