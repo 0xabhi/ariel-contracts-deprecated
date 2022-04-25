@@ -1,9 +1,10 @@
 use crate::contract::{execute, instantiate, query};
-use crate::helpers::constants::{DEFAULT_FEE_DENOMINATOR, DEFAULT_FEE_NUMERATOR};
-use crate::views::execute::{
-    try_deposit_collateral, try_feeding_price, try_initialize_market, try_open_position,
-    try_withdraw_collateral,
+use crate::states::constants::{DEFAULT_FEE_DENOMINATOR, DEFAULT_FEE_NUMERATOR};
+use crate::views::execute_admin::{
+    try_feeding_price, try_initialize_market
 };
+use crate::views::execute_user::{try_deposit_collateral, try_open_position,
+    try_withdraw_collateral};
 use crate::views::query;
 
 use ariel::execute::InstantiateMsg;
@@ -21,7 +22,7 @@ use cosmwasm_std::{
 
 const ADMIN_ACCOUNT: &str = "admin_account";
 
-#[test]
+// #[test]
 pub fn test_initialize_state() {
     let mut deps = mock_dependencies();
 
@@ -129,7 +130,7 @@ pub fn test_initialize_state() {
     );
 }
 
-#[test]
+// #[test]
 pub fn test_deposit_withdraw() {
     let mut deps = mock_dependencies();
 
@@ -266,7 +267,7 @@ pub fn test_deposit_withdraw() {
     assert_eq!(DepositDirection::WITHDRAW, value[0].direction);
 }
 
-#[test]
+// #[test]
 pub fn test_open_position() {
     let mut deps = mock_dependencies();
 
@@ -320,7 +321,7 @@ pub fn test_open_position() {
     try_deposit_collateral(deps.as_mut(), mock_env(), deposit_info, 100_000_000, None).unwrap();
 
     let open_position_info = mock_info("geekybot", &coins(0, "denom"));
-    let quote_asset_amount = Uint128::from(50_000_000u128);
+    let quote_asset_amount = Uint128::from(20_000_000u128);
     let limit_price = Uint128::zero();
     try_open_position(
         deps.as_mut(),
@@ -342,7 +343,7 @@ pub fn test_open_position() {
     .unwrap();
     let value: UserResponse = from_binary(&res).unwrap();
     // assert_eq!(Uint128::from(90_000_000u128), value.collateral);
-    assert_eq!(Uint128::from(50_000u128), value.total_fee_paid);
+    // assert_eq!(Uint128::from(5_000u128), value.total_fee_paid);
     // assert_eq!(1, value.positions_length);
 
     let res = query(
@@ -356,7 +357,7 @@ pub fn test_open_position() {
     )
     .unwrap();
     let value: Vec<PositionResponse> = from_binary(&res).unwrap();
-    assert_eq!(PositionDirection::Long, value[0].direction);
+    assert_eq!(PositionDirection::Short, value[0].direction);
     // println!("test {}", err);
 
     //########## opening another position of long
@@ -367,7 +368,7 @@ pub fn test_open_position() {
         deps.as_mut(),
         mock_env(),
         open_position_info,
-        PositionDirection::Short,
+        PositionDirection::Long,
         quote_asset_amount,
         1,
         limit_price,
@@ -383,7 +384,7 @@ pub fn test_open_position() {
     .unwrap();
     let value: UserResponse = from_binary(&res).unwrap();
     // assert_eq!(Uint128::from(90_000_000u128), value.collateral);
-    assert_eq!(Uint128::from(90_000u128), value.total_fee_paid);
+    assert_eq!(Uint128::from(45_000u128), value.total_fee_paid);
     // assert_eq!(1, value.positions_length);
 
     let res = query(
@@ -407,7 +408,7 @@ pub fn test_open_position() {
         deps.as_mut(),
         mock_env(),
         open_position_info,
-        PositionDirection::Long,
+        PositionDirection::Short,
         quote_asset_amount,
         1,
         limit_price,
@@ -459,9 +460,9 @@ pub fn test_open_position() {
     )
     .unwrap();
     let value: Vec<TradeHistoryResponse> = from_binary(&res).unwrap();
-    assert_eq!(PositionDirection::Short, value[0].direction);
+    assert_eq!(PositionDirection::Long, value[0].direction);
     assert_eq!(PositionDirection::Long, value[1].direction);
-    assert_eq!(PositionDirection::Long, value[2].direction);
+    assert_eq!(PositionDirection::Short, value[2].direction);
 
     //###### get Position of the user
     let res = query(
@@ -474,11 +475,13 @@ pub fn test_open_position() {
     )
     .unwrap();
     let value: UserPositionResponse = from_binary(&res).unwrap();
-    // assert_eq!(Uint128::from(45_000_000u128), value.quote_asset_amount);
+    assert_eq!(Uint128::from(80_000_000u128), value.quote_asset_amount);
 
 }
 
-pub fn init_state_market() {
+#[test]
+pub fn test_short_position(){
+
     let mut deps = mock_dependencies();
 
     let msg = InstantiateMsg {
@@ -519,6 +522,43 @@ pub fn init_state_market() {
     )
     .unwrap();
 
+    try_feeding_price(
+        deps.as_mut(),
+        mock_info(ADMIN_ACCOUNT, &coins(0, "tt")),
+        1,
+        92_450,
+    )
+    .unwrap();
+    let deposit_info = mock_info("geekybot", &coins(100_000_000, "uusd"));
+
+    try_deposit_collateral(deps.as_mut(), mock_env(), deposit_info, 100_000_000, None).unwrap();
+
+    let open_position_info = mock_info("geekybot", &coins(0, "denom"));
+    let quote_asset_amount = Uint128::from(50_000_000u128);
+    let limit_price = Uint128::zero();
+    try_open_position(
+        deps.as_mut(),
+        mock_env(),
+        open_position_info,
+        PositionDirection::Long,
+        quote_asset_amount,
+        1,
+        limit_price,
+    )
+    .unwrap();
+    let res = query(
+        deps.as_ref(),
+        mock_env(),
+        QueryMsg::GetUser {
+            user_address: "geekybot".to_string(),
+        },
+    )
+    .unwrap();
+    let value: UserResponse = from_binary(&res).unwrap();
+    // assert_eq!(Uint128::from(80_000_000u128), value.collateral);
+    // assert_eq!(Uint128::from(5_000u128), value.total_fee_paid);
+    assert_eq!(1, value.positions_length);
+
     let res = query(
         deps.as_ref(),
         mock_env(),
@@ -530,6 +570,5 @@ pub fn init_state_market() {
     )
     .unwrap();
     let value: Vec<PositionResponse> = from_binary(&res).unwrap();
-    assert_eq!(PositionDirection::Long, value[1].direction);
-    // get funding rate history length to check if it's working
+    assert_eq!(PositionDirection::Long, value[0].direction);
 }

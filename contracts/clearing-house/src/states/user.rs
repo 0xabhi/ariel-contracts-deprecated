@@ -2,8 +2,8 @@ use ariel::number::Number128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cw_storage_plus::Map;
 use cosmwasm_std::{Addr, Uint128};
+use cw_storage_plus::Map;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct User {
@@ -28,8 +28,8 @@ pub struct Position {
     pub order_length: u64,
 }
 
-pub const USERS : Map<&Addr, User> = Map::new("users");
-pub const POSITIONS: Map<(&Addr, u64),  Position> = Map::new("market_positions");
+pub const USERS: Map<&Addr, User> = Map::new("users");
+pub const POSITIONS: Map<(&Addr, u64), Position> = Map::new("market_positions");
 
 impl Position {
     pub fn is_for(&self, market_index: u64) -> bool {

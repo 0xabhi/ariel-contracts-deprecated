@@ -11,7 +11,7 @@ use crate::helpers::position::calculate_base_asset_value_and_pnl;
 use crate::states::market::{Market, MARKETS};
 use crate::states::user::{Position, User, POSITIONS, USERS};
 
-use crate::helpers::position::{calculate_updated_collateral, calculate_pnl};
+use crate::helpers::position::{calculate_pnl, calculate_updated_collateral};
 
 use crate::controller::amm;
 
@@ -26,21 +26,7 @@ pub fn increase(
     precomputed_mark_price: Option<Uint128>,
 ) -> Result<i128, ContractError> {
     let mut market = MARKETS.load(deps.storage, market_index)?;
-    let mut market_position;
-    let existing_position = POSITIONS.may_load(deps.storage, (user_addr, position_index))?;
-    if existing_position.is_some() {
-        market_position = existing_position.unwrap();
-    } else {
-        market_position = Position {
-            market_index: position_index,
-            base_asset_amount: Number128::new(0i128),
-            quote_asset_amount: Uint128::zero(),
-            last_cumulative_funding_rate: Number128::new(0i128),
-            last_cumulative_repeg_rebate: Uint128::zero(),
-            last_funding_rate_ts: 0,
-            order_length: 0,
-        };
-    }
+    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
     if quote_asset_amount.is_zero() {
         return Ok(0 as i128);
     }
@@ -134,21 +120,7 @@ pub fn reduce(
 ) -> Result<i128, ContractError> {
     let mut user = USERS.load(deps.storage, user_addr)?;
     let mut market = MARKETS.load(deps.storage, market_index)?;
-    let mut market_position;
-    let existing_position = POSITIONS.may_load(deps.storage, (user_addr, position_index))?;
-    if existing_position.is_some() {
-        market_position = existing_position.unwrap();
-    } else {
-        market_position = Position {
-            market_index: position_index,
-            base_asset_amount: Number128::new(0i128),
-            quote_asset_amount: Uint128::zero(),
-            last_cumulative_funding_rate: Number128::new(0i128),
-            last_cumulative_repeg_rebate: Uint128::zero(),
-            last_funding_rate_ts: 0,
-            order_length: 0,
-        };
-    }
+    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
     let swap_direction = match direction {
         PositionDirection::Long => SwapDirection::Add,
         PositionDirection::Short => SwapDirection::Remove,
@@ -261,21 +233,7 @@ pub fn close(
 ) -> Result<(Uint128, i128, Uint128), ContractError> {
     let mut user = USERS.load(deps.storage, user_addr)?;
     let mut market = MARKETS.load(deps.storage, market_index)?;
-    let mut market_position;
-    let existing_position = POSITIONS.may_load(deps.storage, (user_addr, position_index))?;
-    if existing_position.is_some() {
-        market_position = existing_position.unwrap();
-    } else {
-        market_position = Position {
-            market_index: position_index,
-            base_asset_amount: Number128::new(0i128),
-            quote_asset_amount: Uint128::zero(),
-            last_cumulative_funding_rate: Number128::new(0i128),
-            last_cumulative_repeg_rebate: Uint128::zero(),
-            last_funding_rate_ts: 0,
-            order_length: 0,
-        };
-    }
+    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
     // If user has no base asset, return early
     if market_position.base_asset_amount.i128() == 0 {
         return Ok((Uint128::zero(), 0, Uint128::zero()));
@@ -786,9 +744,16 @@ pub fn update_position_with_quote_asset_amount(
     now: u64,
 ) -> Result<(bool, bool, Uint128, Uint128, Uint128), ContractError> {
     let market_position;
-    let existing_position = POSITIONS.may_load(deps.storage, (user_addr, position_index))?;
+    let existing_position = POSITIONS.may_load(deps.storage, (&user_addr.clone(), position_index))?;
     if existing_position.is_some() {
         market_position = existing_position.unwrap();
+        let mut user = USERS.load(deps.storage, &user_addr.clone())?;
+        user.positions_length += 1;
+        USERS.update(
+            deps.storage,
+            &user_addr.clone(),
+            |_u| -> Result<User, ContractError> { Ok(user) },
+        )?;
     } else {
         market_position = Position {
             market_index: position_index,
@@ -799,15 +764,15 @@ pub fn update_position_with_quote_asset_amount(
             last_funding_rate_ts: 0,
             order_length: 0,
         };
-        POSITIONS.save(deps.storage, (user_addr, position_index), &market_position)?;
-        let mut user = USERS.load(deps.storage, user_addr)?;
+        POSITIONS.save(deps.storage, (&user_addr.clone(), position_index), &market_position)?;
+        let mut user = USERS.load(deps.storage, &user_addr.clone())?;
+        user.positions_length = user.positions_length + 1;
         USERS.update(
             deps.storage,
-            user_addr,
-            |_u| -> Result<User, ContractError> { 
-                user.positions_length += 1;
+            &user_addr.clone(),
+            |_u| -> Result<User, ContractError> {
                 Ok(user)
-             },
+            },
         )?;
     }
     let market_index = market_position.market_index;
@@ -835,7 +800,7 @@ pub fn update_position_with_quote_asset_amount(
             direction,
             quote_asset_amount,
             market_index,
-            user_addr,
+            &user_addr.clone(),
             position_index,
             now,
             Some(mark_price_before),
@@ -858,7 +823,7 @@ pub fn update_position_with_quote_asset_amount(
                 deps,
                 direction,
                 quote_asset_amount,
-                user_addr,
+                &user_addr.clone(),
                 market_index,
                 position_index,
                 now,
@@ -880,7 +845,7 @@ pub fn update_position_with_quote_asset_amount(
 
             let (_, base_asset_amount_closed, _) = close(
                 deps,
-                user_addr,
+                &user_addr.clone(),
                 market_index,
                 position_index,
                 now,
@@ -894,7 +859,7 @@ pub fn update_position_with_quote_asset_amount(
                 direction,
                 quote_asset_amount_after_close,
                 market_index,
-                user_addr,
+                &user_addr.clone(),
                 position_index,
                 now,
                 Some(mark_price_before),
