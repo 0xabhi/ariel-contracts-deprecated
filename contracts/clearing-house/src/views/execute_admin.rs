@@ -20,7 +20,6 @@ use ariel::types::OraclePriceData;
 use ariel::types::{
     FeeStructure, OracleGuardRails, OracleSource, 
 };
-use cosmwasm_std::StdResult;
 use cosmwasm_std::{
     to_binary, CosmosMsg, Decimal, DepsMut, Env, MessageInfo, Response, Uint128,
     WasmMsg,

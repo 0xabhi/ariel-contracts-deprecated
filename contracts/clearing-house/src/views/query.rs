@@ -42,7 +42,6 @@ pub fn get_user(deps: Deps, user_address: String) -> Result<UserResponse, Contra
         total_token_discount: user.total_token_discount,
         total_referral_reward: user.total_referral_reward,
         total_referee_discount: user.total_token_discount,
-        positions_length: user.positions_length,
         referrer,
     };
     Ok(ur)
@@ -58,7 +57,6 @@ pub fn get_user_position(
         (&addr_validate_to_lower(deps.api, &user_address)?, index),
     )?;
     let upr = UserPositionResponse {
-        market_index: position.market_index,
         base_asset_amount: position.base_asset_amount,
         quote_asset_amount: position.quote_asset_amount,
         last_cumulative_funding_rate: position.last_cumulative_funding_rate,
@@ -547,8 +545,6 @@ pub fn get_active_positions(
 ) -> Result<Vec<PositionResponse>, ContractError> {
     let user_addr = addr_validate_to_lower(deps.api, user_address.as_str())?;
     
-    // let mut active_positions: Vec<UserPositionResponse> = vec![];
-    // if user.positions_length > 0 {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after
         .map(|start| start.joined_key())
@@ -559,7 +555,6 @@ pub fn get_active_positions(
         .range(deps.storage, start, None, Order::Ascending)
         .filter_map(|positions| {
             positions.ok().map(|position| UserPositionResponse {
-                market_index: position.1.market_index,
                 base_asset_amount: position.1.base_asset_amount,
                 quote_asset_amount: position.1.quote_asset_amount,
                 last_cumulative_funding_rate: position.1.last_cumulative_funding_rate,
@@ -576,7 +571,6 @@ pub fn get_active_positions(
         if position.base_asset_amount.i128().unsigned_abs() == 0{
             continue;
         }
-        let market_index = position.market_index;
         let mut direction = direction_to_close_position(position.base_asset_amount.i128());
         if direction == PositionDirection::Long {
             direction = PositionDirection::Short;
@@ -596,7 +590,6 @@ pub fn get_active_positions(
         let liq_status =
             calculate_liquidation_status(&deps, &user_addr, &oracle_guard_rails).unwrap();
         let pr = PositionResponse {
-            market_index,
             direction,
             initial_size: Uint128::from(position.base_asset_amount.i128().unsigned_abs()),
             entry_notional: Number128::new(entry_notional.u128() as i128),
@@ -628,76 +621,95 @@ pub fn calculate_liquidation_status(
     let mut adjusted_unrealized_pnl: i128 = 0;
     let mut market_statuses: Vec<MarketStatus> = Vec::new();
 
-    if user.positions_length > 0 {
-        for n in 1..user.positions_length {
-            let market_position = POSITIONS.load(deps.storage, (user_addr, n))?;
-            if market_position.base_asset_amount.i128() == 0 {
-                continue;
-            }
+    let markets_length = STATE.load(deps.storage)?.markets_length;
+    for n in 1..markets_length {
+        let market_position = POSITIONS.load(deps.storage, (user_addr, n));
+        match market_position {
+            Ok(m) => {
+                if m.base_asset_amount.i128() == 0 {
+                    continue;
+                }
 
-            let market = MARKETS.load(deps.storage, market_position.market_index)?;
-            let a = &market.amm;
-            let (amm_position_base_asset_value, amm_position_unrealized_pnl) =
-                calculate_base_asset_value_and_pnl(&market_position, a)?;
+                let market = MARKETS.load(deps.storage, n)?;
+                let a = &market.amm;
+                let (amm_position_base_asset_value, amm_position_unrealized_pnl) =
+                    calculate_base_asset_value_and_pnl(&m, a)?;
 
-            base_asset_value = base_asset_value.checked_add(amm_position_base_asset_value)?;
-            unrealized_pnl = unrealized_pnl
-                .checked_add(amm_position_unrealized_pnl)
-                .ok_or_else(|| (ContractError::HelpersError))?;
-
-            // Block the liquidation if the oracle is invalid or the oracle and mark are too divergent
-            let mark_price_before = market.amm.mark_price()?;
-
-            let oracle_status =
-                get_oracle_status(&market.amm, oracle_guard_rails, Some(mark_price_before))?;
-
-            let market_partial_margin_requirement: Uint128;
-            let market_maintenance_margin_requirement: Uint128;
-            let mut close_position_slippage = None;
-            if oracle_status.is_valid
-                && use_oracle_price_for_margin_calculation(
-                    oracle_status.oracle_mark_spread_pct.i128(),
-                    &oracle_guard_rails,
-                )?
-            {
-                let exit_slippage = calculate_slippage(
-                    amm_position_base_asset_value,
-                    Uint128::from(market_position.base_asset_amount.i128().unsigned_abs()),
-                    mark_price_before.u128() as i128,
-                )?;
-                close_position_slippage = Some(exit_slippage);
-
-                let oracle_exit_price = oracle_status
-                    .price_data
-                    .price
-                    .i128()
-                    .checked_add(exit_slippage)
+                base_asset_value = base_asset_value.checked_add(amm_position_base_asset_value)?;
+                unrealized_pnl = unrealized_pnl
+                    .checked_add(amm_position_unrealized_pnl)
                     .ok_or_else(|| (ContractError::HelpersError))?;
 
-                let (oracle_position_base_asset_value, oracle_position_unrealized_pnl) =
-                    calculate_base_asset_value_and_pnl_with_oracle_price(
-                        &market_position,
-                        oracle_exit_price,
-                    )?;
+                // Block the liquidation if the oracle is invalid or the oracle and mark are too divergent
+                let mark_price_before = market.amm.mark_price()?;
 
-                let oracle_provides_better_pnl =
-                    oracle_position_unrealized_pnl > amm_position_unrealized_pnl;
-                if oracle_provides_better_pnl {
-                    adjusted_unrealized_pnl = adjusted_unrealized_pnl
-                        .checked_add(oracle_position_unrealized_pnl)
+                let oracle_status =
+                    get_oracle_status(&market.amm, oracle_guard_rails, Some(mark_price_before))?;
+
+                let market_partial_margin_requirement: Uint128;
+                let market_maintenance_margin_requirement: Uint128;
+                let mut close_position_slippage = None;
+                if oracle_status.is_valid
+                    && use_oracle_price_for_margin_calculation(
+                        oracle_status.oracle_mark_spread_pct.i128(),
+                        &oracle_guard_rails,
+                    )?
+                {
+                    let exit_slippage = calculate_slippage(
+                        amm_position_base_asset_value,
+                        Uint128::from(m.base_asset_amount.i128().unsigned_abs()),
+                        mark_price_before.u128() as i128,
+                    )?;
+                    close_position_slippage = Some(exit_slippage);
+
+                    let oracle_exit_price = oracle_status
+                        .price_data
+                        .price
+                        .i128()
+                        .checked_add(exit_slippage)
                         .ok_or_else(|| (ContractError::HelpersError))?;
 
-                    market_partial_margin_requirement = (oracle_position_base_asset_value)
-                        .checked_mul(market.margin_ratio_partial.into())?;
+                    let (oracle_position_base_asset_value, oracle_position_unrealized_pnl) =
+                        calculate_base_asset_value_and_pnl_with_oracle_price(
+                            &m,
+                            oracle_exit_price,
+                        )?;
 
-                    partial_margin_requirement = partial_margin_requirement
-                        .checked_add(market_partial_margin_requirement)?;
+                    let oracle_provides_better_pnl =
+                        oracle_position_unrealized_pnl > amm_position_unrealized_pnl;
+                    if oracle_provides_better_pnl {
+                        adjusted_unrealized_pnl = adjusted_unrealized_pnl
+                            .checked_add(oracle_position_unrealized_pnl)
+                            .ok_or_else(|| (ContractError::HelpersError))?;
 
-                    market_maintenance_margin_requirement = oracle_position_base_asset_value
-                        .checked_mul(market.margin_ratio_maintenance.into())?;
+                        market_partial_margin_requirement = (oracle_position_base_asset_value)
+                            .checked_mul(market.margin_ratio_partial.into())?;
 
-                    maintenance_margin_requirement = maintenance_margin_requirement
-                        .checked_add(market_maintenance_margin_requirement)?;
+                        partial_margin_requirement = partial_margin_requirement
+                            .checked_add(market_partial_margin_requirement)?;
+
+                        market_maintenance_margin_requirement = oracle_position_base_asset_value
+                            .checked_mul(market.margin_ratio_maintenance.into())?;
+
+                        maintenance_margin_requirement = maintenance_margin_requirement
+                            .checked_add(market_maintenance_margin_requirement)?;
+                    } else {
+                        adjusted_unrealized_pnl = adjusted_unrealized_pnl
+                            .checked_add(amm_position_unrealized_pnl)
+                            .ok_or_else(|| (ContractError::HelpersError))?;
+
+                        market_partial_margin_requirement = (amm_position_base_asset_value)
+                            .checked_mul(market.margin_ratio_partial.into())?;
+
+                        partial_margin_requirement = partial_margin_requirement
+                            .checked_add(market_partial_margin_requirement)?;
+
+                        market_maintenance_margin_requirement = amm_position_base_asset_value
+                            .checked_mul(market.margin_ratio_maintenance.into())?;
+
+                        maintenance_margin_requirement = maintenance_margin_requirement
+                            .checked_add(market_maintenance_margin_requirement)?;
+                    }
                 } else {
                     adjusted_unrealized_pnl = adjusted_unrealized_pnl
                         .checked_add(amm_position_unrealized_pnl)
@@ -706,8 +718,8 @@ pub fn calculate_liquidation_status(
                     market_partial_margin_requirement = (amm_position_base_asset_value)
                         .checked_mul(market.margin_ratio_partial.into())?;
 
-                    partial_margin_requirement = partial_margin_requirement
-                        .checked_add(market_partial_margin_requirement)?;
+                    partial_margin_requirement =
+                        partial_margin_requirement.checked_add(market_partial_margin_requirement)?;
 
                     market_maintenance_margin_requirement = amm_position_base_asset_value
                         .checked_mul(market.margin_ratio_maintenance.into())?;
@@ -715,35 +727,20 @@ pub fn calculate_liquidation_status(
                     maintenance_margin_requirement = maintenance_margin_requirement
                         .checked_add(market_maintenance_margin_requirement)?;
                 }
-            } else {
-                adjusted_unrealized_pnl = adjusted_unrealized_pnl
-                    .checked_add(amm_position_unrealized_pnl)
-                    .ok_or_else(|| (ContractError::HelpersError))?;
 
-                market_partial_margin_requirement = (amm_position_base_asset_value)
-                    .checked_mul(market.margin_ratio_partial.into())?;
-
-                partial_margin_requirement =
-                    partial_margin_requirement.checked_add(market_partial_margin_requirement)?;
-
-                market_maintenance_margin_requirement = amm_position_base_asset_value
-                    .checked_mul(market.margin_ratio_maintenance.into())?;
-
-                maintenance_margin_requirement = maintenance_margin_requirement
-                    .checked_add(market_maintenance_margin_requirement)?;
+                market_statuses.push(MarketStatus {
+                    market_index: n,
+                    partial_margin_requirement: market_partial_margin_requirement
+                        .checked_div(MARGIN_PRECISION)?,
+                    maintenance_margin_requirement: market_maintenance_margin_requirement
+                        .checked_div(MARGIN_PRECISION)?,
+                    base_asset_value: amm_position_base_asset_value,
+                    mark_price_before,
+                    oracle_status,
+                    close_position_slippage,
+                });
             }
-
-            market_statuses.push(MarketStatus {
-                market_index: market_position.market_index,
-                partial_margin_requirement: market_partial_margin_requirement
-                    .checked_div(MARGIN_PRECISION)?,
-                maintenance_margin_requirement: market_maintenance_margin_requirement
-                    .checked_div(MARGIN_PRECISION)?,
-                base_asset_value: amm_position_base_asset_value,
-                mark_price_before,
-                oracle_status,
-                close_position_slippage,
-            });
+            Err(_) => continue,
         }
     }
 

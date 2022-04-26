@@ -52,7 +52,6 @@ pub fn try_deposit_collateral(
                 total_token_discount: Uint128::zero(),
                 total_referral_reward: Uint128::zero(),
                 total_referee_discount: Uint128::zero(),
-                positions_length: 0,
                 referrer: Some(addr_validate_to_lower(deps.api, &referrer.unwrap())?),
             };
         } else {
@@ -63,7 +62,6 @@ pub fn try_deposit_collateral(
                 total_token_discount: Uint128::zero(),
                 total_referral_reward: Uint128::zero(),
                 total_referee_discount: Uint128::zero(),
-                positions_length: 0,
                 referrer: None,
             };
         }
@@ -74,16 +72,23 @@ pub fn try_deposit_collateral(
     }
 
     assert_sent_uusd_balance(&info.clone(), amount as u128)?;
+    let state = STATE.load(deps.storage)?;
 
     let collateral_before = user.collateral;
     let cumulative_deposits_before = user.cumulative_deposits;
-
     user.collateral = user.collateral.checked_add(Uint128::from(amount as u128))?;
     user.cumulative_deposits = user.cumulative_deposits.checked_add(amount.into())?;
+    if state.max_deposit.u128() > 0 && user.cumulative_deposits.u128() > state.max_deposit.u128() {
+        return Err(ContractError::UserMaxDeposit.into());
+    }
+    USERS.update(
+        deps.storage,
+        &user_address.clone(),
+        |_m| -> Result<User, ContractError> { Ok(user) },
+    )?;
 
     controller::funding::settle_funding_payment(&mut deps, &user_address, now)?;
     //get and send tokens to collateral vault
-    let state = STATE.load(deps.storage)?;
     let message: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: state.insurance_vault.to_string(),
         msg: to_binary(&VaultInterface::Deposit {})?,
@@ -101,6 +106,7 @@ pub fn try_deposit_collateral(
             Ok(i)
         },
     )?;
+    
     DEPOSIT_HISTORY.save(
         deps.storage,
         (user_address.clone(), deposit_history_info_length as u64),
@@ -114,14 +120,7 @@ pub fn try_deposit_collateral(
             amount: amount,
         },
     )?;
-    if state.max_deposit.u128() > 0 && user.cumulative_deposits.u128() > state.max_deposit.u128() {
-        return Err(ContractError::UserMaxDeposit.into());
-    }
-    USERS.update(
-        deps.storage,
-        &user_address.clone(),
-        |_m| -> Result<User, ContractError> { Ok(user) },
-    )?;
+
     Ok(Response::new()
         .add_message(message)
         .add_attribute("method", "try_deposit_collateral"))
@@ -146,6 +145,7 @@ pub fn try_withdraw_collateral(
     let cumulative_deposits_before = user.cumulative_deposits;
 
     controller::funding::settle_funding_payment(&mut deps, &user_address, now)?;
+    user = USERS.may_load(deps.storage, &user_address)?.unwrap();
 
     if (amount as u128) > user.collateral.u128() {
         return Err(ContractError::InsufficientCollateral.into());
@@ -405,7 +405,7 @@ pub fn try_open_position(
 
     TRADE_HISTORY.save(
         deps.storage,
-        trade_history_info_length,
+        (&user_address, trade_history_info_length),
         &TradeRecord {
             ts: now,
             user: user_address.clone(),
@@ -461,7 +461,6 @@ pub fn try_close_position(
     market_index: u64,
 ) -> Result<Response, ContractError> {
     let user_address = info.sender.clone();
-    let mut user = USERS.load(deps.storage, &user_address)?;
     let now = env.block.time.seconds();
     let state = STATE.load(deps.storage)?;
     let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
@@ -490,6 +489,10 @@ pub fn try_close_position(
         None,
         Some(mark_price_before),
     )?;
+
+    let mut user = USERS.load(deps.storage, &user_address)?;
+
+    market = MARKETS.load(deps.storage, market_index)?;
     let base_asset_amount = Uint128::from(base_asset_amount.unsigned_abs());
     let referrer = user.referrer.clone();
     let discount_token = Uint128::zero();
@@ -530,7 +533,9 @@ pub fn try_close_position(
         )?;
     }
 
+
     let mark_price_after = market.amm.mark_price()?;
+
 
     let oracle_mark_spread_pct_after = helpers::amm::calculate_oracle_mark_spread_pct(
         &market.amm,
@@ -542,6 +547,20 @@ pub fn try_close_position(
 
     let is_oracle_valid =
         helpers::amm::is_oracle_valid(&market.amm, &oracle_price_data, &oracle_guard_rails)?;
+    
+    MARKETS.update(
+        deps.storage,
+        market_index,
+        |_m| -> Result<Market, ContractError> { Ok(market.clone()) },
+    )?;
+
+    USERS.update(
+        deps.storage,
+        &user_address.clone(),
+        |_m| -> Result<User, ContractError> { Ok(user) },
+    )?;
+    
+
     if is_oracle_valid {
         let normalised_oracle_price = helpers::amm::normalise_oracle_price(
             &market.amm,
@@ -583,7 +602,7 @@ pub fn try_close_position(
 
     TRADE_HISTORY.save(
         deps.storage,
-        trade_history_info_length,
+        (&user_address , trade_history_info_length),
         &TradeRecord {
             ts: now,
             user: user_address.clone(),
@@ -608,17 +627,6 @@ pub fn try_close_position(
         now,
         state.funding_paused,
         Some(mark_price_before),
-    )?;
-    MARKETS.update(
-        deps.storage,
-        market_index,
-        |_m| -> Result<Market, ContractError> { Ok(market) },
-    )?;
-
-    USERS.update(
-        deps.storage,
-        &user_address.clone(),
-        |_m| -> Result<User, ContractError> { Ok(user) },
     )?;
 
     Ok(Response::new().add_attribute("method", "try_close_position"))
@@ -711,13 +719,12 @@ pub fn try_liquidate(
     market_index: u64,
 ) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
-    let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
     let user_address = addr_validate_to_lower(deps.api, &user)?;
     let now = env.block.time.seconds();
-    let mut user = USERS.load(deps.storage, &user_address)?;
-    // let user_position = Positions.load(deps.storage, (&user_address, market_index))?;
 
     controller::funding::settle_funding_payment(&mut deps, &user_address, now)?;
+
+    let mut user = USERS.load(deps.storage, &user_address)?;
 
     let LiquidationStatus {
         liquidation_type,
@@ -730,8 +737,7 @@ pub fn try_liquidate(
         margin_ratio,
     } = controller::margin::calculate_liquidation_status(
         &mut deps,
-        &user_address,
-        &oracle_guard_rails,
+        &user_address
     )?;
 
     let res: Response = Response::new().add_attribute("method", "try_liquidate");
@@ -829,6 +835,8 @@ pub fn try_liquidate(
                     .ok_or_else(|| (ContractError::MathError))?
             };
 
+            let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
+    
             let oracle_mark_too_divergent_after_close = helpers::amm::is_oracle_mark_too_divergent(
                 oracle_mark_divergence_after_close,
                 &oracle_guard_rails,
@@ -904,7 +912,7 @@ pub fn try_liquidate(
 
             TRADE_HISTORY.save(
                 deps.storage,
-                trade_history_info_length,
+                (&user_address ,trade_history_info_length),
                 &TradeRecord {
                     ts: now,
                     user: user_address.clone(),
@@ -1027,6 +1035,7 @@ pub fn try_liquidate(
                     .ok_or_else(|| (ContractError::MathError))?
             };
 
+            let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
             let oracle_mark_too_divergent_after_reduce =
                 helpers::amm::is_oracle_mark_too_divergent(
                     oracle_mark_divergence_after_reduce,
@@ -1088,7 +1097,7 @@ pub fn try_liquidate(
 
             TRADE_HISTORY.save(
                 deps.storage,
-                trade_history_info_length,
+                (&user_address, trade_history_info_length),
                 &TradeRecord {
                     ts: now,
                     user: user_address.clone(),
@@ -1142,7 +1151,11 @@ pub fn try_liquidate(
         Uint128::from(balance_insurance),
     )?;
 
+    user = USERS.load(deps.storage, &user_address)?;
     user.collateral = user.collateral.checked_sub(liquidation_fee)?;
+    USERS.update(deps.storage, &user_address, |_u| -> Result<User, ContractError> {
+        Ok(user)
+    })?;
 
     let fee_to_liquidator = if is_full_liquidation {
         withdrawal_amount.checked_div(Uint128::from(

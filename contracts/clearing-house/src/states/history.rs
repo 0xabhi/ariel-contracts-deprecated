@@ -201,5 +201,5 @@ pub struct TradeInfo {
     pub len: u64,
 }
 
-pub const TRADE_HISTORY: Map<u64,  TradeRecord> = Map::new("trade_history");
+pub const TRADE_HISTORY: Map<(&Addr, u64),  TradeRecord> = Map::new("trade_history");
 pub const TRADE_HISTORY_INFO: Item<TradeInfo> = Item::new("trade_history_info");

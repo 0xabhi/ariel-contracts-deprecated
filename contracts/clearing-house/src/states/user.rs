@@ -13,7 +13,6 @@ pub struct User {
     pub total_token_discount: Uint128,
     pub total_referral_reward: Uint128,
     pub total_referee_discount: Uint128,
-    pub positions_length: u64,
     pub referrer: Option<Addr>,
 }
 

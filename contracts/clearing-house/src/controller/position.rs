@@ -339,11 +339,6 @@ pub fn add_new_position(
 ) -> Result<u64, ContractError> {
     let mut user = USERS.load(deps.storage, user_addr)?;
 
-    let new_position_index = user
-        .positions_length
-        .checked_add(1)
-        .ok_or_else(|| (ContractError::MaxNumberOfPositions))?;
-
     let new_market_position = Position {
         market_index,
         base_asset_amount: Number128::zero(),
@@ -356,19 +351,11 @@ pub fn add_new_position(
 
     POSITIONS.update(
         deps.storage,
-        (user_addr, new_position_index),
+        (user_addr, market_index),
         |_p| -> Result<Position, ContractError> { Ok(new_market_position) },
     )?;
 
-    user.positions_length = new_position_index;
-
-    USERS.update(
-        deps.storage,
-        user_addr,
-        |_u| -> Result<User, ContractError> { Ok(user) },
-    )?;
-
-    Ok(new_position_index)
+    Ok(market_index)
 }
 
 pub fn increase_with_base_asset_amount(
@@ -384,7 +371,7 @@ pub fn increase_with_base_asset_amount(
     let user = USERS.load(deps.storage, user_addr)?;
     let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
 
-    let market_index = market_position.market_index;
+    let market_index = position_index;
 
     if base_asset_amount.is_zero() {
         return Ok((Uint128::zero(), Uint128::zero()));
@@ -502,7 +489,7 @@ pub fn reduce_with_base_asset_amount(
     let mut user = USERS.load(deps.storage, user_addr)?;
     let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
 
-    let market_index = market_position.market_index;
+    let market_index = position_index;
     let mut market = MARKETS.load(deps.storage, market_index)?;
 
     let swap_direction = match direction {
@@ -632,7 +619,7 @@ pub fn update_position_with_base_asset_amount(
 ) -> Result<(bool, bool, Uint128, Uint128, Uint128), ContractError> {
     let market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
 
-    let market_index = market_position.market_index;
+    let market_index = position_index;
 
     // A trade is risk increasing if it increases the users leverage
     // If a trade is risk increasing and brings the user's margin ratio below initial requirement
@@ -764,18 +751,6 @@ pub fn update_position_with_quote_asset_amount(
                 deps.storage,
                 (&user_addr.clone(), position_index),
                 &market_position,
-            )?;
-            let mut user = USERS.load(deps.storage, &user_addr.clone())?;
-            user.positions_length = user.positions_length + 1;
-            USERS.update(
-                deps.storage,
-                user_addr,
-                |_u| -> Result<User, ContractError> {
-                    match _u {
-                        Some(_) => Ok(user),
-                        None => Ok(user),
-                    }
-                },
             )?;
         }
     }

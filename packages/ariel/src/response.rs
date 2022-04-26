@@ -12,13 +12,11 @@ pub struct UserResponse {
     pub total_token_discount: Uint128,
     pub total_referral_reward: Uint128,
     pub total_referee_discount: Uint128,
-    pub positions_length: u64,
     pub referrer: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UserPositionResponse {
-    pub market_index: u64,
     pub base_asset_amount: Number128,
     pub quote_asset_amount: Uint128,
     pub last_cumulative_funding_rate: Number128,
@@ -29,7 +27,6 @@ pub struct UserPositionResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct PositionResponse {
-    pub market_index: u64,
     pub base_asset_amount: Number128,
     pub quote_asset_amount: Uint128,
     pub last_cumulative_funding_rate: Number128,

@@ -14,6 +14,7 @@ use crate::states::history::{
 };
 use crate::states::market::{Market, MARKETS};
 use crate::states::state::ORACLEGUARDRAILS;
+use crate::states::state::STATE;
 use crate::states::user::{Position, POSITIONS, User, USERS};
 
 use crate::helpers::position::calculate_updated_collateral;
@@ -42,63 +43,68 @@ pub fn settle_funding_payment(
     else{
         return Ok(());
     }
-    if user.positions_length > 0 {
-        for n in 1..user.positions_length {
-            let mut market_position = POSITIONS.load(deps.storage, (user_addr, n))?;
-            if market_position.base_asset_amount.i128() == 0 {
-                continue;
+    let markets_length = STATE.load(deps.storage)?.markets_length;
+    for n in 1..markets_length {
+        let market_position = POSITIONS.load(deps.storage, (user_addr, n));
+        match market_position {
+            Ok(mut m) => {
+                if m.base_asset_amount.i128() == 0 {
+                    continue;
+                }
+                let market = MARKETS.load(deps.storage, n)?;
+                let amm_cumulative_funding_rate = if m.base_asset_amount.i128() > 0 {
+                    market.amm.cumulative_funding_rate_long.i128()
+                } else {
+                    market.amm.cumulative_funding_rate_short.i128()
+                };
+                if amm_cumulative_funding_rate != m.last_cumulative_funding_rate.i128() {
+                    let market_funding_rate_payment =
+                        calculate_funding_payment(amm_cumulative_funding_rate, &m)?;
+                    let funding_payment_history_info_length = FUNDING_PAYMENT_HISTORY_INFO
+                        .load(deps.storage)?
+                        .len
+                        .checked_add(1)
+                        .ok_or_else(|| (ContractError::MathError))?;
+                    FUNDING_PAYMENT_HISTORY_INFO.update(
+                        deps.storage,
+                        |mut i| -> Result<FundingPaymentInfo, ContractError> {
+                            i.len = funding_payment_history_info_length;
+                            Ok(i)
+                        },
+                    )?;
+                    FUNDING_PAYMENT_HISTORY.save(
+                        deps.storage,
+                        (user_addr, funding_payment_history_info_length),
+                        &FundingPaymentRecord {
+                            ts: now,
+                            record_id: funding_payment_history_info_length,
+                            user: user_addr.clone(),
+                            market_index: n,
+                            funding_payment: Number128::new(market_funding_rate_payment), //10e13
+                            user_last_cumulative_funding: m.last_cumulative_funding_rate, //10e14
+                            user_last_funding_rate_ts: m.last_funding_rate_ts,
+                            amm_cumulative_funding_long: market.amm.cumulative_funding_rate_long, //10e14
+                            amm_cumulative_funding_short: market.amm.cumulative_funding_rate_short, //10e14
+                            base_asset_amount: m.base_asset_amount,
+                        },
+                    )?;
+                    funding_payment = funding_payment
+                        .checked_add(market_funding_rate_payment)
+                        .ok_or_else(|| (ContractError::MathError))?;
+        
+                    m.last_cumulative_funding_rate = Number128::new(amm_cumulative_funding_rate);
+                    m.last_funding_rate_ts = market.amm.last_funding_rate_ts;
+        
+                    POSITIONS.update(
+                        deps.storage,
+                        (user_addr, n),
+                        |_p| -> Result<Position, ContractError> { Ok(m) },
+                    )?;
+                }
             }
-            let market = MARKETS.load(deps.storage, market_position.market_index)?;
-            let amm_cumulative_funding_rate = if market_position.base_asset_amount.i128() > 0 {
-                market.amm.cumulative_funding_rate_long.i128()
-            } else {
-                market.amm.cumulative_funding_rate_short.i128()
-            };
-            if amm_cumulative_funding_rate != market_position.last_cumulative_funding_rate.i128() {
-                let market_funding_rate_payment =
-                    calculate_funding_payment(amm_cumulative_funding_rate, &market_position)?;
-                let funding_payment_history_info_length = FUNDING_PAYMENT_HISTORY_INFO
-                    .load(deps.storage)?
-                    .len
-                    .checked_add(1)
-                    .ok_or_else(|| (ContractError::MathError))?;
-                FUNDING_PAYMENT_HISTORY_INFO.update(
-                    deps.storage,
-                    |mut i| -> Result<FundingPaymentInfo, ContractError> {
-                        i.len = funding_payment_history_info_length;
-                        Ok(i)
-                    },
-                )?;
-                FUNDING_PAYMENT_HISTORY.save(
-                    deps.storage,
-                    (user_addr, funding_payment_history_info_length),
-                    &FundingPaymentRecord {
-                        ts: now,
-                        record_id: funding_payment_history_info_length,
-                        user: user_addr.clone(),
-                        market_index: market_position.market_index,
-                        funding_payment: Number128::new(market_funding_rate_payment), //10e13
-                        user_last_cumulative_funding: market_position.last_cumulative_funding_rate, //10e14
-                        user_last_funding_rate_ts: market_position.last_funding_rate_ts,
-                        amm_cumulative_funding_long: market.amm.cumulative_funding_rate_long, //10e14
-                        amm_cumulative_funding_short: market.amm.cumulative_funding_rate_short, //10e14
-                        base_asset_amount: market_position.base_asset_amount,
-                    },
-                )?;
-                funding_payment = funding_payment
-                    .checked_add(market_funding_rate_payment)
-                    .ok_or_else(|| (ContractError::MathError))?;
-
-                market_position.last_cumulative_funding_rate = Number128::new(amm_cumulative_funding_rate);
-                market_position.last_funding_rate_ts = market.amm.last_funding_rate_ts;
-
-                POSITIONS.update(
-                    deps.storage,
-                    (user_addr, n),
-                    |_p| -> Result<Position, ContractError> { Ok(market_position) },
-                )?;
-            }
+            Err(_) => continue, 
         }
+        
     }
 
     let funding_payment_collateral = funding_payment

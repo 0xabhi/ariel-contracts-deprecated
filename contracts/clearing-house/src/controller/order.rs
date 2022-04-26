@@ -85,7 +85,7 @@ pub fn calculate_available_quote_asset_user_can_execute(
 
     let market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
     
-    let market_index = market_position.market_index;
+    let market_index = position_index;
     let market = MARKETS.load(deps.storage, market_index)?;
     
     let order = ORDERS.load(deps.storage, ((user_addr, position_index), order_index))?;
@@ -111,7 +111,7 @@ pub fn calculate_available_quote_asset_user_can_execute(
         free_collateral
             .checked_mul(max_leverage)?
     } else {
-        let market_index = market_position.market_index;
+        let market_index = position_index;
         let (free_collateral, closed_position_base_asset_value) =
             calculate_free_collateral(deps, user_addr, Some(market_index))?;
 
@@ -139,7 +139,7 @@ pub fn place_order(
     let position_index = params.market_index;
     let mut market_position = POSITIONS.load(deps.storage, (&user_addr.clone(), position_index))?;
     
-    let market_index = market_position.market_index;
+    let market_index = params.market_index;
     let market = MARKETS.load(deps.storage, market_index)?;
    
     settle_funding_payment(
@@ -642,7 +642,7 @@ pub fn fill_order(
         k.len = trade_history_info_length;
         Ok(k)
     })?;
-    TRADE_HISTORY.save(deps.storage, trade_history_info_length, &TradeRecord {
+    TRADE_HISTORY.save(deps.storage, (&user_addr, trade_history_info_length), &TradeRecord {
         ts: now,
         user: user_addr.clone(),
         direction: order.direction,
