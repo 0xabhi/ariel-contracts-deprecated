@@ -5,7 +5,7 @@ use cosmwasm_std::{
 };
 
 use cw2::set_contract_version;
-use cw_utils::maybe_addr;
+// use cw_utils::maybe_addr;
 
 use crate::states::constants::*;
 use crate::states::history::{DEPOSIT_HISTORY_INFO, DepositInfo, TRADE_HISTORY_INFO, TradeInfo};
