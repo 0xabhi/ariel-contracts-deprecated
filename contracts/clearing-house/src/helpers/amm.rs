@@ -299,12 +299,13 @@ pub fn is_oracle_mark_too_divergent(
 ) -> Result<bool, ContractError> {
     let max_divergence = oracle_guard_rails
         .mark_oracle_divergence.numerator()
-        .checked_mul(Uint128::from(PRICE_SPREAD_PRECISION_U128))?
-        .checked_div(oracle_guard_rails.mark_oracle_divergence.denominator())?;
-        // .ok_or_else(|| (ContractError::MathError))?;
+        .checked_mul(PRICE_SPREAD_PRECISION_U128.u128())
+        .ok_or_else(|| (ContractError::MathError))?
+        .checked_div(oracle_guard_rails.mark_oracle_divergence.denominator())
+        .ok_or_else(|| (ContractError::MathError))?;
 
     // Ok(max_divergence.lt(&Uint128::from(price_spread_pct.unsigned_abs())))
-    Ok(Uint128::from(price_spread_pct.unsigned_abs()).gt(&max_divergence))
+    Ok(Uint128::from(price_spread_pct.unsigned_abs()).gt(&Uint128::from(max_divergence)))
 }
 
 pub fn calculate_mark_twap_spread_pct(a: &Amm, mark_price: Uint128) -> Result<i128, ContractError> {
@@ -328,11 +329,14 @@ pub fn use_oracle_price_for_margin_calculation(
 ) -> Result<bool, ContractError> {
     let max_divergence = oracle_guard_rails
         .mark_oracle_divergence.numerator()
-        .mul(PRICE_SPREAD_PRECISION_U128)
-        .checked_div(Uint128::from(3 as u64))?
-        .checked_div(oracle_guard_rails.mark_oracle_divergence.denominator())?;
+        .checked_mul(PRICE_SPREAD_PRECISION_U128.u128())
+        .ok_or_else(|| (ContractError::MathError))?
+        .checked_div(3)
+        .ok_or_else(|| (ContractError::MathError))?
+        .checked_div(oracle_guard_rails.mark_oracle_divergence.denominator())
+        .ok_or_else(|| (ContractError::MathError))?;
 
-    Ok(price_spread_pct.unsigned_abs() > max_divergence.u128())
+    Ok(price_spread_pct.unsigned_abs() > max_divergence)
 }
 
 

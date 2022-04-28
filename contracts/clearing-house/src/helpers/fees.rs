@@ -16,8 +16,8 @@ pub fn calculate_fee_for_trade(
     referrer: &Option<Addr>,
 ) -> Result<(Uint128, Uint128, Uint128, Uint128, Uint128), ContractError> {
     let fee = quote_asset_amount
-        .checked_mul(fee_structure.fee.numerator())?
-        .checked_div(fee_structure.fee.denominator())?;
+        .checked_mul(Uint128::from(fee_structure.fee.numerator()))?
+        .checked_div(Uint128::from(fee_structure.fee.denominator()))?;
 
     let token_discount = calculate_token_discount(fee, fee_structure, discount_token_amt)?;
 
@@ -90,7 +90,7 @@ fn calculate_token_discount_for_tier(
 }
 
 fn try_calculate_token_discount_for_tier(fee: Uint128, discount : Decimal) -> Result<Option<Uint128>, ContractError> {
-    let res = fee.checked_mul(discount.numerator())?.checked_div(discount.denominator())?;
+    let res = fee.checked_mul(Uint128::from(discount.numerator()))?.checked_div(Uint128::from(discount.denominator()))?;
     Ok(Some(res))
 }
 
@@ -108,12 +108,12 @@ fn calculate_referral_reward_and_referee_discount(
     }
 
     let referrer_reward = fee
-        .checked_mul(fee_structure.referrer_reward.numerator())?
-        .checked_div(fee_structure.referrer_reward.denominator())?;
+        .checked_mul(Uint128::from(fee_structure.referrer_reward.numerator()))?
+        .checked_div(Uint128::from(fee_structure.referrer_reward.denominator()))?;
 
     let referee_discount = fee
-        .checked_mul(fee_structure.referee_discount.numerator())?
-        .checked_div(fee_structure.referee_discount.denominator())?;
+        .checked_mul(Uint128::from(fee_structure.referee_discount.numerator()))?
+        .checked_div(Uint128::from(fee_structure.referee_discount.denominator()))?;
 
     return Ok((referrer_reward, referee_discount));
 }
@@ -182,8 +182,8 @@ pub fn calculate_fee_for_order(
         Ok((Uint128::zero(), fee_to_market, Uint128::zero(), filler_reward, Uint128::zero(), Uint128::zero()))
     } else {
         let fee = quote_asset_amount
-            .checked_mul(fee_structure.fee.numerator())?
-            .checked_div(fee_structure.fee.denominator())?;
+            .checked_mul(Uint128::from(fee_structure.fee.numerator()))?
+            .checked_div(Uint128::from(fee_structure.fee.denominator()))?;
 
         let token_discount =
             calculate_token_discount_for_limit_order(fee, fee_structure, order_fee_tier)?;
@@ -252,8 +252,8 @@ fn calculate_filler_reward(
     // for sufficiently small-sized order, reward based on fraction of fee paid
 
     let size_filler_reward = fee
-        .checked_mul(filler_reward_structure.reward.numerator())?
-        .checked_div(filler_reward_structure.reward.denominator())?;
+        .checked_mul(Uint128::from(filler_reward_structure.reward.numerator()))?
+        .checked_div(Uint128::from(filler_reward_structure.reward.denominator()))?;
 
     let min_time_filler_reward = filler_reward_structure.time_based_reward_lower_bound.u128();
     let time_since_order = max(

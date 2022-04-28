@@ -31,7 +31,7 @@ const ADMIN_ACCOUNT: &str = "admin_account";
 
 // #[test]
 pub fn test_initialize_state() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&coins(0, "token"));
 
     let msg = InstantiateMsg {
         collateral_vault: String::from(MOCK_CONTRACT_ADDR),
@@ -139,7 +139,7 @@ pub fn test_initialize_state() {
 
 // #[test]
 pub fn test_deposit_withdraw() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&coins(0, "token"));
 
     let msg = InstantiateMsg {
         collateral_vault: String::from("collateral_vault"),
@@ -276,7 +276,7 @@ pub fn test_deposit_withdraw() {
 
 // #[test]
 pub fn test_open_position() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&coins(0, "token"));
 
     let msg = InstantiateMsg {
         collateral_vault: String::from("collateral_vault"),
@@ -484,7 +484,7 @@ pub fn test_open_position() {
 
 // #[test]
 pub fn test_short_position() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&coins(0, "token"));
 
     let msg = InstantiateMsg {
         collateral_vault: String::from("collateral_vault"),
@@ -577,7 +577,7 @@ pub fn test_short_position() {
 }
 #[test]
 pub fn user_functions_test() {
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&coins(0, "token"));
 
     let msg = InstantiateMsg {
         collateral_vault: String::from("collateral_vault"),
