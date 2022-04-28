@@ -3,12 +3,12 @@ mod tests {
     use crate::contract::{instantiate, query, execute};
     use crate::msg::{InstantiateMsg, QueryMsg, ConfigResponse, ExecuteMsg};
 
-    use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coins, from_binary};
 
     #[test]
     fn proper_initialization() {
-        let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
+        let mut deps = mock_dependencies(&coins(2, "token"));
 
         let msg = InstantiateMsg { };
         let info = mock_info("creator", &coins(1000, "earth"));

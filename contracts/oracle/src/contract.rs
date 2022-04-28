@@ -8,6 +8,7 @@ use cw2::set_contract_version;
 use crate::error::ContractError;
 use crate::msg::{ ExecuteMsg, InstantiateMsg, QueryMsg, ConfigResponse, PriceResponse, InfoResponse};
 use crate::state::{Config, CONFIG, ASSETS, Price, FEEDERS};
+// use terra_cosmwasm::{ TerraQuerier, ExchangeRatesResponse };
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:oracle";
@@ -100,6 +101,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::Price {asset} => to_binary(&query_price(deps, asset)?),
+        // QueryMsg::PriceLuna {} => to_binary(&query_price_luna(deps)?),
         QueryMsg::AssetInfo {asset} => to_binary(&query_asset(deps, asset)?),
         
     }
@@ -121,6 +123,16 @@ fn query_price(deps: Deps, asset:String) -> StdResult<PriceResponse> {
         last_updated: price.last_updated,
     })
 }
+
+// fn query_price_luna(deps: Deps) -> StdResult<PriceResponse> {
+//     let querier = TerraQuerier::new(&deps.querier);
+//     let exchange_rates: ExchangeRatesResponse = querier.query_exchange_rates("uusd", vec!["uluna", "ukrw"])?;
+//     Ok(PriceResponse{
+//         asset: "uluna",
+//         price: exchange_rates.exchange_rates[0].exchange_rate,
+//         last_updated: 0,
+//     })
+// }
 
 fn query_asset(deps: Deps, asset:String) -> StdResult<InfoResponse> {
     let price = ASSETS.load(deps.storage, asset.clone())?;

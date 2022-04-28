@@ -4,13 +4,13 @@ mod tests {
     use crate::msg::{InstantiateMsg, ConfigResponse, QueryMsg, BalanceResponse, ExecuteMsg};
 
     
-    use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coins, from_binary, Uint128, Addr};
 
     // initlization and verify data
     #[test]
     fn proper_initialization() {
-        let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
+        let mut deps = mock_dependencies(&coins(2, "token"));
 
         let msg = InstantiateMsg {
             clearing_house: Addr::unchecked("testaddr"),
@@ -32,7 +32,7 @@ mod tests {
 
     #[test]
     fn proper_deposit() {
-        let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
+        let mut deps = mock_dependencies(&coins(2, "token"));
 
         let msg = InstantiateMsg {
             clearing_house: Addr::unchecked("testaddr"),
@@ -58,7 +58,7 @@ mod tests {
 
     #[test]
     fn proper_admin_clearing_house_update() {
-        let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
+        let mut deps = mock_dependencies(&coins(2, "token"));
 
         let msg = InstantiateMsg {
             clearing_house: Addr::unchecked("testaddr"),

@@ -4,8 +4,6 @@ use cosmwasm_std::{
     coins, to_binary, Addr, BankMsg, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
     Uint128,
 };
-use cw_utils::maybe_addr;
-
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
@@ -48,7 +46,8 @@ pub fn execute(
     let api = deps.api;
     match msg {
         ExecuteMsg::UpdateAdmin { new_admin } => {
-            Ok(ADMIN.execute_update_admin(deps, info, maybe_addr(api, new_admin.into())?)?)
+            let addr = Some(deps.api.addr_validate(&new_admin)?);
+            Ok(ADMIN.execute_update_admin(deps, info, addr)?)
         }
         ExecuteMsg::UpdateClearingHouse { new_clearing_house } => {
             change_clearing_house(deps, info, new_clearing_house)
