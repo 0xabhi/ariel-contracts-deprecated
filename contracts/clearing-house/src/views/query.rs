@@ -54,7 +54,7 @@ pub fn get_user_position(
 ) -> Result<UserPositionResponse, ContractError> {
     let position = POSITIONS.load(
         deps.storage,
-        (&addr_validate_to_lower(deps.api, &user_address)?, index),
+        (&addr_validate_to_lower(deps.api, &user_address)?, index.to_string()),
     )?;
     let upr = UserPositionResponse {
         base_asset_amount: position.base_asset_amount,
@@ -500,7 +500,7 @@ pub fn get_trade_history(
 }
 
 pub fn get_market_info(deps: Deps, market_index: u64) -> Result<MarketInfoResponse, ContractError> {
-    let market = MARKETS.load(deps.storage, market_index)?;
+    let market = MARKETS.load(deps.storage, market_index.to_string())?;
     let market_info = MarketInfoResponse {
         market_name: market.market_name,
         initialized: market.initialized,
@@ -623,14 +623,14 @@ pub fn calculate_liquidation_status(
 
     let markets_length = STATE.load(deps.storage)?.markets_length;
     for n in 1..markets_length {
-        let market_position = POSITIONS.load(deps.storage, (user_addr, n));
+        let market_position = POSITIONS.load(deps.storage, (user_addr, n.to_string()));
         match market_position {
             Ok(m) => {
                 if m.base_asset_amount.i128() == 0 {
                     continue;
                 }
 
-                let market = MARKETS.load(deps.storage, n)?;
+                let market = MARKETS.load(deps.storage, n.to_string())?;
                 let a = &market.amm;
                 let (amm_position_base_asset_value, amm_position_unrealized_pnl) =
                     calculate_base_asset_value_and_pnl(&m, a)?;

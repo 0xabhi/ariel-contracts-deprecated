@@ -109,7 +109,7 @@ pub fn try_deposit_collateral(
     
     DEPOSIT_HISTORY.save(
         deps.storage,
-        (user_address.clone(), deposit_history_info_length as u64),
+        (user_address.clone(), deposit_history_info_length.to_string()),
         &DepositRecord {
             ts: now,
             record_id: deposit_history_info_length,
@@ -214,7 +214,7 @@ pub fn try_withdraw_collateral(
     )?;
     DEPOSIT_HISTORY.save(
         deps.storage,
-        (user_address.clone(), deposit_history_info_length as u64),
+        (user_address.clone(), deposit_history_info_length.to_string()),
         &DepositRecord {
             ts: now,
             record_id: deposit_history_info_length,
@@ -262,7 +262,7 @@ pub fn try_open_position(
     let is_oracle_valid: bool;
 
     {
-        let market = MARKETS.load(deps.storage, market_index)?;
+        let market = MARKETS.load(deps.storage, market_index.to_string())?;
         mark_price_before = market.amm.mark_price()?;
         let oracle_price_data = market.amm.get_oracle_price()?;
         oracle_mark_spread_pct_before = helpers::amm::calculate_oracle_mark_spread_pct(
@@ -312,7 +312,7 @@ pub fn try_open_position(
     let oracle_price_after: i128;
     let oracle_mark_spread_pct_after: i128;
     {
-        let market = MARKETS.load(deps.storage, market_index)?;
+        let market = MARKETS.load(deps.storage, market_index.to_string())?;
         mark_price_after = market.amm.mark_price()?;
         let oracle_price_data = market.amm.get_oracle_price()?;
         oracle_mark_spread_pct_after = helpers::amm::calculate_oracle_mark_spread_pct(
@@ -341,7 +341,7 @@ pub fn try_open_position(
         )?;
 
     {
-        let mut market = MARKETS.load(deps.storage, market_index)?;
+        let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
         market.amm.total_fee = market.amm.total_fee.checked_add(fee_to_market)?;
         market.amm.total_fee_minus_distributions = market
             .amm
@@ -349,7 +349,7 @@ pub fn try_open_position(
             .checked_add(fee_to_market)?;
         MARKETS.update(
             deps.storage,
-            market_index,
+            market_index.to_string(),
             |_m| -> Result<Market, ContractError> { Ok(market) },
         )?;
     }
@@ -405,7 +405,7 @@ pub fn try_open_position(
 
     TRADE_HISTORY.save(
         deps.storage,
-        (&user_address, trade_history_info_length),
+        (&user_address, trade_history_info_length.to_string()),
         &TradeRecord {
             ts: now,
             user: user_address.clone(),
@@ -468,8 +468,8 @@ pub fn try_close_position(
     controller::funding::settle_funding_payment(&mut deps, &user_address, now)?;
 
     let position_index = market_index.clone();
-    let market_position = POSITIONS.load(deps.storage, (&user_address.clone(), market_index))?;
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let market_position = POSITIONS.load(deps.storage, (&user_address.clone(), market_index.to_string()))?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
     let mark_price_before = market.amm.mark_price()?;
     let oracle_price_data = market.amm.get_oracle_price()?;
     let oracle_mark_spread_pct_before = helpers::amm::calculate_oracle_mark_spread_pct(
@@ -492,7 +492,7 @@ pub fn try_close_position(
 
     let mut user = USERS.load(deps.storage, &user_address)?;
 
-    market = MARKETS.load(deps.storage, market_index)?;
+    market = MARKETS.load(deps.storage, market_index.to_string())?;
     let base_asset_amount = Uint128::from(base_asset_amount.unsigned_abs());
     let referrer = user.referrer.clone();
     let discount_token = Uint128::zero();
@@ -550,7 +550,7 @@ pub fn try_close_position(
     
     MARKETS.update(
         deps.storage,
-        market_index,
+        market_index.to_string(),
         |_m| -> Result<Market, ContractError> { Ok(market.clone()) },
     )?;
 
@@ -602,7 +602,7 @@ pub fn try_close_position(
 
     TRADE_HISTORY.save(
         deps.storage,
-        (&user_address , trade_history_info_length),
+        (&user_address , trade_history_info_length.to_string()),
         &TradeRecord {
             ts: now,
             user: user_address.clone(),
@@ -763,15 +763,15 @@ pub fn try_liquidate(
 
     if is_full_liquidation {
         let maximum_liquidation_fee = total_collateral
-            .checked_mul(state.full_liquidation_penalty_percentage.numerator())?
-            .checked_div(state.full_liquidation_penalty_percentage.denominator())?;
+            .checked_mul(Uint128::from(state.full_liquidation_penalty_percentage.numerator()))?
+            .checked_div(Uint128::from(state.full_liquidation_penalty_percentage.denominator()))?;
 
         for market_status in market_statuses.iter() {
             if market_status.base_asset_value.is_zero() {
                 continue;
             }
 
-            let market = MARKETS.load(deps.storage, market_status.market_index)?;
+            let market = MARKETS.load(deps.storage, market_status.market_index.to_string())?;
             let mark_price_before = market_status.mark_price_before;
             let oracle_status = &market_status.oracle_status;
 
@@ -792,7 +792,7 @@ pub fn try_liquidate(
                 }
             }
 
-            let market_position = POSITIONS.load(deps.storage, (&user_address, market_index))?;
+            let market_position = POSITIONS.load(deps.storage, (&user_address, market_index.to_string()))?;
             // todo initialize position
 
             let mark_price_before_i128 = mark_price_before.u128() as i128;
@@ -912,7 +912,7 @@ pub fn try_liquidate(
 
             TRADE_HISTORY.save(
                 deps.storage,
-                (&user_address ,trade_history_info_length),
+                (&user_address ,trade_history_info_length.to_string()),
                 &TradeRecord {
                     ts: now,
                     user: user_address.clone(),
@@ -953,18 +953,18 @@ pub fn try_liquidate(
         }
     } else {
         let maximum_liquidation_fee = total_collateral
-            .checked_mul(state.partial_liquidation_penalty_percentage.numerator())?
-            .checked_div(state.partial_liquidation_penalty_percentage.denominator())?;
+            .checked_mul(Uint128::from(state.partial_liquidation_penalty_percentage.numerator()))?
+            .checked_div(Uint128::from(state.partial_liquidation_penalty_percentage.denominator()))?;
         let maximum_base_asset_value_closed = base_asset_value
-            .checked_mul(state.partial_liquidation_close_percentage.numerator())?
-            .checked_div(state.partial_liquidation_close_percentage.denominator())?;
+            .checked_mul(Uint128::from(state.partial_liquidation_close_percentage.numerator()))?
+            .checked_div(Uint128::from(state.partial_liquidation_close_percentage.denominator()))?;
         for market_status in market_statuses.iter() {
             if market_status.base_asset_value.is_zero() {
                 continue;
             }
 
             let oracle_status = &market_status.oracle_status;
-            let market = MARKETS.load(deps.storage, market_index)?;
+            let market = MARKETS.load(deps.storage, market_index.to_string())?;
             let mark_price_before = market_status.mark_price_before;
 
             let oracle_is_valid = oracle_status.is_valid;
@@ -981,12 +981,12 @@ pub fn try_liquidate(
                 }
             }
 
-            let market_position = POSITIONS.load(deps.storage, (&user_address, market_index))?;
+            let market_position = POSITIONS.load(deps.storage, (&user_address, market_index.to_string()))?;
 
             let mut quote_asset_amount = market_status
                 .base_asset_value
-                .checked_mul(state.partial_liquidation_close_percentage.numerator())?
-                .checked_div(state.partial_liquidation_close_percentage.denominator())?;
+                .checked_mul(Uint128::from(state.partial_liquidation_close_percentage.numerator()))?
+                .checked_div(Uint128::from(state.partial_liquidation_close_percentage.denominator()))?;
 
             let mark_price_before_i128 = mark_price_before.u128() as i128;
             let reduce_position_slippage = match market_status.close_position_slippage {
@@ -1097,7 +1097,7 @@ pub fn try_liquidate(
 
             TRADE_HISTORY.save(
                 deps.storage,
-                (&user_address, trade_history_info_length),
+                (&user_address, trade_history_info_length.to_string()),
                 &TradeRecord {
                     ts: now,
                     user: user_address.clone(),
@@ -1208,7 +1208,7 @@ pub fn try_liquidate(
     )?;
     LIQUIDATION_HISTORY.save(
         deps.storage,
-        (user_address.clone(), liquidation_history_info_length as u64),
+        (user_address.clone(), liquidation_history_info_length.to_string()),
         &LiquidationRecord {
             ts: now,
             record_id: liquidation_history_info_length,

@@ -45,13 +45,13 @@ pub fn settle_funding_payment(
     }
     let markets_length = STATE.load(deps.storage)?.markets_length;
     for n in 1..markets_length {
-        let market_position = POSITIONS.load(deps.storage, (user_addr, n));
+        let market_position = POSITIONS.load(deps.storage, (user_addr, n.to_string()));
         match market_position {
             Ok(mut m) => {
                 if m.base_asset_amount.i128() == 0 {
                     continue;
                 }
-                let market = MARKETS.load(deps.storage, n)?;
+                let market = MARKETS.load(deps.storage, n.to_string())?;
                 let amm_cumulative_funding_rate = if m.base_asset_amount.i128() > 0 {
                     market.amm.cumulative_funding_rate_long.i128()
                 } else {
@@ -74,7 +74,7 @@ pub fn settle_funding_payment(
                     )?;
                     FUNDING_PAYMENT_HISTORY.save(
                         deps.storage,
-                        (user_addr, funding_payment_history_info_length),
+                        (user_addr, funding_payment_history_info_length.to_string()),
                         &FundingPaymentRecord {
                             ts: now,
                             record_id: funding_payment_history_info_length,
@@ -97,7 +97,7 @@ pub fn settle_funding_payment(
         
                     POSITIONS.update(
                         deps.storage,
-                        (user_addr, n),
+                        (user_addr, n.to_string()),
                         |_p| -> Result<Position, ContractError> { Ok(m) },
                     )?;
                 }
@@ -129,7 +129,7 @@ pub fn update_funding_rate(
     funding_paused: bool,
     precomputed_mark_price: Option<Uint128>,
 ) -> Result<(), ContractError> {
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
     let guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
 
     let time_since_last_update = now
@@ -224,7 +224,7 @@ pub fn update_funding_rate(
 
         MARKETS.update(
             deps.storage,
-            market_index,
+            market_index.to_string(),
             |_m| -> Result<Market, ContractError> { Ok(market.clone()) },
         )?;
 
@@ -242,7 +242,7 @@ pub fn update_funding_rate(
         )?;
         FUNDING_RATE_HISTORY.save(
             deps.storage,
-            funding_rate_history_info_length,
+            funding_rate_history_info_length.to_string(),
             &FundingRateRecord {
                 ts: now,
                 record_id: funding_rate_history_info_length,

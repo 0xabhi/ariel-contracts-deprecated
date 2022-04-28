@@ -26,13 +26,13 @@ pub fn meets_initial_margin_requirement(
 
     let markets_length = STATE.load(deps.storage)?.markets_length;
     for n in 1..markets_length {
-        let market_position = POSITIONS.load(deps.storage, (user_addr, n));
+        let market_position = POSITIONS.load(deps.storage, (user_addr, n.to_string()));
         match market_position {
             Ok(m) => {
                 if m.base_asset_amount.i128() == 0 {
                     continue;
                 }
-                let market = MARKETS.load(deps.storage, n)?;
+                let market = MARKETS.load(deps.storage, n.to_string())?;
                 let a = &market.amm;
                 let (position_base_asset_value, position_unrealized_pnl) =
                     calculate_base_asset_value_and_pnl(&m, a)?;
@@ -69,13 +69,13 @@ pub fn meets_partial_margin_requirement(
 
     let markets_length = STATE.load(deps.storage)?.markets_length;
     for n in 1..markets_length {
-        let market_position = POSITIONS.load(deps.storage, (user_addr, n));
+        let market_position = POSITIONS.load(deps.storage, (user_addr, n.to_string()));
         match market_position {
             Ok(m) => {
                 if m.base_asset_amount.i128() == 0 {
                     continue;
                 }
-                let market = MARKETS.load(deps.storage, n)?;
+                let market = MARKETS.load(deps.storage, n.to_string())?;
                 let a = &market.amm;
 
                 let (position_base_asset_value, position_unrealized_pnl) =
@@ -115,14 +115,14 @@ pub fn calculate_free_collateral(
 
     let markets_length = STATE.load(deps.storage)?.markets_length;
     for n in 1..markets_length {
-        let market_position = POSITIONS.load(deps.storage, (user_addr, n));
+        let market_position = POSITIONS.load(deps.storage, (user_addr, n.to_string()));
         match market_position {
             Ok(m) => {
                 if m.base_asset_amount.i128() == 0 {
                     continue;
                 }
 
-                let market = MARKETS.load(deps.storage, n)?;
+                let market = MARKETS.load(deps.storage, n.to_string())?;
                 let a = &market.amm;
                 let (position_base_asset_value, position_unrealized_pnl) =
                     calculate_base_asset_value_and_pnl(&m, a)?;
@@ -177,14 +177,14 @@ pub fn calculate_liquidation_status(
 
     let markets_length = STATE.load(deps.storage)?.markets_length;
     for n in 1..markets_length {
-        let mut market_position = POSITIONS.load(deps.storage, (user_addr, n));
+        let mut market_position = POSITIONS.load(deps.storage, (user_addr, n.to_string()));
         match market_position {
             Ok(m) => {
                 if m.base_asset_amount.i128() == 0 {
                     continue;
                 }
 
-                let market = MARKETS.load(deps.storage, n)?;
+                let market = MARKETS.load(deps.storage, n.to_string())?;
                 let a = &market.amm;
                 let (amm_position_base_asset_value, amm_position_unrealized_pnl) =
                     calculate_base_asset_value_and_pnl(&m, a)?;

@@ -25,8 +25,8 @@ pub fn increase(
     now: u64,
     precomputed_mark_price: Option<Uint128>,
 ) -> Result<i128, ContractError> {
-    let mut market = MARKETS.load(deps.storage, market_index)?;
-    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
+    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index.to_string()))?;
     if quote_asset_amount.is_zero() {
         return Ok(0 as i128);
     }
@@ -95,13 +95,13 @@ pub fn increase(
 
     MARKETS.update(
         deps.storage,
-        market_index,
+        market_index.to_string(),
         |_m| -> Result<Market, ContractError> { Ok(market) },
     )?;
 
     POSITIONS.update(
         deps.storage,
-        (user_addr, market_index),
+        (user_addr, market_index.to_string()),
         |_p| -> Result<Position, ContractError> { Ok(market_position) },
     )?;
 
@@ -119,8 +119,8 @@ pub fn reduce(
     precomputed_mark_price: Option<Uint128>,
 ) -> Result<i128, ContractError> {
     let mut user = USERS.load(deps.storage, user_addr)?;
-    let mut market = MARKETS.load(deps.storage, market_index)?;
-    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
+    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index.to_string()))?;
     let swap_direction = match direction {
         PositionDirection::Long => SwapDirection::Add,
         PositionDirection::Short => SwapDirection::Remove,
@@ -203,13 +203,13 @@ pub fn reduce(
 
     MARKETS.update(
         deps.storage,
-        market_index,
+        market_index.to_string(),
         |_m| -> Result<Market, ContractError> { Ok(market) },
     )?;
 
     POSITIONS.update(
         deps.storage,
-        (user_addr, position_index),
+        (user_addr, position_index.to_string()),
         |_p| -> Result<Position, ContractError> { Ok(market_position) },
     )?;
 
@@ -232,8 +232,8 @@ pub fn close(
     precomputed_mark_price: Option<Uint128>,
 ) -> Result<(Uint128, i128, Uint128), ContractError> {
     let mut user = USERS.load(deps.storage, user_addr)?;
-    let mut market = MARKETS.load(deps.storage, market_index)?;
-    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
+    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index.to_string()))?;
     // If user has no base asset, return early
     if market_position.base_asset_amount.i128() == 0 {
         return Ok((Uint128::zero(), 0, Uint128::zero()));
@@ -309,13 +309,13 @@ pub fn close(
 
     MARKETS.update(
         deps.storage,
-        market_index,
+        market_index.to_string(),
         |_m| -> Result<Market, ContractError> { Ok(market) },
     )?;
 
     POSITIONS.update(
         deps.storage,
-        (user_addr, position_index),
+        (user_addr, position_index.to_string()),
         |_p| -> Result<Position, ContractError> { Ok(market_position) },
     )?;
 
@@ -351,7 +351,7 @@ pub fn add_new_position(
 
     POSITIONS.update(
         deps.storage,
-        (user_addr, market_index),
+        (user_addr, market_index.to_string()),
         |_p| -> Result<Position, ContractError> { Ok(new_market_position) },
     )?;
 
@@ -369,7 +369,7 @@ pub fn increase_with_base_asset_amount(
     precomputed_mark_price: Option<Uint128>,
 ) -> Result<(Uint128, Uint128), ContractError> {
     let user = USERS.load(deps.storage, user_addr)?;
-    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
+    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index.to_string()))?;
 
     let market_index = position_index;
 
@@ -377,7 +377,7 @@ pub fn increase_with_base_asset_amount(
         return Ok((Uint128::zero(), Uint128::zero()));
     }
 
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
 
     // Update funding rate if this is a new position
     if market_position.base_asset_amount.i128() == 0 {
@@ -457,13 +457,13 @@ pub fn increase_with_base_asset_amount(
 
     MARKETS.update(
         deps.storage,
-        market_index,
+        market_index.to_string(),
         |_m| -> Result<Market, ContractError> { Ok(market) },
     )?;
 
     POSITIONS.update(
         deps.storage,
-        (user_addr, position_index),
+        (user_addr, position_index.to_string()),
         |_p| -> Result<Position, ContractError> { Ok(market_position) },
     )?;
 
@@ -487,10 +487,10 @@ pub fn reduce_with_base_asset_amount(
     precomputed_mark_price: Option<Uint128>,
 ) -> Result<(Uint128, Uint128), ContractError> {
     let mut user = USERS.load(deps.storage, user_addr)?;
-    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
+    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index.to_string()))?;
 
     let market_index = position_index;
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
 
     let swap_direction = match direction {
         PositionDirection::Long => SwapDirection::Remove,
@@ -588,13 +588,13 @@ pub fn reduce_with_base_asset_amount(
 
     MARKETS.update(
         deps.storage,
-        market_index,
+        market_index.to_string(),
         |_m| -> Result<Market, ContractError> { Ok(market) },
     )?;
 
     POSITIONS.update(
         deps.storage,
-        (user_addr, position_index),
+        (user_addr, position_index.to_string()),
         |_p| -> Result<Position, ContractError> { Ok(market_position) },
     )?;
 
@@ -617,7 +617,7 @@ pub fn update_position_with_base_asset_amount(
     now: u64,
     maker_limit_price: Option<Uint128>,
 ) -> Result<(bool, bool, Uint128, Uint128, Uint128), ContractError> {
-    let market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
+    let market_position = POSITIONS.load(deps.storage, (user_addr, position_index.to_string()))?;
 
     let market_index = position_index;
 
@@ -732,7 +732,7 @@ pub fn update_position_with_quote_asset_amount(
 ) -> Result<(bool, bool, Uint128, Uint128, Uint128), ContractError> {
     let market_position;
     let existing_position =
-        POSITIONS.may_load(deps.storage, (&user_addr.clone(), position_index))?;
+        POSITIONS.may_load(deps.storage, (&user_addr.clone(), position_index.to_string()))?;
     match existing_position {
         Some(exp) => {
             market_position = exp;
@@ -749,13 +749,13 @@ pub fn update_position_with_quote_asset_amount(
             };
             POSITIONS.save(
                 deps.storage,
-                (&user_addr.clone(), position_index),
+                (&user_addr.clone(), position_index.to_string()),
                 &market_position,
             )?;
         }
     }
     let market_index = market_position.market_index;
-    let market = MARKETS.load(deps.storage, market_index)?;
+    let market = MARKETS.load(deps.storage, market_index.to_string())?;
 
     // A trade is risk increasing if it increases the users leverage
     // If a trade is risk increasing and brings the user's margin ratio below initial requirement

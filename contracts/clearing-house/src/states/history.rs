@@ -46,7 +46,7 @@ pub struct CurveInfo {
     pub len: u64,
 }
 
-pub const CURVEHISTORY: Map<u64,  CurveRecord> = Map::new("curve_history");
+pub const CURVEHISTORY: Map<String,  CurveRecord> = Map::new("curve_history");
 pub const CURVE_HISTORY_INFO: Item<CurveInfo> = Item::new("curve_history_info");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -66,7 +66,7 @@ pub struct DepositInfo {
     pub len: u64,
 }
 
-pub const DEPOSIT_HISTORY: Map<(Addr, u64),  DepositRecord> = Map::new("deposit_history");
+pub const DEPOSIT_HISTORY: Map<(Addr, String),  DepositRecord> = Map::new("deposit_history");
 pub const DEPOSIT_HISTORY_INFO: Item<DepositInfo> = Item::new("deposit_history_info");
 
 
@@ -106,10 +106,10 @@ pub struct FundingRateInfo {
     pub len: u64,
 }
 
-pub const FUNDING_RATE_HISTORY: Map<u64,  FundingRateRecord> = Map::new("funding_payment_history");
+pub const FUNDING_RATE_HISTORY: Map<String,  FundingRateRecord> = Map::new("funding_payment_history");
 pub const FUNDING_RATE_HISTORY_INFO: Item<FundingRateInfo> = Item::new("funding_payment_history_info");
 
-pub const FUNDING_PAYMENT_HISTORY: Map<(&Addr, u64),  FundingPaymentRecord> = Map::new("funding_history");
+pub const FUNDING_PAYMENT_HISTORY: Map<(&Addr, String),  FundingPaymentRecord> = Map::new("funding_history");
 pub const FUNDING_PAYMENT_HISTORY_INFO: Item<FundingPaymentInfo> = Item::new("funding_history_info");
 
 
@@ -136,7 +136,7 @@ pub struct LiquidationInfo {
     pub len: u64,
 }
 
-pub const LIQUIDATION_HISTORY: Map<(Addr, u64),  LiquidationRecord> = Map::new("liquidation_history");
+pub const LIQUIDATION_HISTORY: Map<(Addr, String),  LiquidationRecord> = Map::new("liquidation_history");
 pub const LIQUIDATION_HISTORY_INFO: Item<LiquidationInfo> = Item::new("liquidation_history_info");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -175,7 +175,7 @@ pub struct OrderHisInfo {
     pub len: u64,
 }
 
-pub const ORDER_HISTORY: Map<u64,  OrderRecord> = Map::new("order_history");
+pub const ORDER_HISTORY: Map<String,  OrderRecord> = Map::new("order_history");
 pub const ORDER_HISTORY_INFO: Item<OrderHisInfo> = Item::new("order_history_info");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -201,5 +201,5 @@ pub struct TradeInfo {
     pub len: u64,
 }
 
-pub const TRADE_HISTORY: Map<(&Addr, u64),  TradeRecord> = Map::new("trade_history");
+pub const TRADE_HISTORY: Map<(&Addr, String),  TradeRecord> = Map::new("trade_history");
 pub const TRADE_HISTORY_INFO: Item<TradeInfo> = Item::new("trade_history_info");

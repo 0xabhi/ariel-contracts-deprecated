@@ -53,7 +53,7 @@ pub struct Amm {
     pub minimum_base_asset_trade_size: Uint128,
 }
 
-pub const MARKETS: Map<u64, Market> = Map::new("markets");
+pub const MARKETS: Map<String, Market> = Map::new("markets");
 
 impl Amm {
     pub fn mark_price(&self) -> Result<Uint128, ContractError> {

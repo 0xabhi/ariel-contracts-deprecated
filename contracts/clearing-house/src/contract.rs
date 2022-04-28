@@ -294,7 +294,8 @@ pub fn execute(
             too_volatile_ratio,
         ),
         ExecuteMsg::UpdateAdmin { admin } => {
-            Ok(ADMIN.execute_update_admin(deps, info, maybe_addr(api, admin.into())?)?)
+            let addr = Some(deps.api.addr_validate(&admin)?);
+            Ok(ADMIN.execute_update_admin(deps, info, addr)?)
         }
         ExecuteMsg::UpdateMaxDeposit { max_deposit } => {
             try_update_max_deposit(deps, info, max_deposit)

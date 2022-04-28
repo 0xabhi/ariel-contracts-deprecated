@@ -17,7 +17,7 @@ pub fn repeg(
     new_peg_candidate: Uint128
 ) -> Result<i128, ContractError> {
 
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
 
     let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
 
@@ -113,7 +113,7 @@ pub fn repeg(
             .checked_add(Uint128::from(adjustment_cost.unsigned_abs()))?;
     }
 
-    MARKETS.update(deps.storage, market_index, |_m| ->  Result<Market, ContractError>{
+    MARKETS.update(deps.storage, market_index.to_string(), |_m| ->  Result<Market, ContractError>{
         Ok(market)
     })?;
 

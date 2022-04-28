@@ -36,9 +36,9 @@ pub fn calculate_base_asset_amount_user_can_execute(
 ) -> Result<Uint128, ContractError> {
 
     let position_index = market_index;
-    let market = MARKETS.load(deps.storage, market_index)?;
+    let market = MARKETS.load(deps.storage, market_index.to_string())?;
     
-    let order = ORDERS.load(deps.storage, ((user_addr, market_index), order_index))?;
+    let order = ORDERS.load(deps.storage, ((user_addr, market_index.to_string()), order_index.to_string()))?;
 
     let quote_asset_amount = calculate_available_quote_asset_user_can_execute(
         deps,
@@ -83,12 +83,12 @@ pub fn calculate_available_quote_asset_user_can_execute(
     position_index: u64,
 ) -> Result<Uint128, ContractError> {
 
-    let market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
+    let market_position = POSITIONS.load(deps.storage, (user_addr, position_index.to_string()))?;
     
     let market_index = position_index;
-    let market = MARKETS.load(deps.storage, market_index)?;
+    let market = MARKETS.load(deps.storage, market_index.to_string())?;
     
-    let order = ORDERS.load(deps.storage, ((user_addr, position_index), order_index))?;
+    let order = ORDERS.load(deps.storage, ((user_addr, position_index.to_string()), order_index.to_string()))?;
 
     let max_leverage = MARGIN_PRECISION
         .checked_div(
@@ -137,10 +137,10 @@ pub fn place_order(
 
     let user = USERS.load(deps.storage, &user_addr.clone())?;
     let position_index = params.market_index;
-    let mut market_position = POSITIONS.load(deps.storage, (&user_addr.clone(), position_index))?;
+    let mut market_position = POSITIONS.load(deps.storage, (&user_addr.clone(), position_index.to_string()))?;
     
     let market_index = params.market_index;
-    let market = MARKETS.load(deps.storage, market_index)?;
+    let market = MARKETS.load(deps.storage, market_index.to_string())?;
    
     settle_funding_payment(
         deps,
@@ -186,7 +186,7 @@ pub fn place_order(
         immediate_or_cancel: false,
     };
 
-    ORDERS.save(deps.storage, ((&user_addr.clone(), position_index), new_order_idx),&new_order)?;
+    ORDERS.save(deps.storage, ((&user_addr.clone(), position_index.to_string()), new_order_idx.to_string()),&new_order)?;
 
     let valid_oracle_price = get_valid_oracle_price(
         Some(oracle),
@@ -211,7 +211,7 @@ pub fn place_order(
         i.len = order_history_info_length;
         Ok(i)
     })?;
-    ORDER_HISTORY.save(deps.storage, order_history_info_length, &OrderRecord {
+    ORDER_HISTORY.save(deps.storage, order_history_info_length.to_string(), &OrderRecord {
         ts: now,
         order: new_order,
         user: user_addr.clone(),
@@ -238,11 +238,11 @@ pub fn cancel_order(
     now: u64
 ) -> Result<bool, ContractError> {
 
-    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
+    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index.to_string()))?;
     let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
 
-    let order = ORDERS.load(deps.storage, ((user_addr, position_index), order_index))?;
-    let market = MARKETS.load(deps.storage, position_index)?;
+    let order = ORDERS.load(deps.storage, ((user_addr, position_index.to_string()), order_index.to_string()))?;
+    let market = MARKETS.load(deps.storage, position_index.to_string())?;
 
     settle_funding_payment(
         deps,
@@ -276,7 +276,7 @@ pub fn cancel_order(
         i.len = order_history_info_length;
         Ok(i)
     })?;
-    ORDER_HISTORY.save(deps.storage, order_history_info_length, &OrderRecord {
+    ORDER_HISTORY.save(deps.storage, order_history_info_length.to_string(), &OrderRecord {
         ts: now,
         user: user_addr.clone(),
         order: order,
@@ -292,17 +292,17 @@ pub fn cancel_order(
     })?;
 
     if order_index != market_position.order_length {
-        let order_to_replace = ORDERS.load(deps.storage, ((user_addr, position_index), market_position.order_length))?;
-        ORDERS.update(deps.storage, ((user_addr, position_index), order_index), |_p| -> Result<Order, ContractError> {
+        let order_to_replace = ORDERS.load(deps.storage, ((user_addr, position_index.to_string()), market_position.order_length.to_string()))?;
+        ORDERS.update(deps.storage, ((user_addr, position_index.to_string()), order_index.to_string()), |_p| -> Result<Order, ContractError> {
             Ok(order_to_replace)
         })?;
     }
     
-    ORDERS.remove(deps.storage, ((user_addr, position_index), market_position.order_length));
+    ORDERS.remove(deps.storage, ((user_addr, position_index.to_string()), market_position.order_length.to_string()));
 
     // Decrement open orders for existing position
     market_position.order_length -= 1;
-    POSITIONS.update(deps.storage, (user_addr, position_index), |_p| -> Result<Position, ContractError> {
+    POSITIONS.update(deps.storage, (user_addr, position_index.to_string()), |_p| -> Result<Position, ContractError> {
         Ok(market_position)
     })?;
 
@@ -336,12 +336,12 @@ pub fn expire_orders(
     let mut expired_order_len: u64 = 0;
     if state.markets_length > 0 {
         for i in 1..state.markets_length {
-            let market_position = POSITIONS.load(deps.storage, (user_addr,i));
+            let market_position = POSITIONS.load(deps.storage, (user_addr,i.to_string()));
             match market_position {
                 Ok(p) => {
                     if p.order_length > 0 {
                         for j in 1..p.order_length {
-                            let order = ORDERS.load(deps.storage, ((user_addr, i), j))?;
+                            let order = ORDERS.load(deps.storage, ((user_addr, i.to_string()), j.to_string()))?;
                             if order.status == OrderStatus::Open {
                                 expired_order_len += 1;
                             }
@@ -356,13 +356,13 @@ pub fn expire_orders(
 
     if state.markets_length > 0 {
         for i in 1..state.markets_length {
-            let market_position = POSITIONS.load(deps.storage, (user_addr,i));
+            let market_position = POSITIONS.load(deps.storage, (user_addr,i.to_string()));
             match market_position {
                 Ok(mut p) => {
                     if p.clone().order_length > 0 {
                         let mut j = 1;
                         while j <= p.order_length {
-                            let mut order = ORDERS.load(deps.storage, ((user_addr, i), j))?;
+                            let mut order = ORDERS.load(deps.storage, ((user_addr, i.to_string()), j.to_string()))?;
                             if order.status == OrderStatus::Init {
                                 j += 1;
                                 continue;
@@ -379,7 +379,7 @@ pub fn expire_orders(
                                 k.len = order_history_info_length;
                                 Ok(k)
                             })?;
-                            ORDER_HISTORY.save(deps.storage, order_history_info_length, &OrderRecord {
+                            ORDER_HISTORY.save(deps.storage, order_history_info_length.to_string(), &OrderRecord {
                                 ts: now,
                                 order: order,
                                 user: user_addr.clone(),
@@ -395,17 +395,17 @@ pub fn expire_orders(
                             })?;
 
                             if j != p.clone().order_length {
-                                let order_to_replace = ORDERS.load(deps.storage, ((user_addr, i), p.clone().order_length))?;
-                                ORDERS.update(deps.storage, ((user_addr, i), j), |_p| -> Result<Order, ContractError> {
+                                let order_to_replace = ORDERS.load(deps.storage, ((user_addr, i.to_string()), p.clone().order_length.to_string()))?;
+                                ORDERS.update(deps.storage, ((user_addr, i.to_string()), j.to_string()), |_p| -> Result<Order, ContractError> {
                                     Ok(order_to_replace)
                                 })?;
                             }
                             
-                            ORDERS.remove(deps.storage, ((user_addr, i), p.clone().order_length));
+                            ORDERS.remove(deps.storage, ((user_addr, i.to_string()), p.clone().order_length.to_string()));
 
                             p.order_length -= 1;
                             // Decrement open orders for existing position
-                            POSITIONS.update(deps.storage, (user_addr, i), |_position| -> Result<Position, ContractError> {
+                            POSITIONS.update(deps.storage, (user_addr, i.to_string()), |_position| -> Result<Position, ContractError> {
                                 Ok(p.clone())
                             })?;
                         }
@@ -431,12 +431,12 @@ pub fn fill_order(
     let order_state = ORDERSTATE.load(deps.storage)?;
     let mut user = USERS.load(deps.storage, user_addr)?;
     let mut filler = USERS.load(deps.storage, filler_addr)?;
-    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index))?;
-    let order = ORDERS.load(deps.storage, ((user_addr, position_index), order_index))?;
+    let mut market_position = POSITIONS.load(deps.storage, (user_addr, position_index.to_string()))?;
+    let order = ORDERS.load(deps.storage, ((user_addr, position_index.to_string()), order_index.to_string()))?;
     let market_index = position_index;
     let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
     let fee_structure = FEESTRUCTURE.load(deps.storage)?;
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
     let mut referrer : Option<User> = None;
 
     if let Some(s) = user.referrer.clone() {
@@ -642,7 +642,7 @@ pub fn fill_order(
         k.len = trade_history_info_length;
         Ok(k)
     })?;
-    TRADE_HISTORY.save(deps.storage, (&user_addr, trade_history_info_length), &TradeRecord {
+    TRADE_HISTORY.save(deps.storage, (&user_addr, trade_history_info_length.to_string()), &TradeRecord {
         ts: now,
         user: user_addr.clone(),
         direction: order.direction,
@@ -668,7 +668,7 @@ pub fn fill_order(
         k.len = order_history_info_length;
         Ok(k)
     })?;
-    ORDER_HISTORY.save(deps.storage, order_history_info_length, &OrderRecord {
+    ORDER_HISTORY.save(deps.storage, order_history_info_length.to_string(), &OrderRecord {
         ts: now,
         user: user_addr.clone(),
         order: order,
@@ -685,17 +685,17 @@ pub fn fill_order(
 
     // delete order
     if order_index != market_position.order_length {
-        let order_to_replace = ORDERS.load(deps.storage, ((user_addr, position_index), market_position.order_length))?;
-        ORDERS.update(deps.storage, ((user_addr, position_index), order_index), |_p| -> Result<Order, ContractError> {
+        let order_to_replace = ORDERS.load(deps.storage, ((user_addr, position_index.to_string()), market_position.order_length.to_string()))?;
+        ORDERS.update(deps.storage, ((user_addr, position_index.to_string()), order_index.to_string()), |_p| -> Result<Order, ContractError> {
             Ok(order_to_replace)
         })?;
     }
     
-    ORDERS.remove(deps.storage, ((user_addr, position_index), market_position.order_length));
+    ORDERS.remove(deps.storage, ((user_addr, position_index.to_string()), market_position.order_length.to_string()));
 
     // Decrement open orders for existing position
     market_position.order_length -= 1;
-    POSITIONS.update(deps.storage, (user_addr, position_index), |_p| -> Result<Position, ContractError> {
+    POSITIONS.update(deps.storage, (user_addr, position_index.to_string()), |_p| -> Result<Position, ContractError> {
         Ok(market_position)
     })?;
 
@@ -717,7 +717,7 @@ pub fn fill_order(
         }
     }
 
-    MARKETS.update(deps.storage, market_index, |_m|-> Result<Market, ContractError> {
+    MARKETS.update(deps.storage, market_index.to_string(), |_m|-> Result<Market, ContractError> {
         Ok(market.clone())
     })?;
 
@@ -744,7 +744,7 @@ pub fn execute_order(
     now: u64,
     value_oracle_price: Option<i128>,
 ) -> Result<(Uint128, Uint128, bool, Uint128), ContractError> {
-    let order = ORDERS.load(deps.storage, ((user_addr, market_index), order_index))?;
+    let order = ORDERS.load(deps.storage, ((user_addr, market_index.to_string()), order_index.to_string()))?;
     
     match order.order_type {
         OrderType::Market => execute_market_order(
@@ -775,8 +775,8 @@ pub fn execute_market_order(
     mark_price_before: Uint128,
     now: u64,
 ) -> Result<(Uint128, Uint128, bool, Uint128), ContractError> {
-    let order = ORDERS.load(deps.storage, ((user_addr, market_index), order_index))?;
-    let market = MARKETS.load(deps.storage, market_index)?;
+    let order = ORDERS.load(deps.storage, ((user_addr, market_index.to_string()), order_index.to_string()))?;
+    let market = MARKETS.load(deps.storage, market_index.to_string())?;
 
     let position_index = market_index;
 
@@ -854,8 +854,8 @@ pub fn execute_non_market_order(
         return Ok((Uint128::zero(), Uint128::zero(), false, Uint128::zero()));
     }
 
-    let order = ORDERS.load(deps.storage, ((user_addr, market_index), order_index))?;
-    let market = MARKETS.load(deps.storage, market_index)?;
+    let order = ORDERS.load(deps.storage, ((user_addr, market_index.to_string()), order_index.to_string()))?;
+    let market = MARKETS.load(deps.storage, market_index.to_string())?;
 
     // Determine the base asset amount the market can fill
     let base_asset_amount_market_can_execute = calculate_base_asset_amount_market_can_execute(
@@ -944,7 +944,7 @@ pub fn update_order_after_trade(
     quote_asset_amount: Uint128,
     fee: Uint128,
 ) -> Result<bool, ContractError>{
-    let mut order = ORDERS.load(deps.storage, ((user_addr, position_index), order_index))?;
+    let mut order = ORDERS.load(deps.storage, ((user_addr, position_index.to_string()), order_index.to_string()))?;
     order.base_asset_amount_filled = order
         .base_asset_amount_filled
         .checked_add(base_asset_amount)?;
@@ -968,7 +968,7 @@ pub fn update_order_after_trade(
 
     order.fee = order.fee.checked_add(fee)?;
 
-    ORDERS.update(deps.storage, ((user_addr, position_index), order_index), |_o| -> Result<Order, ContractError> {
+    ORDERS.update(deps.storage, ((user_addr, position_index.to_string()), order_index.to_string()), |_o| -> Result<Order, ContractError> {
         Ok(order)
     })?;
 

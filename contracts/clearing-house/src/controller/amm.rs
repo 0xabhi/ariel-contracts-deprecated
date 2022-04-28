@@ -21,11 +21,11 @@ pub fn update_mark_twap(
     now: u64,
     precomputed_mark_price: Option<Uint128>,
 ) -> Result<Uint128, ContractError> {
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
     let mark_twap = amm::calculate_new_mark_twap(&market.amm, now, precomputed_mark_price)?;
     market.amm.last_mark_price_twap = mark_twap;
     market.amm.last_mark_price_twap_ts = now;
-    MARKETS.update(deps.storage, market_index, |_m| -> Result<Market, ContractError> {
+    MARKETS.update(deps.storage, market_index.to_string(), |_m| -> Result<Market, ContractError> {
         Ok(market)
     })?;
     return Ok(mark_twap);
@@ -37,7 +37,7 @@ pub fn update_oracle_price_twap(
     now: u64,
     oracle_price: i128,
 ) -> Result<i128, ContractError> {
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
     let mut a = market.amm.clone();
     let new_oracle_price_spread = oracle_price
         .checked_sub(a.last_oracle_price_twap.i128())
@@ -73,7 +73,7 @@ pub fn update_oracle_price_twap(
     }
 
     market.amm = a;
-    MARKETS.update(deps.storage, market_index, |_m| -> Result<Market, ContractError> {
+    MARKETS.update(deps.storage, market_index.to_string(), |_m| -> Result<Market, ContractError> {
         Ok(market)
     })?;
 
@@ -84,7 +84,7 @@ pub fn update_oracle_price_twap(
 /// Increasing k costs the protocol money because it reduces slippage and improves the exit price for net market position
 /// Decreasing k costs the protocol money because it increases slippage and hurts the exit price for net market position
 pub fn adjust_k_cost(deps: &mut DepsMut, market_index: u64, new_sqrt_k: Uint128) -> Result<i128, ContractError> {
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
     // Find the net market value before adjusting k
     let (current_net_market_value, _) =
         _calculate_base_asset_value_and_pnl(market.base_asset_amount.i128(), Uint128::zero(), &market.amm)?;
@@ -122,7 +122,7 @@ pub fn adjust_k_cost(deps: &mut DepsMut, market_index: u64, new_sqrt_k: Uint128)
         &market.amm,
     )?;
 
-    MARKETS.update(deps.storage, market_index, |_m| -> Result<Market, ContractError> {
+    MARKETS.update(deps.storage, market_index.to_string(), |_m| -> Result<Market, ContractError> {
         Ok(market)
     })?;
 
@@ -137,7 +137,7 @@ pub fn swap_quote_asset(
     now: u64,
     precomputed_mark_price: Option<Uint128>,
 ) -> Result<i128, ContractError> {
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
     let a = market.amm.clone();
     update_mark_twap(deps, market_index, now, precomputed_mark_price)?;
     let quote_asset_reserve_amount =
@@ -162,7 +162,7 @@ pub fn swap_quote_asset(
         .checked_sub(new_base_asset_reserve.u128() as i128)
         .ok_or_else(|| (ContractError::MathError))?;
 
-    MARKETS.update(deps.storage, market_index, |_m| -> Result<Market, ContractError> {
+    MARKETS.update(deps.storage, market_index.to_string(), |_m| -> Result<Market, ContractError> {
         Ok(market)
     })?;
 
@@ -177,7 +177,7 @@ pub fn swap_base_asset(
     now: u64,
     precomputed_mark_price: Option<Uint128>
 ) -> Result<Uint128, ContractError> {
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
     let a = market.amm.clone();
     
     update_mark_twap(deps, market_index, now, precomputed_mark_price)?;
@@ -193,7 +193,7 @@ pub fn swap_base_asset(
     market.amm.base_asset_reserve = new_base_asset_reserve;
     market.amm.quote_asset_reserve = new_quote_asset_reserve;
 
-    MARKETS.update(deps.storage, market_index, |_m| -> Result<Market, ContractError> {
+    MARKETS.update(deps.storage, market_index.to_string(), |_m| -> Result<Market, ContractError> {
         Ok(market)
     })?;
 
@@ -215,13 +215,13 @@ pub fn move_price(
     let k = base_asset_reserve
         .mul(quote_asset_reserve);
 
-    let mut mark = MARKETS.load(deps.storage, market_index)?;
+    let mut mark = MARKETS.load(deps.storage, market_index.to_string())?;
     
     mark.amm.base_asset_reserve = base_asset_reserve;
     mark.amm.quote_asset_reserve = quote_asset_reserve;
     mark.amm.sqrt_k = Uint128::from(k.u128().sqrt());
 
-    MARKETS.update(deps.storage, market_index, |_m| -> Result<Market, ContractError> {
+    MARKETS.update(deps.storage, market_index.to_string(), |_m| -> Result<Market, ContractError> {
         Ok(mark)
     })?;
     Ok(())

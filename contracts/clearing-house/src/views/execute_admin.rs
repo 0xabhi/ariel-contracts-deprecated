@@ -45,7 +45,7 @@ pub fn try_initialize_market(
 
     let state = STATE.load(deps.storage)?;
 
-    let existing_market = MARKETS.load(deps.storage, market_index);
+    let existing_market = MARKETS.load(deps.storage, market_index.to_string());
     if existing_market.is_ok() {
         return Err(ContractError::MarketIndexAlreadyInitialized {});
     }
@@ -112,7 +112,7 @@ pub fn try_initialize_market(
         margin_ratio_maintenance,
         amm: a,
     };
-    MARKETS.save(deps.storage, market_index, &market)?;
+    MARKETS.save(deps.storage, market_index.to_string(), &market)?;
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
         state.markets_length += 1;
         Ok(state)
@@ -144,7 +144,7 @@ pub fn try_withdraw_fees(
 ) -> Result<Response, ContractError> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let state = STATE.load(deps.storage)?;
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
 
     // A portion of fees must always remain in protocol to be used to keep markets optimal
     let max_withdraw = market
@@ -175,7 +175,7 @@ pub fn try_withdraw_fees(
 
     MARKETS.update(
         deps.storage,
-        market_index,
+        market_index.to_string(),
         |_m| -> Result<Market, ContractError> { Ok(market) },
     )?;
 
@@ -193,7 +193,7 @@ pub fn try_withdraw_from_insurance_vault_to_market(
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
     let state = STATE.load(deps.storage)?;
 
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
     market.amm.total_fee_minus_distributions = market
         .amm
         .total_fee_minus_distributions
@@ -209,7 +209,7 @@ pub fn try_withdraw_from_insurance_vault_to_market(
     });
     MARKETS.update(
         deps.storage,
-        market_index,
+        market_index.to_string(),
         |_m| -> Result<Market, ContractError> { Ok(market) },
     )?;
     Ok(Response::new()
@@ -224,7 +224,7 @@ pub fn try_repeg_amm_curve(
     market_index: u64,
 ) -> Result<Response, ContractError> {
     let now = env.block.time.seconds();
-    let market = MARKETS.load(deps.storage, market_index)?;
+    let market = MARKETS.load(deps.storage, market_index.to_string())?;
     let OraclePriceData {
         price: oracle_price,
         ..
@@ -258,7 +258,7 @@ pub fn try_repeg_amm_curve(
 
     CURVEHISTORY.save(
         deps.storage,
-        curve_history_info_length as u64,
+        curve_history_info_length.to_string(),
         &CurveRecord {
             ts: now,
             record_id: curve_history_info_length,
@@ -294,7 +294,7 @@ pub fn try_update_amm_oracle_twap(
     market_index: u64,
 ) -> Result<Response, ContractError> {
     let now = env.block.time.seconds();
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
     // todo get_oracle_twap is not defined yet
     let oracle_twap = market.amm.get_oracle_twap()?;
 
@@ -325,7 +325,7 @@ pub fn try_update_amm_oracle_twap(
 
     MARKETS.update(
         deps.storage,
-        market_index,
+        market_index.to_string(),
         |_m| -> Result<Market, ContractError> { Ok(market) },
     )?;
 
@@ -338,7 +338,7 @@ pub fn try_reset_amm_oracle_twap(
     market_index: u64,
 ) -> Result<Response, ContractError> {
     let now = env.block.time.seconds();
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
     let oracle_guard_rails = ORACLEGUARDRAILS.load(deps.storage)?;
     let oracle_price_data = market.amm.get_oracle_price()?;
 
@@ -352,7 +352,7 @@ pub fn try_reset_amm_oracle_twap(
     }
     MARKETS.update(
         deps.storage,
-        market_index,
+        market_index.to_string(),
         |_m| -> Result<Market, ContractError> { Ok(market) },
     )?;
     Ok(Response::new().add_attribute("method", "try_reset_amm_oracle_twap"))
@@ -382,7 +382,7 @@ pub fn try_update_k(
     sqrt_k: Uint128,
 ) -> Result<Response, ContractError> {
     let now = env.block.time.seconds();
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
 
     let base_asset_amount_long = Uint128::from(market.base_asset_amount_long.i128().unsigned_abs());
     let base_asset_amount_short =
@@ -467,7 +467,7 @@ pub fn try_update_k(
 
     CURVEHISTORY.save(
         deps.storage,
-        curve_history_info_length as u64,
+        curve_history_info_length.to_string(),
         &CurveRecord {
             ts: now,
             record_id: curve_history_info_length,
@@ -492,7 +492,7 @@ pub fn try_update_k(
     )?;
     MARKETS.update(
         deps.storage,
-        market_index,
+        market_index.to_string(),
         |_m| -> Result<Market, ContractError> { Ok(market) },
     )?;
     Ok(Response::new().add_attribute("method", "try_update_k"))
@@ -512,10 +512,10 @@ pub fn try_update_margin_ratio(
         margin_ratio_partial,
         margin_ratio_maintenance,
     )?;
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
     MARKETS.update(
         deps.storage,
-        market_index,
+        market_index.to_string(),
         |_m| -> Result<Market, ContractError> {
             market.margin_ratio_initial = margin_ratio_initial;
             market.margin_ratio_partial = margin_ratio_partial;
@@ -664,12 +664,12 @@ pub fn try_update_market_oracle(
     oracle_source: OracleSource,
 ) -> Result<Response, ContractError> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
     market.amm.oracle = addr_validate_to_lower(deps.api, &oracle)?;
     market.amm.oracle_source = oracle_source;
     MARKETS.update(
         deps.storage,
-        market_index,
+        market_index.to_string(),
         |_m| -> Result<Market, ContractError> { Ok(market) },
     )?;
     Ok(Response::new().add_attribute("method", "try_update_market_oracle"))
@@ -757,10 +757,10 @@ pub fn try_update_market_minimum_quote_asset_trade_size(
     minimum_trade_size: Uint128,
 ) -> Result<Response, ContractError> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
     MARKETS.update(
         deps.storage,
-        market_index,
+        market_index.to_string(),
         |_m| -> Result<Market, ContractError> {
             market.amm.minimum_quote_asset_trade_size = minimum_trade_size;
             Ok(market)
@@ -776,10 +776,10 @@ pub fn try_update_market_minimum_base_asset_trade_size(
     minimum_trade_size: Uint128,
 ) -> Result<Response, ContractError> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
-    // let mut market = MARKETS.load(deps.storage, market_index)?;
+    // let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
     MARKETS.update(
         deps.storage,
-        market_index,
+        market_index.to_string(),
         |m| -> Result<_, ContractError> {
             match m {
                 Some(mut mr) => {
@@ -816,12 +816,12 @@ pub fn try_feeding_price(
     price: i128,
 ) -> Result<Response, ContractError> {
     ADMIN.assert_admin(deps.as_ref(), &info.sender.clone())?;
-    let mut market = MARKETS.load(deps.storage, market_index)?;
+    let mut market = MARKETS.load(deps.storage, market_index.to_string())?;
     market.amm.last_oracle_price = Number128::new(price);
     market.amm.last_oracle_price_twap = Number128::new(price);
     MARKETS.update(
         deps.storage,
-        market_index,
+        market_index.to_string(),
         |_m| -> Result<Market, ContractError> { Ok(market) },
     )?;
     Ok(Response::new().add_attribute("method", "try_update_oracle_address"))
