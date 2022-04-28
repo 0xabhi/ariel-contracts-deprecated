@@ -58,6 +58,7 @@ name = "clearing-house"
 version = "0.1.0"
 dependencies = [
  "ariel",
+ "cosmwasm-schema",
  "cosmwasm-std 0.16.7",
  "cw-controllers",
  "cw-storage-plus 0.8.1",
@@ -72,6 +73,7 @@ dependencies = [
 name = "collateral-funds"
 version = "0.1.0"
 dependencies = [
+ "cosmwasm-schema",
  "cosmwasm-std 0.16.7",
  "cw-controllers",
  "cw-storage-plus 0.8.1",
@@ -107,6 +109,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0faf9bad5eb0a43a00406e64f8d33407a06bd1826fa976195a69db70e6c18d9d"
 dependencies = [
  "syn",
+]
+
+[[package]]
+name = "cosmwasm-schema"
+version = "0.16.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b021bdefb9d855c5135e83046e5407a9fddba869e42e78b6036b53a606dc8c10"
+dependencies = [
+ "schemars 0.8.8",
+ "serde_json",
 ]
 
 [[package]]
@@ -400,6 +412,7 @@ dependencies = [
 name = "insurance-funds"
 version = "0.1.0"
 dependencies = [
+ "cosmwasm-schema",
  "cosmwasm-std 0.16.7",
  "cw-controllers",
  "cw-storage-plus 0.8.1",
@@ -519,6 +532,7 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 name = "oracle"
 version = "0.1.0"
 dependencies = [
+ "cosmwasm-schema",
  "cosmwasm-std 0.16.7",
  "cw-storage-plus 0.8.1",
  "cw2",
